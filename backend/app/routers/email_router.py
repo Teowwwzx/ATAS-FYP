@@ -2,38 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user_model import User
-from app.schemas.email_schema import EmailVerificationRequest, PasswordResetRequest, PasswordReset
-from app.services.email_service import send_verification_email, send_password_reset_email
+from app.schemas.email_schema import PasswordResetRequest, PasswordReset
+from app.services.email_service import send_password_reset_email
 from app.core.security import create_access_token, decode_access_token, get_password_hash
 
 router = APIRouter()
-
-@router.post("/request-verification-token")
-def request_verification_token(request: EmailVerificationRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == request.email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.is_verified:
-        raise HTTPException(status_code=400, detail="User is already verified")
-
-    token = create_access_token(data={"sub": user.email, "type": "email_verification"})
-    send_verification_email(email=user.email, token=token)
-    return {"message": "Verification email sent"}
-
-@router.post("/verify-email")
-def verify_email(token: str, db: Session = Depends(get_db)):
-    payload = decode_access_token(token)
-    if not payload or payload.get("type") != "email_verification":
-        raise HTTPException(status_code=400, detail="Invalid token")
-
-    email = payload.get("sub")
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    user.is_verified = True
-    db.commit()
-    return {"message": "Email verified successfully"}
 
 @router.post("/forgot-password")
 def forgot_password(request: PasswordResetRequest, db: Session = Depends(get_db)):
