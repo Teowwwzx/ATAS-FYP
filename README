@@ -1,0 +1,101 @@
+ATAS Platform (FYP MVP) Functional Requirements Document
+(FRD)
+
+1.0 Project Overview
+1.1 Project Objective: The core objective of this project (ATAS MVP) is to develop a "Structured Event Tool". This tool aims to solve the inefficiency and unreliability issues faced by Malaysian university students (for course completion) when finding industry experts to organize events.
+
+1.2 Core Value Proposition:
+- For Students: To provide a reliable, transparent channel that is 10x faster than traditional cold emailing for discovering, contacting, and successfully organizing high-quality industry experts.
+- For Experts: To provide a zero-admin-cost platform that enhances personal branding and is respected, for receiving and managing high-quality speaking invitations.
+
+1.3 MVP Scope (Out of Scope for this FRD): To ensure FYP focus, the following functions are explicitly excluded from this development scope:
+- A complete instant messaging/chat system.
+- Social features (e.g., Xiaohongshu-style posts, follows, likes).
+- Project management (e.g., committee invitations, checklists).
+- Sponsorship center.
+
+2.0 User Roles & Permissions
+The system must support the following three core roles:
+
+2.1 Student
+- Registration: Email domain for registration must verified.
+
+Permissions:
+- Create and manage their own student profile.
+- Search, filter, and view "verified" expert profiles.
+- Create "Event" requests.
+- View and manage the status of their created events.
+- Rate and review experts after an event is "Completed".
+- View reviews received (from experts) (Private).
+
+2.2 Expert
+- Registration: Invitation/Approval-based. Must be approved by a system administrator in the backend to ensure high quality of the supply side.
+
+Permissions:
+- Create and manage their own detailed expert profile (e.g., bio, avatar).
+- View and manage received "Event" requests.
+- Approve (Accept) or Decline event requests.
+- Rate and review the student organizer after an event is "Completed".
+- View reviews received (from students) (The average score of reviews will be publicly displayed on their profile).
+
+2.3 Admin
+Permissions:
+- Full management (CRUD) of all user accounts (Student/Expert).
+
+Core Responsibility: To review and "verify" new expert accounts.
+- Manage (CRUD) platform content, such as "Skill Areas / Tags".
+- View and manage (if necessary) all "Event" and "Reviews".
+
+3.0 Core Functional Modules
+3.1 Module 1: User & Auth Module
+- FR-1.1 (Registration): Students can register with a name, email, and password. The system must send a verification link to that email.
+- FR-1.2 (Login): Users can authenticate using their email and password. The system must maintain their login state (Session).
+- FR-1.3 (Student Profile): Allow students to upload basic information (Name, University, Major).
+- FR-1.4 (Expert Profile): Allow experts to upload detailed information (Avatar, Current Company, Title, Bio, LinkedIn URL, etc.). This profile must be "verified" by an Admin before being publicly visible.
+
+3.2 Module 2: Expert Discovery Module
+- FR-2.1 (Expert List): The system must provide a page to display all "verified" experts in a card format.
+- FR-2.2 (Search): Provide a search bar allowing users to search by "Expert Name" or "Company".
+- FR-2.3 (Tags & Filtering):
+    - The Admin must maintain a "Tag Library" in the backend (Tags, e.g., Python, UI/UX, Marketing).
+    - Experts, when editing their profile, can multi-select from this "Tag Library" to mark their areas of expertise.
+    - Students, on the "Expert List" page, can use these "Tags" for multi-select filtering.
+- FR-2.4 (Rating Display): The expert's card and their detailed profile page must clearly display their "Average Rating" (data from Module 4.0).
+
+3.3 Module 3: Structured Event Workflow
+- FR-3.1 (Core Entity): The system must have a core entity, called or "Event".
+- FR-3.2 (Event Status): The Event entity must have a clear lifecycle status. Minimum requirements:
+    - DRAFT (Awaiting expert response)
+    - CONFIRMED (Expert has accepted)
+    - DECLINED (Expert has declined)
+    - COMPLETED (Event date has passed, awaiting review)
+    - RATED (Both parties have reviewed, process finished)
+
+- FR-3.3 (Create Event):
+- Student clicks "Create Event" on an "Expert Profile" page.
+The system displays a standardized form. The student must fill in: Event Title, Event Format, Proposed Date & Time, Estimated Audience Size, Brief Message.
+Upon submission, the system creates a new Event record with DRAFT status, linking the Student ID and Expert ID.
+
+- FR-3.4 (Respond to Event):  
+- The expert sees the DRAFT event request on their dashboard.
+- The expert can perform two actions: "Accept" (changes status to CONFIRMED) or "Decline" (changes status to DECLINED).
+- FR-3.5 (Confirmation Notification): When the status changes to CONFIRMED or DECLINED, the system must trigger an (automatic) email notification to the student.
+- FR-3.6 (Complete Event): When the Event's end_time is past the current date, the system should automatically (e.g., via a scheduled job) update its status to COMPLETED.
+
+3.4 Module 4: Two-Way Rating System
+- FR-4.1 (Core Entity): The system must have a Review entity.
+- FR-4.2 (Trigger Condition): When an Event status changes to COMPLETED, the system should display a "Pending Review" prompt on the dashboards of both the student and the expert.
+- FR-4.3 (Review Data):
+- The Review entity must be able to store: event_id (links to which event), reviewer_id (who wrote it), reviewee_id (who is being reviewed), rating_score (Integer 1-5), comment (Optional text). 
+- FR-4.4 (Two-Way Logic):
+    Student submits a review (reviewing the expert).
+    Expert submits a review (reviewing the student).
+
+- FR-4.5 (Status Update): When both parties have submitted their review (or after X days post-event, e.g., 14 days), the Event's status changes to RATED.
+- FR-4.6 (Rating Calculation & Display):
+
+The system must be able to dynamically calculate each expert's "Average Rating" (the average of rating_score from all Reviews targeting that expert).
+
+This average score must be publicly displayed on the expert's profile page as defined in FR-2.4.
+
+(MVP Scope): Reviews received by students are not publicly displayed.
