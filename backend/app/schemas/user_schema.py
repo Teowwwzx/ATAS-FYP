@@ -1,3 +1,6 @@
+# user_schema.py
+
+
 from pydantic import BaseModel, EmailStr, ConfigDict
 import uuid
 from app.models.user_model import UserStatus

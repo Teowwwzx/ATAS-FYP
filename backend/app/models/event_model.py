@@ -109,6 +109,7 @@ class EventParticipant(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     role = Column(Enum(EventParticipantRole), nullable=False)
     description = Column(String, nullable=True)
+    join_method = Column(String, nullable=True)
     status = Column(Enum(EventParticipantStatus), nullable=False, default=EventParticipantStatus.pending)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -121,5 +122,35 @@ class EventMailTemplate(Base):
     subject = Column(String, nullable=False)
     body = Column(Text, nullable=False)
     is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class EventReminder(Base):
+    __tablename__ = "event_reminders"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    option = Column(String, nullable=False)  # one_week | three_days | one_day
+    remind_at = Column(DateTime(timezone=True), nullable=False)
+    is_sent = Column(Boolean, nullable=False, default=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class EventChecklistItem(Base):
+    __tablename__ = "event_checklist_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    is_completed = Column(Boolean, nullable=False, default=False)
+    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    sort_order = Column(Integer, nullable=False, default=0)
+    due_datetime = Column(DateTime(timezone=True), nullable=True)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

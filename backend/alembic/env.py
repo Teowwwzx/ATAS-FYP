@@ -18,7 +18,16 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from app.database.database import Base
-from app.models.blocklist_model import Blocklist
+from app.models.audit_log_model import AuditLog
+from app.models.event_model import Event, EventCategory, EventMailTemplate, EventParticipant, EventPicture
+from app.models.follows_model import Follow
+from app.models.notification_model import Notification
+from app.models.organization_model import Organization, organization_members
+from app.models.profile_model import Profile, Tag, Education, JobExperience
+from app.models.review_model import Review
+from app.models.skill_model import Skill
+from app.models.user_model import User, Role, AuthMailTemplate
+
 
 # add your model's MetaData object here
 # for 'autogenerate' support
