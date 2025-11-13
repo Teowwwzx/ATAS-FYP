@@ -42,6 +42,8 @@ class User(Base):
     
     # Relationships
     roles = relationship("Role", secondary=user_roles, back_populates="users")
+    profile = relationship("Profile", back_populates="user", uselist=False)
+    organizations = relationship("Organization", secondary="organization_members", back_populates="members")
 
 class Role(Base):
     __tablename__ = "roles"

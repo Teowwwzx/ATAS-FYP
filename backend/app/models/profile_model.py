@@ -34,7 +34,7 @@ class Profile(Base):
     __tablename__ = "profiles"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
     full_name = Column(String, nullable=False)
     bio = Column(Text, nullable=True)
     avatar_url = Column(String, nullable=True)
@@ -50,6 +50,7 @@ class Profile(Base):
     
     tags = relationship("Tag", secondary=profile_tags, back_populates="profiles")
     skills = relationship("Skill", secondary=profile_skills, back_populates="profiles")
+    user = relationship("User", back_populates="profile")
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -65,7 +66,7 @@ class Education(Base):
     __tablename__ = "educations"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     qualification = Column(String, nullable=True)
     field_of_study = Column(String, nullable=True)
@@ -80,7 +81,7 @@ class JobExperience(Base):
     __tablename__ = "job_experiences"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
