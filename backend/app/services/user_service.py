@@ -1,9 +1,11 @@
 import uuid
 import secrets
 from sqlalchemy.orm import Session
-from app.models.user_model import User
+from app.models.user_model import User, Role
+from app.models.profile_model import Profile
 from app.schemas.user_schema import UserCreate
 from app.core.security import get_password_hash
+from app.services.email_service import send_verification_email
 
 def create_user(db: Session, user: UserCreate):
     hashed_password = get_password_hash(user.password)
@@ -15,10 +17,22 @@ def create_user(db: Session, user: UserCreate):
         verification_token=verification_token
     )
     db.add(db_user)
+    db.flush()
+
+    # Create a profile for the user
+    db_profile = Profile(user_id=db_user.id, full_name="")
+    db.add(db_profile)
     db.commit()
     db.refresh(db_user)
 
-    # TODO: Send verification email
-    print(f"Verification token for {user.email}: {verification_token}")
+    send_verification_email(email=user.email, token=verification_token)
 
     return db_user
+
+def assign_role_to_user(db: Session, user: User, role_name: str):
+    role = db.query(Role).filter(Role.name == role_name).first()
+    if role:
+        user.roles.append(role)
+        db.commit()
+        db.refresh(user)
+    return user

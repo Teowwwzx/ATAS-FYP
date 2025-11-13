@@ -1,3 +1,6 @@
+# profile_schema.py
+
+
 from pydantic import BaseModel, ConfigDict
 import uuid
 from datetime import datetime
@@ -29,8 +32,15 @@ class ProfileBase(BaseModel):
 class ProfileCreate(ProfileBase):
     pass
 
-class ProfileUpdate(ProfileBase):
-    pass
+class ProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    bio: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    instagram_url: Optional[str] = None
+    twitter_url: Optional[str] = None
+    website_url: Optional[str] = None
+    visibility: Optional[ProfileVisibility] = None
 
 class ProfileResponse(ProfileBase):
     id: uuid.UUID
@@ -75,3 +85,7 @@ class JobExperienceResponse(JobExperienceBase):
     user_id: uuid.UUID
     org_id: Optional[uuid.UUID] = None
     model_config = ConfigDict(from_attributes=True)
+
+class OnboardingUpdate(BaseModel):
+    full_name: str
+    role: str
