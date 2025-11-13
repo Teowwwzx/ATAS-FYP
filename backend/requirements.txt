@@ -10,3 +10,5 @@ cloudinary
 apscheduler
 requests
 pydantic
+qrcode
+Pillow
