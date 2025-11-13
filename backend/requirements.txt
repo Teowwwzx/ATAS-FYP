@@ -10,3 +10,4 @@ cloudinary
 apscheduler
 requests
 pydantic
+pydantic-settings

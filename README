@@ -99,3 +99,73 @@ The system must be able to dynamically calculate each expert's "Average Rating" 
 This average score must be publicly displayed on the expert's profile page as defined in FR-2.4.
 
 (MVP Scope): Reviews received by students are not publicly displayed.
+
+4.0 Technical Overview
+- Monorepo with `backend/` (FastAPI) and `frontend/` (Next.js) aligned to this FRD.
+- Backend exposes auth, profiles, events listing, follows, and email flows.
+- Frontend scaffolds pages for login/register, dashboard, event creation and profiles.
+
+5.0 Architecture
+- Backend:
+  - FastAPI app registered in `backend/app/main.py`.
+  - PostgreSQL via SQLAlchemy (`backend/app/database/database.py`).
+  - Pydantic schemas under `backend/app/schemas/`.
+  - Domain routers under `backend/app/routers/` with `api/v1` prefixes.
+  - Models under `backend/app/models/` supporting Users, Profiles, Events, Reviews, Tags/Skills, Follows, Organizations, Notifications.
+  - Email integration with Resend in `backend/app/services/email_service.py`.
+- Frontend:
+  - Next.js App Router with pages under `frontend/app/`.
+  - Global layout and Toast configuration in `frontend/app/layout.tsx`.
+
+6.0 Setup Quickstart
+- Backend:
+  - Create `.env` in `backend/` with `DATABASE_URL`, `SECRET_KEY`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `RESEND_API_KEY`, `SENDER_EMAIL`.
+  - `pip install -r backend/requirements.txt`
+  - `alembic upgrade head`
+  - `uvicorn app.main:app --reload` (defaults to port `8000`).
+- Frontend:
+  - `npm install` in `frontend/`
+  - `npm run dev` (visit `http://localhost:3000`).
+
+7.0 Current Endpoints (MVP)
+- `GET /` — API welcome
+- `GET /api/v1/ping` — admin ping
+- Auth:
+  - `POST /api/v1/auth/register`
+  - `POST /api/v1/auth/login`
+  - `GET /api/v1/auth/verify/{token}`
+- Email:
+  - `POST /api/v1/email/forgot-password`
+  - `POST /api/v1/email/reset-password?token=...`
+- Profiles:
+  - `POST|GET|PUT /api/v1/profiles/{user_id}`
+- Events:
+  - `GET /api/v1/events/events`
+- Follows:
+  - `GET /api/v1/follows/follows`
+
+8.0 Feature Plan (Implementation)
+- Auth & Verification:
+  - Complete email verification sending and activate on registration.
+  - Add domain-based student registration validation per FR-1.1.
+- Expert Discovery:
+  - Implement verified expert listing with search and tag-based filter.
+  - Admin tag library management UI & APIs.
+- Structured Event Workflow:
+  - Add endpoints for create, accept/decline, status transitions, and scheduled completion.
+  - Notifications on status changes (email + in-app `Notification`).
+- Two-Way Ratings:
+  - Implement review submission APIs and average rating calculation for expert profile display.
+- Admin:
+  - Role-based access control with `require_role` middleware.
+  - Expert verification flows and content management.
+
+9.0 Known Gaps
+- Tests reference `/api/v1/users/` creation but current router defines only `router` with no endpoints; align tests and routes.
+- Alembic `env.py` imports `app.models.blocklist_model` but the model file is missing; either add the model or remove the import to avoid migration errors.
+- Frontend pages under `app/auth/*` and `app/main/*` are placeholders; implement forms and API integration.
+- Scheduler for auto-completion of events is not yet implemented.
+
+10.0 Documentation Index
+- Backend details: `backend/README.md`
+- Frontend details: `frontend/README.md`
