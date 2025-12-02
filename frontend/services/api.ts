@@ -1,5 +1,6 @@
 // frontend/services/api.ts
 import axios from 'axios'
+import { isTokenExpired, logout as clientLogout } from '@/lib/auth'
 import {
     AuthLogin,
     AuthRegister,
@@ -153,10 +154,13 @@ export const updateCoverPicture = async (file: File) => {
 
 api.interceptors.request.use(
     (config) => {
-        // We'll store the token in localStorage after login
         const token = localStorage.getItem('atas_token')
         if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`
+            if (isTokenExpired(token)) {
+                clientLogout()
+            } else {
+                config.headers['Authorization'] = `Bearer ${token}`
+            }
         }
         return config
     },
@@ -301,3 +305,5 @@ export const deleteEventChecklistItem = async (eventId: string, itemId: string) 
 }
 
 export default api
+
+export const logout = clientLogout
