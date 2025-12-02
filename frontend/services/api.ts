@@ -17,11 +17,19 @@ import {
     EventReminderCreate,
     EventReminderResponse,
     MyEventItem,
+    EventProposalCreate,
+    EventProposalResponse,
+    EventProposalCommentCreate,
+    EventProposalCommentResponse,
+    EventChecklistItemCreate,
+    EventChecklistItemUpdate,
+    EventChecklistItemResponse,
+    UserMeResponse,
 } from './api.types' // We'll create this types file next
 
 // 1. Create an Axios instance
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api/v1', // Your FastAPI backend (fixed to 8000 per project rules)
+    baseURL: 'http://127.0.0.1:8000/api/v1', // Your FastAPI backend (fixed to 8000 per project rules)
     headers: {
         'Content-Type': 'application/json',
     },
@@ -74,6 +82,27 @@ export const verifyEmail = async (token: string) => {
     return response.data
 }
 
+/**
+ * Sends a password reset email.
+ */
+export const forgotPassword = async (email: string) => {
+    const response = await api.post<{ message: string }>('/email/forgot-password', { email })
+    return response.data
+}
+
+/**
+ * Resets the user's password using the token.
+ */
+export const resetPassword = async (data: import('./api.types').PasswordReset) => {
+    // The backend expects 'token' as a query param and 'password' in the body
+    // Based on: def reset_password(token: str, request: PasswordReset, ...)
+    const response = await api.post<{ message: string }>(
+        `/email/reset-password?token=${encodeURIComponent(data.token)}`,
+        { password: data.password }
+    )
+    return response.data
+}
+
 // 4. --- Onboarding Service (New Function) ---
 
 /**
@@ -88,6 +117,33 @@ export const completeOnboarding = async (data: OnboardingData) => {
 
 export const getMyProfile = async () => {
     const response = await api.get<ProfileResponse>('/profiles/me')
+    return response.data
+}
+
+export const updateProfile = async (data: import('./api.types').ProfileUpdate) => {
+    const response = await api.put<ProfileResponse>('/profiles/me', data)
+    return response.data
+}
+
+export const updateAvatar = async (file: File) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    const response = await api.put<ProfileResponse>('/profiles/me/avatar', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    })
+    return response.data
+}
+
+export const updateCoverPicture = async (file: File) => {
+    const formData = new FormData()
+    formData.append('cover_picture', file)
+    const response = await api.put<ProfileResponse>('/profiles/me/cover_picture', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    })
     return response.data
 }
 
@@ -185,6 +241,62 @@ export const setEventReminder = async (eventId: string, body: EventReminderCreat
 
 export const getMyEvents = async () => {
     const response = await api.get<MyEventItem[]>(`/events/mine`)
+    return response.data
+}
+
+export const getMe = async () => {
+    const response = await api.get<UserMeResponse>(`/users/me`)
+    return response.data
+}
+
+// --- Profiles Search ---
+
+export const findProfiles = async (params: { email?: string; name?: string }) => {
+    const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/find`, { params })
+    return response.data
+}
+
+// --- Proposals ---
+
+export const getEventProposals = async (eventId: string) => {
+    const response = await api.get<EventProposalResponse[]>(`/events/${eventId}/proposals`)
+    return response.data
+}
+
+export const createEventProposal = async (eventId: string, data: EventProposalCreate) => {
+    const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, data)
+    return response.data
+}
+
+export const getEventProposalComments = async (eventId: string, proposalId: string) => {
+    const response = await api.get<EventProposalCommentResponse[]>(`/events/${eventId}/proposals/${proposalId}/comments`)
+    return response.data
+}
+
+export const createEventProposalComment = async (eventId: string, proposalId: string, data: EventProposalCommentCreate) => {
+    const response = await api.post<EventProposalCommentResponse>(`/events/${eventId}/proposals/${proposalId}/comments`, data)
+    return response.data
+}
+
+// --- Checklist ---
+
+export const getEventChecklist = async (eventId: string) => {
+    const response = await api.get<EventChecklistItemResponse[]>(`/events/${eventId}/checklist`)
+    return response.data
+}
+
+export const createEventChecklistItem = async (eventId: string, data: EventChecklistItemCreate) => {
+    const response = await api.post<EventChecklistItemResponse>(`/events/${eventId}/checklist`, data)
+    return response.data
+}
+
+export const updateEventChecklistItem = async (eventId: string, itemId: string, data: EventChecklistItemUpdate) => {
+    const response = await api.put<EventChecklistItemResponse>(`/events/${eventId}/checklist/${itemId}`, data)
+    return response.data
+}
+
+export const deleteEventChecklistItem = async (eventId: string, itemId: string) => {
+    const response = await api.delete<void>(`/events/${eventId}/checklist/${itemId}`)
     return response.data
 }
 

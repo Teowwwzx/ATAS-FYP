@@ -12,6 +12,19 @@ export interface AuthRegister {
     password: string
 }
 
+export interface ApiErrorResponse {
+    detail: string
+}
+
+export interface PasswordResetRequest {
+    email: string
+}
+
+export interface PasswordReset {
+    password: string
+    token: string
+}
+
 // --- Auth Responses ---
 
 export interface LoginSuccessResponse {
@@ -52,10 +65,15 @@ export interface ProfileResponse {
     visibility: 'public' | 'private'
 }
 
-// --- Generic Error Response ---
-// This is what FastAPI returns for HTTPExceptions
-export interface ApiErrorResponse {
-    detail: string
+export interface ProfileUpdate {
+    full_name?: string
+    bio?: string
+    linkedin_url?: string
+    github_url?: string
+    instagram_url?: string
+    twitter_url?: string
+    website_url?: string
+    visibility?: 'public' | 'private'
 }
 
 // --- Event Types ---
@@ -115,6 +133,7 @@ export type EventParticipantStatus =
     | 'rejected'
     | 'attended'
     | 'absent'
+    | 'interviewing'
 
 export interface EventParticipantDetails {
     id: string
@@ -179,4 +198,73 @@ export interface MyEventItem {
     type: EventType
     status: EventStatus
     my_role?: EventParticipantRole | null
+}
+
+// --- Proposal Types ---
+
+export interface EventProposalCreate {
+    title?: string | null
+    description?: string | null
+    file_url?: string | null
+}
+
+export interface EventProposalResponse {
+    id: string
+    event_id: string
+    created_by_user_id: string
+    title?: string | null
+    description?: string | null
+    file_url?: string | null
+    created_at: string
+    updated_at?: string | null
+}
+
+export interface EventProposalCommentCreate {
+    content: string
+}
+
+export interface EventProposalCommentResponse {
+    id: string
+    proposal_id: string
+    user_id: string
+    content: string
+    created_at: string
+    updated_at?: string | null
+}
+
+// --- Checklist Types ---
+
+export interface EventChecklistItemCreate {
+    title: string
+    description?: string | null
+    assigned_user_id?: string | null
+    due_datetime?: string | null
+}
+
+export interface EventChecklistItemUpdate {
+    title?: string | null
+    description?: string | null
+    is_completed?: boolean | null
+    assigned_user_id?: string | null
+    sort_order?: number | null
+    due_datetime?: string | null
+}
+
+export interface EventChecklistItemResponse {
+    id: string
+    event_id: string
+    title: string
+    description?: string | null
+    is_completed: boolean
+    assigned_user_id?: string | null
+    sort_order: number
+    due_datetime?: string | null
+    created_by_user_id: string
+    created_at: string
+    updated_at?: string | null
+}
+export interface UserMeResponse {
+    id: string
+    email: string
+    roles: string[]
 }
