@@ -29,7 +29,7 @@ organization_members = Table(
     'organization_members',
     Base.metadata,
     Column('org_id', UUID(as_uuid=True), ForeignKey('organizations.id'), primary_key=True),
-    Column('user_id', UUID(as_uuid=True), ForeignKey('users.id'), primary_key=True),
+    Column('user_id', UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
     Column('role', Enum(OrganizationRole), default=OrganizationRole.member, nullable=False),
     Column('created_at', DateTime(timezone=True), server_default=func.now()),
     Column('updated_at', DateTime(timezone=True), onupdate=func.now())
@@ -39,7 +39,7 @@ class Organization(Base):
     __tablename__ = "organizations"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     logo_url = Column(String, nullable=True)
     cover_url = Column(String, nullable=True)
