@@ -5,7 +5,8 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
-import { getApiErrorMessage } from '@/lib/utils'
+import { AxiosError } from 'axios'
+
 
 import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 import { login, getMyProfile } from '@/services/api'
@@ -47,7 +48,7 @@ export default function LoginPage() {
                 }
             }
         } catch (error) {
-            const message = getApiErrorMessage(error, 'Invalid credentials.')
+            const message = 'Invalid credentials.'
             toast.error(message, { id: 'login-error' })
         } finally {
             setIsLoading(false)
