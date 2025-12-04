@@ -30,9 +30,24 @@ def create_user(db: Session, user: UserCreate):
     return db_user
 
 def assign_role_to_user(db: Session, user: User, role_name: str):
+    role_name = role_name.strip().lower()
     role = db.query(Role).filter(Role.name == role_name).first()
-    if role:
+    if role is None:
+        role = Role(name=role_name)
+        db.add(role)
+        db.flush()
+    if all(r.name != role_name for r in user.roles):
         user.roles.append(role)
-        db.commit()
-        db.refresh(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def remove_role_from_user(db: Session, user: User, role_name: str):
+    role_name = role_name.strip().lower()
+    role = db.query(Role).filter(Role.name == role_name).first()
+    if role is None:
+        return user
+    user.roles = [r for r in user.roles if r.name != role_name]
+    db.commit()
+    db.refresh(user)
     return user
