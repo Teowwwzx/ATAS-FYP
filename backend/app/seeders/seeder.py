@@ -14,9 +14,9 @@ from app.models.skill_model import Skill
 from app.models.user_model import User
 from app.seeders.user_seeder import seed_users
 from app.seeders.event_seeder import seed_events
-from app.seeders.category_seeder import seed_categories, seed_event_categories
 from app.seeders.skill_seeder import seed_skills
 from app.seeders.profile_seeder import seed_profiles
+from app.seeders.tag_seeder import seed_tags
 from app.seeders.organization_seeder import seed_organizations
 from app.seeders.notification_seeder import seed_notifications
 from app.seeders.follows_seeder import seed_follows
@@ -56,15 +56,13 @@ def run_seeders():
         db.commit()
         seed_skills(db)
         db.commit()
+        seed_tags(db)
+        db.commit()
         seed_profiles(db)
         db.commit()
         seed_organizations(db, 10)
         db.commit()
         seed_events(db, 20)
-        db.commit()
-        seed_categories(db)
-        db.commit()
-        seed_event_categories(db, max_categories_per_event=2)
         db.commit()
         seed_notifications(db, 100)
         db.commit()
