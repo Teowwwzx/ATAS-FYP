@@ -1,0 +1,190 @@
+'use client'
+
+import { useState } from 'react'
+import { OrganizationResponse } from '@/services/api.types'
+import {
+    EyeOpenIcon,
+    TrashIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
+    ImageIcon,
+    Cross2Icon,
+    GlobeIcon,
+    SewingPinFilledIcon
+} from '@radix-ui/react-icons'
+import * as Dialog from '@radix-ui/react-dialog'
+
+interface OrganizationsTableProps {
+    organizations: OrganizationResponse[]
+    onDelete: (orgId: string) => void
+}
+
+export function OrganizationsTable({ organizations, onDelete }: OrganizationsTableProps) {
+    const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
+    const [previewImage, setPreviewImage] = useState<string | null>(null)
+
+    const toggleExpand = (orgId: string) => {
+        setExpandedOrgId(expandedOrgId === orgId ? null : orgId)
+    }
+
+    return (
+        <>
+            <div className="w-full overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visibility</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {organizations.map((org) => (
+                            <片 key={org.id}>
+                                <tr
+                                    onClick={() => toggleExpand(org.id)}
+                                    className={`hover:bg-gray-50/50 transition-colors cursor-pointer ${expandedOrgId === org.id ? 'bg-gray-50' : ''}`}
+                                >
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); toggleExpand(org.id); }}
+                                            className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                                        >
+                                            {expandedOrgId === org.id ? (
+                                                <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                                            ) : (
+                                                <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                                            )}
+                                        </button>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center gap-3">
+                                            {org.logo_url ? (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setPreviewImage(org.logo_url || null); }}
+                                                    className="relative group flex-shrink-0"
+                                                >
+                                                    <img
+                                                        src={org.logo_url}
+                                                        alt=""
+                                                        className="w-10 h-10 rounded-lg object-cover bg-gray-100 group-hover:opacity-80 transition-opacity"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <ImageIcon className="w-4 h-4 text-white drop-shadow-md" />
+                                                    </div>
+                                                </button>
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                                    <ImageIcon className="w-4 h-4 text-gray-400" />
+                                                </div>
+                                            )}
+                                            <div className="text-sm font-medium text-gray-900">{org.name}</div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{org.type}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{org.visibility}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => onDelete(org.id)}
+                                                className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete Organization"
+                                            >
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {expandedOrgId === org.id && (
+                                    <tr className="bg-gray-50">
+                                        <td colSpan={5} className="px-6 py-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                                <div>
+                                                    <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                                                    <p className="text-gray-600 whitespace-pre-wrap">{org.description || 'No description provided.'}</p>
+
+                                                    {org.cover_url && (
+                                                        <div className="mt-4">
+                                                            <h4 className="font-semibold text-gray-900 mb-2">Cover Image</h4>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setPreviewImage(org.cover_url || null); }}
+                                                                className="relative group block w-full max-w-xs overflow-hidden rounded-lg border border-gray-200"
+                                                            >
+                                                                <img
+                                                                    src={org.cover_url}
+                                                                    alt="Cover"
+                                                                    className="w-full h-32 object-cover group-hover:opacity-90 transition-opacity"
+                                                                />
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+                                                                    <ImageIcon className="w-6 h-6 text-white drop-shadow-md" />
+                                                                </div>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                                                            <GlobeIcon className="w-4 h-4" /> Website
+                                                        </h4>
+                                                        {org.website_url ? (
+                                                            <a href={org.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                                                {org.website_url}
+                                                            </a>
+                                                        ) : (
+                                                            <p className="text-gray-500">Not provided</p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                                                            <SewingPinFilledIcon className="w-4 h-4" /> Location
+                                                        </h4>
+                                                        <p className="text-gray-600">{org.location || 'Not provided'}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 mb-1">Organization ID</h4>
+                                                        <p className="font-mono text-xs text-gray-500">{org.id}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 mb-1">Owner ID</h4>
+                                                        <p className="font-mono text-xs text-gray-500">{org.owner_id}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </片>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <Dialog.Root open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" />
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-2 rounded-xl shadow-2xl z-50 max-w-3xl max-h-[90vh] w-full outline-none">
+                        <Dialog.Title className="sr-only">Image Preview</Dialog.Title>
+                        <Dialog.Description className="sr-only">
+                            Full size preview of the organization image
+                        </Dialog.Description>
+                        {previewImage && (
+                            <img
+                                src={previewImage}
+                                alt="Preview"
+                                className="w-full h-full object-contain rounded-lg"
+                            />
+                        )}
+                        <Dialog.Close className="absolute top-4 right-4 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
+                            <Cross2Icon className="w-5 h-5 text-gray-900" />
+                        </Dialog.Close>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+        </>
+    )
+}
+
+const 片 = ({ children }: { children: React.ReactNode }) => <>{children}</>

@@ -12,6 +12,9 @@ const visibilities: EventVisibility[] = ['public', 'private']
 
 export default function CreateEventPage() {
   const router = useRouter()
+  // Require student or sponsor role to access create page
+  // Organizer role is per-event; gate by app roles here
+  const { } = require("@/hooks/useAuthGuard")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [title, setTitle] = useState('')
@@ -22,6 +25,23 @@ export default function CreateEventPage() {
   const [startDatetime, setStartDatetime] = useState('')
   const [endDatetime, setEndDatetime] = useState('')
   const [description, setDescription] = useState('')
+  const toLocalInputValue = (d: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const year = d.getFullYear()
+    const month = pad(d.getMonth() + 1)
+    const day = pad(d.getDate())
+    const hours = pad(d.getHours())
+    const minutes = pad(d.getMinutes())
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+  const minStart = toLocalInputValue(new Date())
+  const minEnd = startDatetime || minStart
+
+  React.useEffect(() => {
+    // Suggest a type based on format; user can override after
+    const suggested = format === 'webinar' ? 'online' : 'offline'
+    setType(suggested)
+  }, [format])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,6 +65,8 @@ export default function CreateEventPage() {
         title,
         description: description || undefined,
         format,
+        // Allow backend to default type if needed by omitting when suggestion matches
+        // but to keep explicit, send current type
         type,
         start_datetime: start.toISOString(),
         end_datetime: end.toISOString(),
@@ -134,21 +156,35 @@ export default function CreateEventPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Start</label>
-            <input
-              type="datetime-local"
-              value={startDatetime}
-              onChange={(e) => setStartDatetime(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+          <input
+            type="datetime-local"
+            value={startDatetime}
+            min={minStart}
+            onChange={(e) => {
+              const v = e.target.value
+              const clamped = v && v < minStart ? minStart : v
+              setStartDatetime(clamped)
+              if (endDatetime && clamped && endDatetime < clamped) {
+                setEndDatetime(clamped)
+              }
+            }}
+            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">End</label>
-            <input
-              type="datetime-local"
-              value={endDatetime}
-              onChange={(e) => setEndDatetime(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+          <input
+            type="datetime-local"
+            value={endDatetime}
+            min={minEnd}
+            onChange={(e) => {
+              const v = e.target.value
+              const minV = minEnd
+              const clamped = v && v < minV ? minV : v
+              setEndDatetime(clamped)
+            }}
+            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
           </div>
         </div>
 

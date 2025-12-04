@@ -18,22 +18,20 @@ export function FormInput({
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 }) {
     return (
-        <div>
-            <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+        <div className="group">
+            <label htmlFor={id} className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
                 {label}
             </label>
-            <div className="mt-1">
-                <input
-                    id={id}
-                    name={id}
-                    type={type}
-                    required
-                    placeholder={placeholder}
-                    value={value}
-                    onChange={onChange}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                />
-            </div>
+            <input
+                id={id}
+                name={id}
+                type={type}
+                required
+                placeholder={placeholder}
+                value={value}
+                onChange={onChange}
+                className="block w-full rounded-2xl bg-gray-100 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200 placeholder-gray-400"
+            />
         </div>
     )
 }

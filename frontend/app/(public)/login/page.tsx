@@ -1,3 +1,4 @@
+
 // frontend/app/(public)/login/page.tsx
 'use client'
 
@@ -6,7 +7,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
-
+import { getApiErrorMessage } from '@/lib/utils'
 
 import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 import { login, getMyProfile } from '@/services/api'
@@ -48,7 +49,7 @@ export default function LoginPage() {
                 }
             }
         } catch (error) {
-            const message = 'Invalid credentials.'
+            const message = getApiErrorMessage(error, 'Invalid credentials.')
             toast.error(message, { id: 'login-error' })
         } finally {
             setIsLoading(false)

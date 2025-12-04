@@ -1,6 +1,6 @@
 // frontend/app/layout.tsx
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast' // Import the Toaster
 
@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   description: 'Book industry experts for your university courses.',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // maximumScale: 1, // Removed for better accessibility
+  // userScalable: false, // Removed to allow zooming on all devices
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -18,7 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 text-gray-900`}>
+      <body className={`${inter.className} bg-gray-50 text-gray-900`} suppressHydrationWarning>
         {/* This provider component will render all our toasts */}
         <Toaster
           position="top-right"
