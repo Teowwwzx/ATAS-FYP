@@ -42,7 +42,7 @@ import {
 
 // 1. Create an Axios instance
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/v1', // Your FastAPI backend (fixed to 8000 per project rules)
+  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
