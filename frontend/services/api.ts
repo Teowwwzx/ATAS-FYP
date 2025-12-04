@@ -478,7 +478,8 @@ export default api
 export const logout = clientLogout
 
 export const pingApi = async () => {
-  const res = await axios.get('http://127.0.0.1:8000/ping')
+  const host = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+  const res = await axios.get(`${host}/ping`)
   return res.data
 }
 
