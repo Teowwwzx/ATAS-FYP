@@ -1,10 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 import uuid
 from datetime import datetime
 from app.models.event_model import (
     EventFormat,
     EventType,
     EventRegistrationType,
+    EventRegistrationStatus,
     EventStatus,
     EventVisibility,
     EventParticipantRole,
@@ -12,16 +15,36 @@ from app.models.event_model import (
 )
 
 class EventCreate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     title: str
     description: str | None = None
     logo_url: str | None = None
     cover_url: str | None = None
     format: EventFormat
-    type: EventType
+    type: EventType | None = None
     start_datetime: datetime
     end_datetime: datetime
     registration_type: EventRegistrationType
     visibility: EventVisibility = EventVisibility.public
+    max_participant: int | None = None
+    venue_place_id: str | None = None
+    venue_remark: str | None = None
+    remark: str | None = None
+
+
+class EventUpdate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    title: str | None = None
+    description: str | None = None
+    logo_url: str | None = None
+    cover_url: str | None = None
+    format: EventFormat | None = None
+    type: EventType | None = None
+    start_datetime: datetime | None = None
+    end_datetime: datetime | None = None
+    registration_type: EventRegistrationType | None = None
+    visibility: EventVisibility | None = None
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
@@ -39,8 +62,10 @@ class EventDetails(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     registration_type: EventRegistrationType
+    registration_status: EventRegistrationStatus
     status: EventStatus
     visibility: EventVisibility
+    auto_accept_registration: bool
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
@@ -67,7 +92,7 @@ class EventParticipantDetails(BaseModel):
 
 class EventParticipantCreate(BaseModel):
     user_id: uuid.UUID
-    role: EventParticipantRole = EventParticipantRole.audience
+    role: str = "audience"
     description: str | None = None
 
 
@@ -111,7 +136,16 @@ class AttendanceQRResponse(BaseModel):
 class AttendanceScanRequest(BaseModel):
     token: str
     email: str | None = None
-    walk_in: bool | None = None
+    walk_in: bool = False
+
+
+class AttendanceUserScanRequest(BaseModel):
+    token: str
+
+
+class WalkInAttendanceRequest(BaseModel):
+    name: str
+    email: str
 
 
 # --- Reminder Schemas ---
@@ -161,6 +195,14 @@ class EventChecklistItemCreate(BaseModel):
     assigned_user_id: uuid.UUID | None = None
     due_datetime: datetime | None = None
 
+    @field_validator("assigned_user_id", "due_datetime", mode="before")
+    def _empty_string_to_none(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
+
 
 class EventChecklistItemUpdate(BaseModel):
     title: str | None = None
@@ -169,6 +211,14 @@ class EventChecklistItemUpdate(BaseModel):
     assigned_user_id: uuid.UUID | None = None
     sort_order: int | None = None
     due_datetime: datetime | None = None
+
+    @field_validator("assigned_user_id", "due_datetime", mode="before")
+    def _empty_string_to_none_update(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
 
 
 class EventChecklistItemResponse(BaseModel):
@@ -181,6 +231,47 @@ class EventChecklistItemResponse(BaseModel):
     sort_order: int
     due_datetime: datetime | None = None
     created_by_user_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+# --- Proposal Schemas ---
+
+class EventProposalCreate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    file_url: str | None = None
+
+class EventProposalUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    file_url: str | None = None
+
+class EventProposalResponse(BaseModel):
+    id: uuid.UUID
+    event_id: uuid.UUID
+    created_by_user_id: uuid.UUID
+    title: str | None = None
+    description: str | None = None
+    file_url: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class EventProposalCommentCreate(BaseModel):
+    content: str
+
+class EventProposalCommentUpdate(BaseModel):
+    content: str | None = None
+
+class EventProposalCommentResponse(BaseModel):
+    id: uuid.UUID
+    proposal_id: uuid.UUID
+    user_id: uuid.UUID
+    content: str
     created_at: datetime
     updated_at: datetime | None = None
 

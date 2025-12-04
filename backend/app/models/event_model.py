@@ -26,10 +26,16 @@ class EventRegistrationType(enum.Enum):
 
 class EventStatus(enum.Enum):
     draft = "draft"
+    published = "published"
     opened = "opened"
     closed = "closed"
     declined = "declined"
     completed = "completed"
+    ended = "ended"
+
+class EventRegistrationStatus(enum.Enum):
+    opened = "opened"
+    closed = "closed"
 
 class EventVisibility(enum.Enum):
     public = "public"
@@ -50,12 +56,13 @@ class EventParticipantStatus(enum.Enum):
     rejected = "rejected"
     attended = "attended"
     absent = "absent"
+    # interviewing = "interviewing"
 
 class Event(Base):
     __tablename__ = "events"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     logo_url = Column(String, nullable=True)
@@ -65,14 +72,17 @@ class Event(Base):
     start_datetime = Column(DateTime(timezone=True), nullable=False)
     end_datetime = Column(DateTime(timezone=True), nullable=False)
     registration_type = Column(Enum(EventRegistrationType), nullable=False)
+    registration_status = Column(Enum(EventRegistrationStatus), nullable=False, default=EventRegistrationStatus.opened)
     status = Column(Enum(EventStatus), default=EventStatus.draft, nullable=False)
     visibility = Column(Enum(EventVisibility), default=EventVisibility.public, nullable=False)
+    auto_accept_registration = Column(Boolean, nullable=False, default=True)
     max_participant = Column(Integer, nullable=True)
     venue_place_id = Column(String, nullable=True)
     venue_remark = Column(String, nullable=True)
     remark = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 class EventCategory(Base):
     __tablename__ = "event_categories"
@@ -106,7 +116,7 @@ class EventParticipant(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role = Column(Enum(EventParticipantRole), nullable=False)
     description = Column(String, nullable=True)
     join_method = Column(String, nullable=True)
@@ -131,7 +141,7 @@ class EventReminder(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     option = Column(String, nullable=False)  # one_week | three_days | one_day
     remind_at = Column(DateTime(timezone=True), nullable=False)
     is_sent = Column(Boolean, nullable=False, default=False)
@@ -148,9 +158,29 @@ class EventChecklistItem(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     is_completed = Column(Boolean, nullable=False, default=False)
-    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     sort_order = Column(Integer, nullable=False, default=0)
     due_datetime = Column(DateTime(timezone=True), nullable=True)
-    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class EventProposal(Base):
+    __tablename__ = "event_proposals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    file_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class EventProposalComment(Base):
+    __tablename__ = "event_proposal_comments"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("event_proposals.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
