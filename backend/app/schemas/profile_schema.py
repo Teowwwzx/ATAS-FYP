@@ -17,6 +17,16 @@ class TagResponse(TagBase):
     id: uuid.UUID
     model_config = ConfigDict(from_attributes=True)
 
+class SkillBase(BaseModel):
+    name: str
+
+class SkillCreate(SkillBase):
+    pass
+
+class SkillResponse(SkillBase):
+    id: uuid.UUID
+    model_config = ConfigDict(from_attributes=True)
+
 class ProfileBase(BaseModel):
     full_name: str
     bio: Optional[str] = None
@@ -46,6 +56,8 @@ class ProfileResponse(ProfileBase):
     id: uuid.UUID
     user_id: uuid.UUID
     tags: List[TagResponse] = []
+    average_rating: float = 0.0
+    reviews_count: int = 0
     model_config = ConfigDict(from_attributes=True)
 
 class EducationBase(BaseModel):

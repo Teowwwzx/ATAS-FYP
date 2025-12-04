@@ -2,6 +2,9 @@ from pydantic import BaseModel
 import uuid
 from datetime import datetime
 
+class FollowCreate(BaseModel):
+    followee_id: uuid.UUID
+
 class FollowDetails(BaseModel):
     id: uuid.UUID
     follower_id: uuid.UUID
