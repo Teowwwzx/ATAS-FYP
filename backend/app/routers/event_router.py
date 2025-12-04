@@ -399,8 +399,8 @@ def publish_event(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.organizer_id != current_user.id and "admin" not in current_user.roles:
-        raise HTTPException(status_code=403, detail="Only organizer or admin can publish the event")
+    if event.organizer_id != current_user.id and not any(r in current_user.roles for r in ["admin", "content_moderator"]):
+        raise HTTPException(status_code=403, detail="Only organizer or admin/moderator can publish the event")
     event.status = EventStatus.published
     # default registration to opened on publish if not set
     if getattr(event, "registration_status", None) is None:
@@ -421,8 +421,8 @@ def unpublish_event(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.organizer_id != current_user.id and "admin" not in current_user.roles:
-        raise HTTPException(status_code=403, detail="Only organizer or admin can unpublish the event")
+    if event.organizer_id != current_user.id and not any(r in current_user.roles for r in ["admin", "content_moderator"]):
+        raise HTTPException(status_code=403, detail="Only organizer or admin/moderator can unpublish the event")
     event.status = EventStatus.draft
     db.add(event)
     db.commit()

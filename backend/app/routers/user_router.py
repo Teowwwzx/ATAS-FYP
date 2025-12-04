@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import uuid
 from sqlalchemy.sql import func
 from app.database.database import get_db
-from app.dependencies import require_roles
+from app.dependencies import require_roles, get_current_user
 from app.models.user_model import User, UserStatus, Role
 from app.models.profile_model import Profile
 from app.services.user_service import (
@@ -15,6 +15,17 @@ from app.services.user_service import (
 router = APIRouter()
 
 
+@router.get("/me")
+def users_me(
+    current_user: User = Depends(get_current_user),
+):
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "roles": [r.name for r in getattr(current_user, "roles", [])],
+    }
+
+
 @router.get("")
 def list_users(
     email: str | None = None,
@@ -23,7 +34,7 @@ def list_users(
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(require_roles(["admin", "customer_support"]))
 ):
     q = db.query(User)
     if email:
@@ -66,7 +77,7 @@ def count_users(
     is_verified: bool | None = None,
     name: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(require_roles(["admin", "customer_support"]))
 ):
     q = db.query(User)
     if email:
