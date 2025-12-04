@@ -1,7 +1,5 @@
 /* frontend/app/globals.css */
 @import "tailwindcss";
-@import "tailwindcss/preflight";
-@tailwind utilities;
 
 :root {
   --background: #ffffff;
