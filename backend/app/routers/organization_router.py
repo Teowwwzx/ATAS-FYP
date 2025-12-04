@@ -36,6 +36,24 @@ def get_all_organizations(
         .all()
     )
 
+
+@router.get("/organizations/count")
+def count_organizations(
+    db: Session = Depends(get_db),
+    q: str | None = Query(None),
+    type: OrganizationType | None = Query(None),
+    include_all_visibility: bool = Query(False),
+):
+    query = db.query(Organization)
+    if not include_all_visibility:
+        query = query.filter(Organization.visibility == OrganizationVisibility.public)
+    if q:
+        query = query.filter(Organization.name.ilike(f"%{q}%"))
+    if type:
+        query = query.filter(Organization.type == type)
+    total = query.with_entities(Organization.id).distinct().count()
+    return {"total_count": total}
+
 @router.get("/organizations/{org_id}", response_model=OrganizationResponse)
 def get_organization(
     org_id: uuid.UUID,
