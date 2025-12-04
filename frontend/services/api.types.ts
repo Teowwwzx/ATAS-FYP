@@ -40,6 +40,15 @@ export interface RegisterSuccessResponse {
     status: 'active' | 'inactive' | 'frozen' | 'suspended'
 }
 
+export interface UserResponse {
+    id: string
+    email: string
+    is_verified: boolean
+    status: 'active' | 'inactive' | 'frozen' | 'suspended'
+    roles: { id: string; name: string }[]
+    created_at: string
+}
+
 export interface VerifyEmailSuccessResponse {
     message: string
 }
@@ -63,6 +72,7 @@ export interface ProfileResponse {
     twitter_url?: string
     website_url?: string
     visibility: 'public' | 'private'
+    tags?: { id: string; name: string }[]
 }
 
 export interface ProfileUpdate {
@@ -88,7 +98,8 @@ export type EventFormat =
 
 export type EventType = 'online' | 'offline' | 'hybrid'
 export type EventRegistrationType = 'free' | 'paid'
-export type EventStatus = 'draft' | 'opened' | 'closed' | 'declined' | 'completed'
+export type EventStatus = 'draft' | 'published' | 'declined' | 'ended'
+export type EventRegistrationStatus = 'opened' | 'closed'
 export type EventVisibility = 'public' | 'private'
 
 export interface EventCreate {
@@ -112,6 +123,7 @@ export interface EventDetails extends EventCreate {
     id: string
     organizer_id: string
     status: EventStatus
+    registration_status?: EventRegistrationStatus
     created_at: string
     updated_at?: string | null
 }
@@ -147,6 +159,18 @@ export interface EventParticipantDetails {
     updated_at?: string | null
 }
 
+export interface EventParticipantResponseUpdate {
+    status: Extract<EventParticipantStatus, 'accepted' | 'rejected'>
+}
+
+export interface EventParticipantRoleUpdate {
+    role: EventParticipantRole
+}
+
+export interface EventCategoryAttach {
+    category_ids: string[]
+}
+
 export interface EventParticipantCreate {
     user_id: string
     role: EventParticipantRole
@@ -162,6 +186,15 @@ export interface EventParticipantBulkCreate {
 export interface AttendanceQRResponse {
     token: string
     expires_at: string // ISO string
+}
+
+export interface EventAttendanceStats {
+    event_id: string
+    total_audience: number
+    attended_audience: number
+    absent_audience: number
+    total_participants: number
+    attended_total: number
 }
 
 export interface AttendanceScanRequest {
@@ -198,6 +231,9 @@ export interface MyEventItem {
     type: EventType
     status: EventStatus
     my_role?: EventParticipantRole | null
+    cover_url?: string | null
+    venue_remark?: string | null
+    format?: EventFormat | null
 }
 
 // --- Proposal Types ---
@@ -230,6 +266,15 @@ export interface EventProposalCommentResponse {
     content: string
     created_at: string
     updated_at?: string | null
+}
+
+export interface CategoryCreate {
+    name: string
+}
+
+export interface CategoryResponse {
+    id: string
+    name: string
 }
 
 // --- Checklist Types ---
@@ -267,4 +312,47 @@ export interface UserMeResponse {
     id: string
     email: string
     roles: string[]
+}
+
+// --- Organization Types ---
+
+export type OrganizationVisibility = 'public' | 'private'
+export type OrganizationType = 'company' | 'university' | 'community' | 'nonprofit' | 'government'
+
+export interface OrganizationResponse {
+    id: string
+    owner_id: string
+    name: string
+    logo_url?: string
+    cover_url?: string
+    description?: string
+    type: OrganizationType
+    website_url?: string
+    location?: string
+    visibility: OrganizationVisibility
+}
+
+// --- Audit Log Types ---
+
+export interface AuditLog {
+    id: string
+    actor_user_id?: string | null
+    action: string
+    target_type: string
+    target_id?: string | null
+    details?: string | null
+    created_at: string
+}
+
+export interface AuditLogListResponse {
+    items: AuditLog[]
+    total: number
+}
+
+export interface BroadcastNotificationRequest {
+    title: string
+    content: string
+    target_role?: string
+    target_user_id?: string
+    link_url?: string
 }

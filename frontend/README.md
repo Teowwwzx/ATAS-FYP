@@ -17,8 +17,8 @@ This is the Next.js 16 app for the ATAS MVP. It provides the public landing page
 ## Pages & Routes
 - `app/page.tsx` — landing page placeholder
 - `app/layout.tsx` — global layout and `Toaster` configuration
-- `app/auth/login/page.tsx` — login (placeholder)
-- `app/auth/register/page.tsx` — register (placeholder)
+- `app/(public)/login/page.tsx` — login
+- `app/(public)/register/page.tsx` — register
 - `app/main/page.tsx` — dashboard root (placeholder)
 - `app/main/events/create/page.tsx` — create event (placeholder)
 - `app/main/events/[id]/page.tsx` — event details (placeholder)
