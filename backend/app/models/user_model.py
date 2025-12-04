@@ -18,7 +18,7 @@ class UserStatus(enum.Enum):
 user_roles = Table(
     'user_roles',
     Base.metadata,
-    Column('user_id', UUID(as_uuid=True), ForeignKey('users.id'), primary_key=True),
+    Column('user_id', UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
     Column('role_id', Integer, ForeignKey('roles.id'), primary_key=True),
     Column('created_at', DateTime(timezone=True), server_default=func.now())
 )
@@ -35,7 +35,7 @@ class User(Base):
     verification_token = Column(String, unique=True, nullable=True)
     status = Column(Enum(UserStatus), default=UserStatus.inactive, nullable=False)
     referral_code = Column(String, unique=True, nullable=False)
-    referred_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    referred_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)

@@ -17,3 +17,13 @@ class UserResponse(UserBase):
     id: uuid.UUID
     is_verified: bool
     status: UserStatus
+
+class UserMeResponse(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    roles: list[str]
+
+class UserUpdateAdmin(BaseModel):
+    email: EmailStr | None = None
+    is_verified: bool | None = None
+    status: UserStatus | None = None
