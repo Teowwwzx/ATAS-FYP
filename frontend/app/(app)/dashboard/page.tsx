@@ -31,7 +31,8 @@ export default function DashboardPage() {
     }, [])
 
     const openAttendanceQR = (eventId: string) => {
-        const url = `http://localhost:8000/api/v1/events/${eventId}/attendance/qr.png?minutes_valid=15`
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+        const url = `${baseUrl}/api/v1/events/${eventId}/attendance/qr.png?minutes_valid=15`
         window.open(url, '_blank')
     }
 
