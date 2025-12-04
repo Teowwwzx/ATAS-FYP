@@ -3,7 +3,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 from app.models.user_model import User
 from app.models.skill_model import Skill
-from app.models.profile_model import Profile, profile_skills
+from app.models.profile_model import Profile, profile_skills, Tag, profile_tags
 
 fake = Faker()
 
@@ -13,6 +13,7 @@ def seed_profiles(db: Session):
     
     users = db.query(User).all()
     skills = db.query(Skill).all()
+    tags = db.query(Tag).all()
     
     if not users:
         print("No users found, please seed users first.")
@@ -20,6 +21,9 @@ def seed_profiles(db: Session):
         
     if not skills:
         print("No skills found, please seed skills first.")
+        return
+    if not tags:
+        print("No tags found, please seed tags first.")
         return
 
     for user in users:
@@ -34,6 +38,7 @@ def seed_profiles(db: Session):
             full_name=fake.name(),
             bio=fake.text(max_nb_chars=200),
             avatar_url=fake.image_url(),
+            cover_url=fake.image_url(),
             linkedin_url=f"https://www.linkedin.com/in/{fake.user_name()}/",
             github_url=f"https://github.com/{fake.user_name()}/",
             website_url=fake.url(),
@@ -54,5 +59,15 @@ def seed_profiles(db: Session):
                 level=random.randint(1, 5)
             )
             db.execute(profile_skill)
+        
+        # Add random tags to the profile
+        num_tags_to_add = random.randint(1, 5)
+        tags_to_add = list(set(random.sample(tags, num_tags_to_add)))
+        for tag in tags_to_add:
+            profile_tag = profile_tags.insert().values(
+                profile_id=profile.id,
+                tag_id=tag.id,
+            )
+            db.execute(profile_tag)
             
     print(f"Successfully seeded profiles.")

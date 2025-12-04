@@ -47,6 +47,11 @@ Configured via `.env` and loaded in `app/core/config.py`.
 4. Run the API: `uvicorn app.main:app --reload`
 5. Visit `http://localhost:8000` and explore `http://localhost:8000/docs`.
 
+### Role Seeding
+- To create default roles (`student`, `expert`, `teacher`, `sponsor`, `admin`) and sample users, run the seeder:
+  - `python -m app.seeders.seeder`
+  - This will create tables, seed roles/users and additional sample data. Adjust numbers in `app/seeders/user_seeder.py` if needed.
+
 ## Core API Endpoints
 Base prefix `http://localhost:8000`.
 - `GET /` — health message
@@ -92,6 +97,7 @@ Base prefix `http://localhost:8000`.
 - `scheduler.py`, `notification_service.py` are placeholders.
 - Event lifecycle endpoints (accept/decline/complete) and review submission APIs are not yet implemented.
 - Email verification sending is printed (see `user_service.py`) — switch to `send_verification_email`.
+- Tighten CORS for production to known frontend origins only (currently set for localhost dev).
 
 ## Testing
 - Add pytest suite under `app/test/` to match current endpoints and flows.

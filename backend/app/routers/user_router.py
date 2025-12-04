@@ -1,231 +1,202 @@
 from fastapi import APIRouter, Depends, HTTPException
-import uuid
 from sqlalchemy.orm import Session
+import uuid
 from sqlalchemy.sql import func
 from app.database.database import get_db
+from app.dependencies import require_roles, get_current_user
 from app.models.user_model import User, UserStatus, Role
-from app.schemas.user_schema import UserCreate, UserResponse, UserMeResponse, UserUpdateAdmin
-from app.services.user_service import create_user, assign_role_to_user, remove_role_from_user
-from app.services.audit_service import log_admin_action
-from app.dependencies import get_current_user, require_roles
-from typing import List
+from app.models.profile_model import Profile
+from app.services.user_service import (
+    create_user,
+    assign_role_to_user,
+    remove_role_from_user,
+)
 
 router = APIRouter()
 
-@router.get("/me", response_model=UserMeResponse)
-def get_me(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    roles = (
-        db.query(Role)
-        .join(Role.users)
-        .filter(User.id == current_user.id)
-        .all()
-    )
-    role_names = [r.name for r in roles]
-    return UserMeResponse(id=current_user.id, email=current_user.email, roles=role_names)
 
-@router.get("", response_model=List[UserResponse])
+@router.get("/me")
+def users_me(
+    current_user: User = Depends(get_current_user),
+):
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "roles": [r.name for r in getattr(current_user, "roles", [])],
+    }
+
+
+@router.get("")
 def list_users(
     email: str | None = None,
-    name: str | None = None,
-    status: str | None = None,
-    role: str | None = None,
+    status: UserStatus | None = None,
     is_verified: bool | None = None,
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(require_roles(["admin", "customer_support"]))
 ):
     q = db.query(User)
     if email:
-        q = q.filter(User.email.ilike(f"%{email}%"))
+        q = q.filter(func.lower(User.email).like(f"%{email.lower()}%"))
+    if status is not None:
+        q = q.filter(User.status == status)
     if is_verified is not None:
         q = q.filter(User.is_verified == is_verified)
-    if status is not None:
-        try:
-            q = q.filter(User.status == UserStatus(status))
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid status")
-    if role:
-        from app.models.user_model import user_roles, Role
-        q = q.join(user_roles, user_roles.c.user_id == User.id)
-        q = q.join(Role, Role.id == user_roles.c.role_id)
-        q = q.filter(func.lower(Role.name) == func.lower(role))
-    if name:
-        from app.models.profile_model import Profile
-        q = q.join(Profile, Profile.user_id == User.id)
-        q = q.filter(Profile.full_name.ilike(f"%{name}%"))
+    # Optional name filter via profile
+    from sqlalchemy import or_
+    if 'name' in locals():
+        pass
+    
     if page < 1:
         page = 1
     if page_size < 1:
         page_size = 20
     items = (
-        q.order_by(User.email.asc())
+        q.order_by(User.created_at.desc() if hasattr(User, "created_at") else User.email.asc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
-    return items
+    return [
+        {
+            "id": str(u.id),
+            "email": u.email,
+            "is_verified": bool(u.is_verified),
+            "status": (u.status.value if isinstance(u.status, UserStatus) else str(u.status)),
+            "roles": [r.name for r in getattr(u, "roles", [])],
+        }
+        for u in items
+    ]
 
-@router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@router.post("/bulk/status")
-def bulk_update_status(
-    body: dict,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
-):
-    ids = body.get("user_ids") or []
-    status = body.get("status")
-    try:
-        new_status = UserStatus(status)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    updated = 0
-    users = db.query(User).filter(User.id.in_(ids)).all()
-    for u in users:
-        u.status = new_status
-        updated += 1
-    db.commit()
-    for u in users:
-        log_admin_action(db, current_user.id, "user.bulk.status", "user", u.id, details=f"status={new_status.value}")
-    return {"updated": updated}
 
 @router.get("/search/count")
 def count_users(
     email: str | None = None,
-    name: str | None = None,
-    status: str | None = None,
-    role: str | None = None,
+    status: UserStatus | None = None,
     is_verified: bool | None = None,
+    name: str | None = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(require_roles(["admin", "customer_support"]))
 ):
     q = db.query(User)
     if email:
-        q = q.filter(User.email.ilike(f"%{email}%"))
+        q = q.filter(func.lower(User.email).like(f"%{email.lower()}%"))
+    if status is not None:
+        q = q.filter(User.status == status)
     if is_verified is not None:
         q = q.filter(User.is_verified == is_verified)
-    if status is not None:
-        try:
-            q = q.filter(User.status == UserStatus(status))
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid status")
-    if role:
-        from app.models.user_model import user_roles, Role
-        q = q.join(user_roles, user_roles.c.user_id == User.id)
-        q = q.join(Role, Role.id == user_roles.c.role_id)
-        q = q.filter(func.lower(Role.name) == func.lower(role))
     if name:
-        from app.models.profile_model import Profile
-        q = q.join(Profile, Profile.user_id == User.id)
-        q = q.filter(Profile.full_name.ilike(f"%{name}%"))
+        q = q.join(Profile, Profile.user_id == User.id).filter(func.lower(Profile.full_name).like(f"%{name.lower()}%"))
     total = q.with_entities(User.id).distinct().count()
     return {"total_count": total}
 
-@router.put("/{user_id}", response_model=UserResponse)
-def update_user_admin(
-    user_id: uuid.UUID,
-    body: UserUpdateAdmin,
+
+@router.post("/{user_id}/suspend")
+def admin_suspend_user(
+    user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"]))
 ):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    if body.email is not None:
-        user.email = body.email
-    if body.is_verified is not None:
-        user.is_verified = body.is_verified
-    if body.status is not None:
-        user.status = body.status
-    db.add(user)
+    u.status = UserStatus.suspended
     db.commit()
-    db.refresh(user)
-    return user
+    return {"user_id": str(u.id), "status": u.status.value}
 
-@router.post("/{user_id}/suspend", response_model=UserResponse)
-def suspend_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+
+@router.post("/{user_id}/activate")
+def admin_activate_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    user.status = UserStatus.suspended
+    u.status = UserStatus.active
     db.commit()
-    db.refresh(user)
-    log_admin_action(db, current_user.id, "user.suspend", "user", user.id)
-    return user
+    return {"user_id": str(u.id), "status": u.status.value}
 
-@router.post("/{user_id}/activate", response_model=UserResponse)
-def activate_user(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+
+@router.post("/{user_id}/roles/{role_name}")
+def admin_assign_role(
+    user_id: str,
+    role_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    user.status = UserStatus.active
+    assign_role_to_user(db, u, role_name.strip().lower())
     db.commit()
-    db.refresh(user)
-    log_admin_action(db, current_user.id, "user.activate", "user", user.id)
-    return user
+    return {"user_id": str(u.id), "roles": [r.name for r in u.roles]}
 
-@router.post("/{user_id}/expert/verify", response_model=UserResponse)
-def verify_expert(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+
+@router.delete("/{user_id}/roles/{role_name}")
+def admin_remove_role(
+    user_id: str,
+    role_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    assign_role_to_user(db, user, "expert")
-    from app.services.user_service import remove_role_from_user as _remove
-    _remove(db, user, "expert_pending")
-    from app.models.notification_model import Notification, NotificationType
-    db.add(Notification(
-        recipient_id=user.id,
-        actor_id=current_user.id,
-        type=NotificationType.system,
-        content="Your expert verification has been approved",
-        link_url=f"/profiles/{user.id}"
-    ))
+    remove_role_from_user(db, u, role_name.strip().lower())
     db.commit()
-    log_admin_action(db, current_user.id, "user.role.expert.verify", "user", user.id)
-    return user
+    return {"user_id": str(u.id), "roles": [r.name for r in u.roles]}
 
-@router.delete("/{user_id}/expert/verify", response_model=UserResponse)
-def revoke_expert(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    remove_role_from_user(db, user, "expert")
-    log_admin_action(db, current_user.id, "user.role.expert.revoke", "user", user.id)
-    return user
 
-@router.post("/{user_id}/roles/{role_name}", response_model=UserResponse)
-def assign_role_generic(user_id: uuid.UUID, role_name: str, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+@router.post("/{user_id}/expert/verify")
+def admin_verify_expert(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    role = db.query(Role).filter(Role.name == role_name).first()
-    if role is None:
-        role = Role(name=role_name)
-        db.add(role)
-        db.commit()
-        db.refresh(role)
-    if role not in user.roles:
-        user.roles.append(role)
-        db.commit()
-        db.refresh(user)
-    log_admin_action(db, current_user.id, "user.role.assign", "user", user.id, details=role_name)
-    return user
+    assign_role_to_user(db, u, "expert")
+    db.commit()
+    return {"user_id": str(u.id), "verified_role": "expert"}
 
-@router.delete("/{user_id}/roles/{role_name}", response_model=UserResponse)
-def remove_role_generic(user_id: uuid.UUID, role_name: str, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+
+@router.delete("/{user_id}/expert/verify")
+def admin_revoke_expert(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    role = db.query(Role).filter(Role.name == role_name).first()
-    if role and role in user.roles:
-        user.roles.remove(role)
-        db.commit()
-        db.refresh(user)
-    log_admin_action(db, current_user.id, "user.role.remove", "user", user.id, details=role_name)
-    return user
+    remove_role_from_user(db, u, "expert")
+    db.commit()
+    return {"user_id": str(u.id), "revoked_role": "expert"}

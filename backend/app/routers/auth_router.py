@@ -5,7 +5,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user_model import User, UserStatus
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, verify_password, decode_access_token
+from datetime import timedelta
+from app.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -36,9 +38,13 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="User is not active. Please verify your email.",
         )
     access_token = create_access_token(
-        data={"sub": str(user.id)}
+        data={"sub": str(user.id), "type": "access"}
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    refresh_token = create_access_token(
+        data={"sub": user.email, "type": "refresh"},
+        expires_delta=timedelta(days=30),
+    )
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
 @router.get("/verify/{token}")
@@ -55,3 +61,19 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Email verified successfully"}
+
+@router.post("/refresh")
+def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
+    payload = decode_access_token(refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=400, detail="Invalid token")
+    email = payload.get("sub")
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.status != UserStatus.active:
+        raise HTTPException(status_code=400, detail="User invalid or inactive")
+    access_token = create_access_token(data={"sub": str(user.id), "type": "access"})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+def logout(current_user: User = Depends(get_current_user)):
+    return {"message": "Logged out"}

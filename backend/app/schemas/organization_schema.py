@@ -1,62 +1,38 @@
-from pydantic import BaseModel, ConfigDict
-import uuid
-from typing import Optional
-from app.models.organization_model import OrganizationType, OrganizationVisibility
-from app.models.organization_model import OrganizationRole
+
+from pydantic import BaseModel, HttpUrl
+from typing import Optional, List
+from uuid import UUID
 from datetime import datetime
+from app.models.organization_model import OrganizationType, OrganizationVisibility
 
-
-class OrganizationResponse(BaseModel):
-    id: uuid.UUID
-    owner_id: uuid.UUID
+class OrganizationBase(BaseModel):
     name: str
+    description: Optional[str] = None
     logo_url: Optional[str] = None
     cover_url: Optional[str] = None
-    description: Optional[str] = None
-    type: str
-    website_url: Optional[str] = None
-    location: Optional[str] = None
-    visibility: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OrganizationCreate(BaseModel):
-    owner_id: uuid.UUID
-    name: str
-    logo_url: Optional[str] = None
-    cover_url: Optional[str] = None
-    description: Optional[str] = None
     type: OrganizationType = OrganizationType.community
     website_url: Optional[str] = None
     location: Optional[str] = None
     visibility: OrganizationVisibility = OrganizationVisibility.public
 
+class OrganizationCreate(OrganizationBase):
+    pass
 
 class OrganizationUpdate(BaseModel):
-    owner_id: Optional[uuid.UUID] = None
     name: Optional[str] = None
+    description: Optional[str] = None
     logo_url: Optional[str] = None
     cover_url: Optional[str] = None
-    description: Optional[str] = None
     type: Optional[OrganizationType] = None
     website_url: Optional[str] = None
     location: Optional[str] = None
     visibility: Optional[OrganizationVisibility] = None
 
+class OrganizationResponse(OrganizationBase):
+    id: UUID
+    owner_id: UUID
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
-class OrganizationMemberCreate(BaseModel):
-    user_id: uuid.UUID
-    role: OrganizationRole = OrganizationRole.member
-
-
-class OrganizationMemberUpdate(BaseModel):
-    role: OrganizationRole
-
-
-class OrganizationMemberResponse(BaseModel):
-    org_id: uuid.UUID
-    user_id: uuid.UUID
-    role: OrganizationRole
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    class Config:
+        from_attributes = True

@@ -18,8 +18,8 @@ class Notification(Base):
     __tablename__ = "notifications"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    recipient_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    recipient_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     type = Column(Enum(NotificationType), nullable=False)
     content = Column(Text, nullable=False)
     link_url = Column(String, nullable=True)

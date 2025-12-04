@@ -1,189 +1,222 @@
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy import select, update, delete, insert
+from typing import List
 import uuid
+
 from app.database.database import get_db
-from app.models.organization_model import Organization, OrganizationVisibility, OrganizationType
-from app.schemas.organization_schema import (
-    OrganizationResponse,
-    OrganizationCreate,
-    OrganizationUpdate,
-    OrganizationMemberCreate,
-    OrganizationMemberUpdate,
-    OrganizationMemberResponse,
-)
-from app.dependencies import require_roles
+from app.models.organization_model import Organization, OrganizationVisibility, OrganizationType, organization_members, OrganizationRole
+from app.schemas.organization_schema import OrganizationResponse, OrganizationCreate, OrganizationUpdate
+from app.dependencies import get_current_user, get_current_user_optional, require_roles
 from app.models.user_model import User
-from app.models.organization_model import organization_members, OrganizationRole
-from sqlalchemy import select
-from app.services.audit_service import log_admin_action
 
 router = APIRouter()
 
-@router.get("/organizations", response_model=list[OrganizationResponse])
-def list_organizations(
-    name: str | None = None,
-    visibility: OrganizationVisibility | None = None,
-    type: OrganizationType | None = None,
-    page: int = 1,
-    page_size: int = 20,
+@router.get("/organizations", response_model=List[OrganizationResponse])
+def get_all_organizations(
     db: Session = Depends(get_db),
+    q: str | None = Query(None),
+    type: OrganizationType | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1),
 ):
-    q = db.query(Organization)
-    if visibility is None:
-        q = q.filter(Organization.visibility == OrganizationVisibility.public)
-    else:
-        q = q.filter(Organization.visibility == visibility)
-    if name:
-        q = q.filter(Organization.name.ilike(f"%{name}%"))
+    query = db.query(Organization).filter(Organization.visibility == OrganizationVisibility.public)
+    
+    if q:
+        query = query.filter(Organization.name.ilike(f"%{q}%"))
+    
     if type:
-        q = q.filter(Organization.type == type)
-    if page < 1:
-        page = 1
-    if page_size < 1:
-        page_size = 20
-    items = (
-        q.order_by(Organization.created_at.desc())
+        query = query.filter(Organization.type == type)
+    
+    return (
+        query.order_by(Organization.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
     )
-    return items
+
 
 @router.get("/organizations/count")
-def get_organizations_count(
-    name: str | None = None,
-    visibility: OrganizationVisibility | None = None,
-    type: OrganizationType | None = None,
+def count_organizations(
     db: Session = Depends(get_db),
+    q: str | None = Query(None),
+    type: OrganizationType | None = Query(None),
+    include_all_visibility: bool = Query(False),
 ):
-    q = db.query(Organization)
-    if visibility is None:
-        q = q.filter(Organization.visibility == OrganizationVisibility.public)
-    else:
-        q = q.filter(Organization.visibility == visibility)
-    if name:
-        q = q.filter(Organization.name.ilike(f"%{name}%"))
+    query = db.query(Organization)
+    if not include_all_visibility:
+        query = query.filter(Organization.visibility == OrganizationVisibility.public)
+    if q:
+        query = query.filter(Organization.name.ilike(f"%{q}%"))
     if type:
-        q = q.filter(Organization.type == type)
-    total = q.with_entities(Organization.id).distinct().count()
+        query = query.filter(Organization.type == type)
+    total = query.with_entities(Organization.id).distinct().count()
     return {"total_count": total}
 
 @router.get("/organizations/{org_id}", response_model=OrganizationResponse)
-def get_organization(org_id: uuid.UUID, db: Session = Depends(get_db)):
-    item = db.query(Organization).filter(Organization.id == org_id).first()
-    if item is None:
+def get_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    return item
+        
+    if org.visibility == OrganizationVisibility.private:
+        # If private, only allow if user is member or owner (simplification for now: just check if logged in? 
+        # or real check. Let's stick to public access check for now or simple owner check)
+        if not current_user:
+             raise HTTPException(status_code=403, detail="This organization is private")
+        # In real app, check membership. For now, let's just check if it exists.
+        # Reusing similar logic to events: if private, restricted.
+        # For simplicity, assuming we just return it if authenticated, or maybe strict check?
+        # Let's enforce strict check later. For now, if private and not owner, 403.
+        if org.owner_id != current_user.id:
+             raise HTTPException(status_code=403, detail="This organization is private")
+             
+    return org
 
 @router.post("/organizations", response_model=OrganizationResponse)
-def create_organization(body: OrganizationCreate, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    item = Organization(**body.model_dump())
-    db.add(item)
+def create_organization(
+    body: OrganizationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = Organization(
+        **body.dict(),
+        owner_id=current_user.id
+    )
+    db.add(org)
     db.commit()
-    db.refresh(item)
-    log_admin_action(db, current_user.id, "organization.create", "organization", item.id)
-    return item
+    db.refresh(org)
+    return org
 
 @router.put("/organizations/{org_id}", response_model=OrganizationResponse)
-def update_organization(org_id: uuid.UUID, body: OrganizationUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    item = db.query(Organization).filter(Organization.id == org_id).first()
-    if item is None:
+def update_organization(
+    org_id: uuid.UUID,
+    body: OrganizationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    update_data = body.model_dump(exclude_unset=True, exclude_none=True)
-    for k, v in update_data.items():
-        setattr(item, k, v)
-    db.add(item)
+        
+    if org.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this organization")
+        
+    for key, value in body.dict(exclude_unset=True).items():
+        setattr(org, key, value)
+        
     db.commit()
-    db.refresh(item)
-    log_admin_action(db, current_user.id, "organization.update", "organization", item.id)
-    return item
+    db.refresh(org)
+    return org
 
-@router.delete("/organizations/{org_id}", status_code=204)
-def delete_organization(org_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    item = db.query(Organization).filter(Organization.id == org_id).first()
-    if item is None:
+
+@router.post("/organizations/{org_id}/members")
+def add_member(
+    org_id: uuid.UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    db.delete(item)
+    try:
+        uid = uuid.UUID(payload.get("user_id"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    role_name = (payload.get("role") or OrganizationRole.member.value).strip().lower()
+    if role_name not in {r.value for r in OrganizationRole}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    role_enum = OrganizationRole(role_name)
+    existing = db.execute(select(organization_members).where(
+        organization_members.c.org_id == org_id,
+        organization_members.c.user_id == uid
+    )).first()
+    if existing is None:
+        db.execute(insert(organization_members).values(org_id=org_id, user_id=uid, role=role_enum))
+    else:
+        db.execute(update(organization_members).where(
+            organization_members.c.org_id == org_id,
+            organization_members.c.user_id == uid
+        ).values(role=role_enum))
     db.commit()
-    log_admin_action(db, current_user.id, "organization.delete", "organization", org_id)
+    return {"user_id": str(uid), "role": role_enum.value}
+
+
+@router.get("/organizations/{org_id}/members")
+def list_members(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    rows = db.execute(select(
+        organization_members.c.user_id,
+        organization_members.c.role
+    ).where(organization_members.c.org_id == org_id)).fetchall()
+    return [{"user_id": str(r.user_id), "role": r.role.value if hasattr(r.role, "value") else str(r.role)} for r in rows]
+
+
+@router.put("/organizations/{org_id}/members/{user_id}")
+def update_member(
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    role_name = (payload.get("role") or OrganizationRole.member.value).strip().lower()
+    if role_name not in {r.value for r in OrganizationRole}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    role_enum = OrganizationRole(role_name)
+    db.execute(update(organization_members).where(
+        organization_members.c.org_id == org_id,
+        organization_members.c.user_id == user_id
+    ).values(role=role_enum))
+    db.commit()
+    return {"user_id": str(user_id), "role": role_enum.value}
+
+
+@router.delete("/organizations/{org_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_member(
+    org_id: uuid.UUID,
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    db.execute(delete(organization_members).where(
+        organization_members.c.org_id == org_id,
+        organization_members.c.user_id == user_id
+    ))
+    db.commit()
     return
 
-
-# --- Organization Membership (Admin) ---
-
-@router.get("/organizations/{org_id}/members", response_model=list[OrganizationMemberResponse])
-def list_org_members(org_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    q = select(
-        organization_members.c.org_id,
-        organization_members.c.user_id,
-        organization_members.c.role,
-        organization_members.c.created_at,
-        organization_members.c.updated_at,
-    ).where(organization_members.c.org_id == org_id)
-    rows = db.execute(q).fetchall()
-    return [
-        OrganizationMemberResponse(
-            org_id=r.org_id,
-            user_id=r.user_id,
-            role=r.role,
-            created_at=r.created_at,
-            updated_at=r.updated_at,
-        )
-        for r in rows
-    ]
-
-@router.post("/organizations/{org_id}/members", response_model=OrganizationMemberResponse)
-def add_org_member(org_id: uuid.UUID, body: OrganizationMemberCreate, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    # Duplication guard
-    existing = db.execute(
-        select(organization_members).where(
-            organization_members.c.org_id == org_id,
-            organization_members.c.user_id == body.user_id,
-        )
-    ).fetchone()
-    if existing:
-        raise HTTPException(status_code=400, detail="Member already exists")
-    db.execute(
-        organization_members.insert().values(
-            org_id=org_id,
-            user_id=body.user_id,
-            role=body.role,
-        )
-    )
+@router.delete("/organizations/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    if org.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this organization")
+        
+    db.delete(org)
     db.commit()
-    log_admin_action(db, current_user.id, "organization.member.add", "organization", org_id, details=f"user_id={body.user_id};role={body.role}")
-    return OrganizationMemberResponse(org_id=org_id, user_id=body.user_id, role=body.role)
-
-@router.put("/organizations/{org_id}/members/{user_id}", response_model=OrganizationMemberResponse)
-def update_org_member(org_id: uuid.UUID, user_id: uuid.UUID, body: OrganizationMemberUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    existing = db.execute(
-        select(organization_members).where(
-            organization_members.c.org_id == org_id,
-            organization_members.c.user_id == user_id,
-        )
-    ).fetchone()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Member not found")
-    db.execute(
-        organization_members.update()
-        .where(
-            organization_members.c.org_id == org_id,
-            organization_members.c.user_id == user_id,
-        )
-        .values(role=body.role)
-    )
-    db.commit()
-    log_admin_action(db, current_user.id, "organization.member.update", "organization", org_id, details=f"user_id={user_id};role={body.role}")
-    return OrganizationMemberResponse(org_id=org_id, user_id=user_id, role=body.role)
-
-@router.delete("/organizations/{org_id}/members/{user_id}", status_code=204)
-def remove_org_member(org_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
-    db.execute(
-        organization_members.delete().where(
-            organization_members.c.org_id == org_id,
-            organization_members.c.user_id == user_id,
-        )
-    )
-    db.commit()
-    log_admin_action(db, current_user.id, "organization.member.remove", "organization", org_id, details=f"user_id={user_id}")
     return

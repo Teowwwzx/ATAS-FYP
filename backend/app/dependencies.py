@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database.database import get_db
-from app.models.user_model import User
+from app.models.user_model import User, Role
 from app.core.security import decode_access_token
 from typing import Optional
 
@@ -54,3 +54,17 @@ def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optio
         return None
     user = db.query(User).filter(User.id == user_id).first()
     return user
+
+def require_roles(required: list[str]):
+    def _dep(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+        roles = (
+            db.query(Role)
+            .join(Role.users)
+            .filter(User.id == current_user.id)
+            .all()
+        )
+        names = {r.name for r in roles}
+        if required and not any(name in names for name in required):
+            raise HTTPException(status_code=403, detail="Insufficient role")
+        return current_user
+    return _dep
