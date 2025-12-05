@@ -22,6 +22,7 @@ const menuItems = [
     { name: 'Users', href: '/admin/users', icon: PersonIcon, roles: ['admin', 'customer_support'] },
     { name: 'Organizations', href: '/admin/organizations', icon: BackpackIcon, roles: ['admin', 'customer_support'] },
     { name: 'Events', href: '/admin/events', icon: CalendarIcon, roles: ['admin', 'content_moderator'] },
+    { name: 'Categories', href: '/admin/categories', icon: ReaderIcon, roles: ['admin'] },
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon, roles: ['admin'] },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: ReaderIcon, roles: ['admin'] },
 ]

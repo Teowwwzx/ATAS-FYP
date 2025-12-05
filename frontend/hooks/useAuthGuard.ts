@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { getMe } from "@/services/api"
 import { useUser } from "@/hooks/useUser"
 
-export function useAuthGuard(requiredRoles?: string[]) {
+export function useAuthGuard(requiredRoles?: string[], redirectOnDenied: boolean = true, loginPath: string = '/login') {
   const router = useRouter()
   const { user, isLoading } = useUser()
   const [roles, setRoles] = useState<string[] | null>(null)
@@ -14,7 +14,7 @@ export function useAuthGuard(requiredRoles?: string[]) {
     const check = async () => {
       if (isLoading) return
       if (!user) {
-        router.push("/login")
+        router.push(loginPath)
         return
       }
       try {
@@ -23,8 +23,10 @@ export function useAuthGuard(requiredRoles?: string[]) {
         if (requiredRoles && requiredRoles.length > 0) {
           const ok = me.roles?.some(r => requiredRoles.includes(r))
           if (!ok) {
-            router.push("/main")
-            return
+            if (redirectOnDenied) {
+              router.push("/main")
+              return
+            }
           }
         }
       } finally {
@@ -32,7 +34,7 @@ export function useAuthGuard(requiredRoles?: string[]) {
       }
     }
     check()
-  }, [user, isLoading, requiredRoles, router])
+  }, [user, isLoading, requiredRoles, redirectOnDenied, loginPath, router])
 
   return { user, roles, loading }
 }

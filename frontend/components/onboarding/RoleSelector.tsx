@@ -18,14 +18,14 @@ export function RoleSelector({ onSelectRole }: RoleSelectorProps) {
                     onClick={() => onSelectRole('student')}
                     className="bg-primary-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-primary-700 transition-colors shadow-lg flex flex-col items-center space-y-2"
                 >
-                    <span className="text-xl">I'm a Student</span>
+                    <span className="text-xl">I&apos;m a Student</span>
                     <span className="text-sm opacity-80">Looking for expert guidance</span>
                 </button>
                 <button
                     onClick={() => onSelectRole('expert')}
                     className="bg-primary-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-primary-700 transition-colors shadow-lg flex flex-col items-center space-y-2"
                 >
-                    <span className="text-xl">I'm an Expert</span>
+                    <span className="text-xl">I&apos;m an Expert</span>
                     <span className="text-sm opacity-80">Ready to share my knowledge</span>
                 </button>
             </div>

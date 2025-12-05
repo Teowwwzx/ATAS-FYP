@@ -2,17 +2,21 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createEvent } from '@/services/api'
-import { pingApi } from '@/services/api'
+import { createEvent, pingApi } from '@/services/api'
 import { FormInput } from '@/components/auth/FormInput'
-import { FormButton } from '@/components/auth/FormButton'
-import { EventCreate, EventFormat, EventType, EventRegistrationType, EventVisibility } from '@/services/api.types'
+import { EventCreate, EventType } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
+import GooglePlacesAutocomplete from 'react-google-places-autocomplete'
 
 export default function CreateEventPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const [formData, setFormData] = useState<EventCreate>({
         title: '',
@@ -23,7 +27,14 @@ export default function CreateEventPage() {
         end_datetime: '',
         registration_type: 'free',
         visibility: 'public',
-        venue_remark: '',
+        venue_remark: 'Asia Pacific University', // Default value
+        venue_place_id: 'ChIJmzrzi9gIzDERX9f2J0f8wR0', // APU Place ID (approximate/example, will be updated by selection)
+    })
+
+    // Default value for the autocomplete component
+    const [venueValue, setVenueValue] = useState<any>({
+        label: 'Asia Pacific University of Technology & Innovation (APU)',
+        value: { place_id: 'ChIJmzrzi9gIzDERX9f2J0f8wR0' }
     })
 
     const toLocalInputValue = (d: Date) => {
@@ -43,6 +54,24 @@ export default function CreateEventPage() {
         const { name, value } = e.target
         setFormData((prev) => ({ ...prev, [name]: value }))
     }
+
+    // Auto-match type based on format
+    useEffect(() => {
+        let suggested: EventType = 'offline'
+        if (formData.format === 'webinar') {
+            suggested = 'online'
+        } else if (formData.format === 'panel_discussion') {
+            suggested = 'offline'
+        } else {
+            // Keep existing logic or default to offline
+            suggested = 'offline'
+        }
+
+        // Only update if it's different to avoid loops, though useEffect dependency handles it
+        if (formData.type !== suggested) {
+            setFormData(prev => ({ ...prev, type: suggested }))
+        }
+    }, [formData.format])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -80,11 +109,6 @@ export default function CreateEventPage() {
             setLoading(false)
         }
     }
-
-    useEffect(() => {
-        const suggested: EventType = formData.format === 'webinar' ? 'online' : 'offline'
-        setFormData(prev => ({ ...prev, type: suggested }))
-    }, [formData.format])
 
     return (
         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-sm border border-yellow-100">
@@ -238,26 +262,69 @@ export default function CreateEventPage() {
                     </div>
                 </div>
 
-                <FormInput
-                    id="venue_remark"
-                    label="Venue / Location"
-                    placeholder="e.g. Room 301 or Zoom Link"
-                    value={formData.venue_remark || ''}
-                    onChange={handleChange}
-                />
+                <div>
+                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                        Venue / Location
+                    </label>
+                    <div className="mt-1">
+                        {mounted && (
+                            <GooglePlacesAutocomplete
+                                apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+                                autocompletionRequest={{
+                                    componentRestrictions: { country: ['my'] },
+                                }}
+                                selectProps={{
+                                    value: venueValue,
+                                    onChange: (val: any) => {
+                                        setVenueValue(val)
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            venue_remark: val?.label || '',
+                                            venue_place_id: val?.value?.place_id || ''
+                                        }))
+                                    },
+                                    placeholder: 'Search for a location...',
+                                    noOptionsMessage: () => (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "No options" : "API Key missing"),
+                                    styles: {
+                                        control: (provided) => ({
+                                            ...provided,
+                                            borderRadius: '1rem',
+                                            backgroundColor: 'rgb(249 250 251)', // bg-gray-50
+                                            border: 'none',
+                                            padding: '0.5rem',
+                                            boxShadow: 'none',
+                                        }),
+                                        input: (provided) => ({
+                                            ...provided,
+                                            color: '#18181b', // text-zinc-900
+                                            fontWeight: 500,
+                                        }),
+                                        option: (provided, state) => ({
+                                            ...provided,
+                                            backgroundColor: state.isFocused ? '#fef08a' : 'white', // yellow-200 on hover
+                                            color: '#18181b',
+                                        }),
+                                    }
+                                }}
+                            />
+                        )}
+                    </div>
+                </div>
 
-                {error && (
-                    <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <h3 className="text-sm font-bold text-red-800">Error</h3>
-                                <div className="mt-1 text-sm text-red-700 font-medium">
-                                    <p>{error}</p>
+                {
+                    error && (
+                        <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
+                            <div className="flex">
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-bold text-red-800">Error</h3>
+                                    <div className="mt-1 text-sm text-red-700 font-medium">
+                                        <p>{error}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 <div className="flex justify-end gap-4 pt-4">
                     <button
@@ -275,7 +342,7 @@ export default function CreateEventPage() {
                         {loading ? 'Creating...' : 'Create Event'}
                     </button>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     )
 }

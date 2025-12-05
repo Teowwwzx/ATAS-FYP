@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { getMyProfile, logout, pingApi } from '@/services/api'
@@ -14,6 +15,7 @@ export function AppNavbar() {
     const [profile, setProfile] = useState<ProfileResponse | null>(null)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
+    const [imageError, setImageError] = useState(false)
 
     useEffect(() => {
         const load = async () => {
@@ -41,7 +43,7 @@ export function AppNavbar() {
             }
         }
         load()
-    }, [])
+    }, [router])
 
     const handleLogout = () => {
         logout()
@@ -105,18 +107,23 @@ export function AppNavbar() {
                                 <div className="relative">
                                     <button
                                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                        className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 items-center gap-3 pl-2 pr-1 py-1 border border-gray-100 hover:shadow-md transition-all"
+                                        className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 items-center gap-3 pl-2 pr-1 h-11 border border-gray-100 hover:shadow-md transition-all"
                                     >
                                         <span className="sr-only">Open user menu</span>
                                         <span className="text-zinc-700 font-bold hidden md:block pl-2">
                                             {profile?.full_name || 'User'}
                                         </span>
-                                        {profile?.avatar_url ? (
-                                            <img
-                                                className="h-9 w-9 rounded-full object-cover ring-2 ring-white"
-                                                src={profile.avatar_url}
-                                                alt=""
-                                            />
+                                        {profile?.avatar_url && !imageError ? (
+                                            <div className="relative h-9 w-9 rounded-full overflow-hidden ring-2 ring-white">
+                                                <Image
+                                                    className="object-cover"
+                                                    src={profile.avatar_url}
+                                                    alt=""
+                                                    fill
+                                                    sizes="36px"
+                                                    onError={() => setImageError(true)}
+                                                />
+                                            </div>
                                         ) : (
                                             <div className="h-9 w-9 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold ring-2 ring-white">
                                                 {profile?.full_name?.charAt(0) || 'U'}

@@ -1,4 +1,11 @@
-export function parseJwt(token: string): any | null {
+interface JwtPayload {
+  exp?: number | string
+  sub?: string
+  roles?: string[]
+  [key: string]: unknown
+}
+
+export function parseJwt(token: string): JwtPayload | null {
   try {
     const base64Url = token.split('.')[1]
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
@@ -10,7 +17,7 @@ export function parseJwt(token: string): any | null {
         })
         .join('')
     )
-    return JSON.parse(jsonPayload)
+    return JSON.parse(jsonPayload) as JwtPayload
   } catch {
     return null
   }

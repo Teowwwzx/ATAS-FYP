@@ -1,6 +1,7 @@
 // frontend/tailwind.config.ts
 import type { Config } from 'tailwindcss'
 import colors from 'tailwindcss/colors'
+import forms from '@tailwindcss/forms'
 
 const config: Config = {
   content: [
@@ -77,7 +78,7 @@ const config: Config = {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'), // For styling form inputs
+    forms,
   ],
 }
 export default config

@@ -74,6 +74,6 @@ app.include_router(taxonomy_router.router, prefix="/api/v1", tags=["Taxonomy"])
 def read_root():
     return {"message": "Welcome to the ATAS API!"}
 
-@app.get("/ping")
+@app.get("/api/v1/ping")
 def ping():
     return {"message": "pong"}

@@ -24,7 +24,7 @@ export function ProfileForm({
                     Welcome, {role === 'student' ? 'Student' : 'Expert'}!
                 </h2>
                 <p className="text-gray-600 text-lg">
-                    Let's create your profile to get started.
+                    Let&#39;s create your profile to get started.
                 </p>
             </div>
 

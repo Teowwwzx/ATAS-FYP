@@ -261,6 +261,22 @@ export const getMyEventHistory = async (
   return response.data
 }
 
+export const getUserEventHistory = async (
+  userId: string,
+  roleFilter?: 'organized' | 'participant' | 'speaker' | 'sponsor',
+) => {
+  const url = roleFilter
+    ? `/events/user/${userId}/history?role_filter=${encodeURIComponent(roleFilter)}`
+    : `/events/user/${userId}/history`
+  const response = await api.get<EventDetails[]>(url)
+  return response.data
+}
+
+export const getReviewsByUser = async (userId: string) => {
+  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/by-user/${userId}`)
+  return response.data
+}
+
 export const joinPublicEvent = async (eventId: string) => {
   const response = await api.post<EventParticipantDetails>(`/events/${eventId}/join`)
   return response.data
@@ -478,8 +494,7 @@ export default api
 export const logout = clientLogout
 
 export const pingApi = async () => {
-  const host = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
-  const res = await axios.get(`${host}/ping`)
+  const res = await api.get('/ping')
   return res.data
 }
 
@@ -490,12 +505,21 @@ api.interceptors.response.use(
       // Normalize network errors to a consistent shape
       error.response = error.response || { status: 0, data: { detail: 'Network Error' } }
     }
+    if (error?.response?.status === 503) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/maintenance') {
+        window.location.href = '/maintenance'
+      }
+    }
     if (error?.response?.status === 401) {
       try {
         localStorage.removeItem('atas_token')
       } catch { }
       if (typeof window !== 'undefined') {
-        window.location.href = '/login'
+        const path = window.location.pathname || ''
+        const target = path.startsWith('/admin') ? '/admin/login' : '/login'
+        if (path !== target) {
+          window.location.href = target
+        }
       }
     }
     return Promise.reject(error)
@@ -529,5 +553,13 @@ export const endEvent = async (eventId: string) => {
   } catch {
     const response = await api.post<EventDetails>(`/events/${eventId}/end`)
     return response.data
+  }
+}
+
+// Optional frontend maintenance gate via env var
+if (typeof window !== 'undefined') {
+  const mm = (process.env.NEXT_PUBLIC_MAINTENANCE_MODE || '').toLowerCase()
+  if ((mm === '1' || mm === 'true') && window.location.pathname !== '/maintenance') {
+    window.location.href = '/maintenance'
   }
 }

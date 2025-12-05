@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { EventDetails } from '@/services/api.types'
 import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
+import { toastError } from '@/lib/utils'
 import {
     TrashIcon,
     CheckIcon,
@@ -13,7 +14,9 @@ import {
     ImageIcon
 } from '@radix-ui/react-icons'
 import { format } from 'date-fns'
+import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 interface EventsTableProps {
     events: EventDetails[]
@@ -24,17 +27,16 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
     const [isLoading, setIsLoading] = useState<string | null>(null)
     const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
+    const [deleteEventId, setDeleteEventId] = useState<string | null>(null)
 
     const handleDelete = async (eventId: string) => {
-        if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) return
         setIsLoading(eventId)
         try {
             await adminService.deleteEvent(eventId)
             toast.success('Event deleted')
             onRefresh()
         } catch (error) {
-            toast.error('Failed to delete event')
-            console.error(error)
+            toastError(error, undefined, 'Failed to delete event')
         } finally {
             setIsLoading(null)
         }
@@ -47,7 +49,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
             toast.success('Event published')
             onRefresh()
         } catch (error) {
-            toast.error('Failed to publish event')
+            toastError(error, undefined, 'Failed to publish event')
         } finally {
             setIsLoading(null)
         }
@@ -60,7 +62,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
             toast.success('Event unpublished')
             onRefresh()
         } catch (error) {
-            toast.error('Failed to unpublish event')
+            toastError(error, undefined, 'Failed to unpublish event')
         } finally {
             setIsLoading(null)
         }
@@ -111,9 +113,12 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                         onClick={(e) => { e.stopPropagation(); setPreviewImage(event.cover_url || null); }}
                                                         className="relative group"
                                                     >
-                                                        <img
+                                                        <Image
                                                             src={event.cover_url}
                                                             alt=""
+                                                            width={40}
+                                                            height={40}
+                                                            unoptimized
                                                             className="w-10 h-10 rounded-lg object-cover bg-gray-100 group-hover:opacity-80 transition-opacity"
                                                         />
                                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -170,7 +175,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                 )}
 
                                                 <button
-                                                    onClick={() => handleDelete(event.id)}
+                                                    onClick={() => setDeleteEventId(event.id)}
                                                     disabled={isLoading === event.id}
                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                     title="Delete"
@@ -229,9 +234,12 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                             Full size preview of the event cover image
                         </Dialog.Description>
                         {previewImage && (
-                            <img
+                            <Image
                                 src={previewImage}
                                 alt="Event Cover"
+                                width={1200}
+                                height={800}
+                                unoptimized
                                 className="w-full h-full object-contain rounded-lg"
                             />
                         )}
@@ -241,6 +249,17 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
+
+            <ConfirmationModal
+                isOpen={!!deleteEventId}
+                onClose={() => setDeleteEventId(null)}
+                onConfirm={() => { if (deleteEventId) handleDelete(deleteEventId); setDeleteEventId(null) }}
+                title="Delete Event"
+                message="Are you sure you want to delete this event? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </>
     )
 }

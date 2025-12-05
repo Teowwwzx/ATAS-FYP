@@ -9,6 +9,7 @@ import {
     PersonIcon
 } from '@radix-ui/react-icons'
 import { useState } from 'react'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { format } from 'date-fns'
 
 interface UsersTableProps {
@@ -17,10 +18,18 @@ interface UsersTableProps {
     onActivate: (userId: string) => void
     onVerifyExpert: (userId: string) => void
     onRevokeExpert: (userId: string) => void
+    onApprovePending?: (userId: string) => void
+    onRejectPending?: (userId: string) => void
+    onAssignRole?: (userId: string, roleName: string) => void
+    onRemoveRole?: (userId: string, roleName: string) => void
 }
 
-export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRevokeExpert }: UsersTableProps) {
+export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRevokeExpert, onApprovePending, onRejectPending, onAssignRole, onRemoveRole }: UsersTableProps) {
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+    const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({})
+    const [suspendUserId, setSuspendUserId] = useState<string | null>(null)
+    const [rejectPendingUserId, setRejectPendingUserId] = useState<string | null>(null)
+    const [removeRoleTarget, setRemoveRoleTarget] = useState<{ userId: string; role: string } | null>(null)
 
     const toggleExpand = (userId: string) => {
         setExpandedUserId(expandedUserId === userId ? null : userId)
@@ -67,7 +76,9 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {user.roles?.map(r => r.name).join(', ') || '-'}
+                                    {Array.isArray(user.roles)
+                                        ? (user.roles.map((r) => typeof r === 'string' ? r : r.name).filter(Boolean).join(', ') || '-')
+                                        : '-'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -84,10 +95,10 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                                     )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                                         {user.status === 'active' ? (
                                             <button
-                                                onClick={() => onSuspend(user.id)}
+                                                onClick={() => setSuspendUserId(user.id)}
                                                 className="text-red-600 hover:text-red-900 font-medium"
                                             >
                                                 Suspend
@@ -99,6 +110,28 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                                             >
                                                 Activate
                                             </button>
+                                        )}
+
+                                        {/* Pending roles approval controls */}
+                                        {Array.isArray(user.roles) && user.roles.map((r) => typeof r === 'string' ? r : r.name).some((n) => typeof n === 'string' && n.endsWith('_pending')) && (
+                                            <>
+                                                {onApprovePending && (
+                                                    <button
+                                                        onClick={() => onApprovePending(user.id)}
+                                                        className="text-blue-600 hover:text-blue-900 font-medium"
+                                                    >
+                                                        Approve Pending
+                                                    </button>
+                                                )}
+                                                {onRejectPending && (
+                                                    <button
+                                                        onClick={() => setRejectPendingUserId(user.id)}
+                                                        className="text-orange-600 hover:text-orange-900 font-medium"
+                                                    >
+                                                        Reject Pending
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </td>
@@ -125,12 +158,59 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                                             <div>
                                                 <h4 className="font-semibold text-gray-900 mb-2">Roles & Permissions</h4>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {user.roles?.map(role => (
-                                                        <span key={role.id} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs border border-blue-100">
-                                                            {role.name}
-                                                        </span>
-                                                    )) || <span className="text-gray-500">No roles assigned</span>}
+                                                    {Array.isArray(user.roles) && user.roles.length > 0 ? (
+                                                        user.roles.map((r) => {
+                                                            const name = typeof r === 'string' ? r : r.name
+                                                            const key = typeof r === 'string' ? r : (r.id || r.name)
+                                                            return (
+                                                                <span key={key} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs border border-blue-100">
+                                                                    {name}
+                                                                </span>
+                                                            )
+                                                        })
+                                                    ) : (
+                                                        <span className="text-gray-500">No roles assigned</span>
+                                                    )}
                                                 </div>
+                                                {onAssignRole && onRemoveRole && (
+                                                    <div className="mt-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                                                        <select
+                                                            value={selectedRoles[user.id] || ''}
+                                                            onChange={(e) => setSelectedRoles((prev) => ({ ...prev, [user.id]: e.target.value }))}
+                                                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                                        >
+                                                            <option value="">Select role</option>
+                                                            <option value="admin">admin</option>
+                                                            <option value="student">student</option>
+                                                            <option value="expert">expert</option>
+                                                            <option value="organizer">organizer</option>
+                                                            <option value="sponsor">sponsor</option>
+                                                            <option value="committee">committee</option>
+                                                            <option value="customer_support">customer_support</option>
+                                                            <option value="content_moderator">content_moderator</option>
+                                                        </select>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const role = selectedRoles[user.id]
+                                                                    if (role) onAssignRole(user.id, role)
+                                                                }}
+                                                                className="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                                                            >
+                                                                Assign Role
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const role = selectedRoles[user.id]
+                                                                    if (role) setRemoveRoleTarget({ userId: user.id, role })
+                                                                }}
+                                                                className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50"
+                                                            >
+                                                                Remove Role
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </td>
@@ -140,6 +220,36 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                     ))}
                 </tbody>
             </table>
+            <ConfirmationModal
+                isOpen={!!suspendUserId}
+                onClose={() => setSuspendUserId(null)}
+                onConfirm={() => { if (suspendUserId) onSuspend(suspendUserId); setSuspendUserId(null) }}
+                title="Suspend User"
+                message="Suspend this user?"
+                confirmText="Suspend"
+                cancelText="Cancel"
+                variant="danger"
+            />
+            <ConfirmationModal
+                isOpen={!!rejectPendingUserId}
+                onClose={() => setRejectPendingUserId(null)}
+                onConfirm={() => { if (rejectPendingUserId && onRejectPending) onRejectPending(rejectPendingUserId); setRejectPendingUserId(null) }}
+                title="Reject Pending Roles"
+                message="Reject all pending role(s) for this user?"
+                confirmText="Reject"
+                cancelText="Cancel"
+                variant="danger"
+            />
+            <ConfirmationModal
+                isOpen={!!removeRoleTarget}
+                onClose={() => setRemoveRoleTarget(null)}
+                onConfirm={() => { if (removeRoleTarget && onRemoveRole) onRemoveRole(removeRoleTarget.userId, removeRoleTarget.role); setRemoveRoleTarget(null) }}
+                title="Remove Role"
+                message={removeRoleTarget ? `Remove role: ${removeRoleTarget.role}?` : ''}
+                confirmText="Remove"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     )
 }

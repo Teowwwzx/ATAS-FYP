@@ -41,7 +41,12 @@ export const adminService = {
         is_verified?: boolean
     }) => {
         const response = await api.get<UserResponse[]>('/users', { params })
-        return response.data
+        return response.data.map(u => ({
+            ...u,
+            roles: Array.isArray(u.roles)
+                ? u.roles.map(r => typeof r === 'string' ? r : r.name)
+                : []
+        }))
     },
 
     getUser: async (userId: string) => {
@@ -85,6 +90,19 @@ export const adminService = {
 
     removeRole: async (userId: string, roleName: string) => {
         const response = await api.delete<UserResponse>(`/users/${userId}/roles/${roleName}`)
+        return response.data
+    },
+
+    // --- Pending Roles (Onboarding) ---
+    approvePendingRoles: async (userId: string) => {
+        // Backend overview: POST /api/v1/admin/users/{user_id}/roles/approve
+        const response = await api.post<UserResponse>(`/admin/users/${userId}/roles/approve`)
+        return response.data
+    },
+
+    rejectPendingRoles: async (userId: string) => {
+        // Backend overview: POST /api/v1/admin/users/{user_id}/roles/reject
+        const response = await api.post<UserResponse>(`/admin/users/${userId}/roles/reject`)
         return response.data
     },
 
@@ -161,22 +179,45 @@ export const adminService = {
     },
 
     // --- Counts ---
-    getUsersCount: async (params?: any) => {
+    getUsersCount: async (params?: {
+        email?: string
+        name?: string
+        status?: string
+        role?: string
+        is_verified?: boolean
+    }) => {
         const response = await api.get<{ total_count: number }>('/users/search/count', { params })
         return response.data.total_count
     },
 
-    getOrganizationsCount: async (params?: any) => {
+    getOrganizationsCount: async (params?: {
+        name?: string
+        visibility?: OrganizationVisibility
+        type?: OrganizationType
+    }) => {
         const response = await api.get<{ total_count: number }>('/organizations/count', { params })
         return response.data.total_count
     },
 
-    getEventsCount: async (params?: any) => {
+    getEventsCount: async (params?: {
+        q_text?: string
+        status?: string
+        type?: string
+        organizer_id?: string
+        include_all_visibility?: boolean
+    }) => {
         const response = await api.get<{ total_count: number }>('/events/count', { params })
         return response.data.total_count
     },
 
-    getAuditLogsCount: async (params?: any) => {
+    getAuditLogsCount: async (params?: {
+        action?: string
+        actor_user_id?: string
+        target_type?: string
+        target_id?: string
+        start_after?: string
+        end_before?: string
+    }) => {
         const response = await api.get<{ total_count: number }>('/admin/audit-logs/count', { params })
         return response.data.total_count
     }

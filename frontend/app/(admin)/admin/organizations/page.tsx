@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { OrganizationsTable } from '@/components/admin/OrganizationsTable'
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
 import { Pagination } from '@/components/ui/Pagination'
 import toast from 'react-hot-toast'
+import { toastError } from '@/lib/utils'
 import { OrganizationType } from '@/services/api.types'
 
 const PAGE_SIZE = 10
@@ -14,12 +15,18 @@ const PAGE_SIZE = 10
 export default function OrganizationsPage() {
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
     const [typeFilter, setTypeFilter] = useState('')
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+        return () => clearTimeout(t)
+    }, [search])
 
     const queryParams = {
         page,
         page_size: PAGE_SIZE,
-        name: search || undefined,
+        name: debouncedSearch || undefined,
         type: (typeFilter as OrganizationType) || undefined
     }
 
@@ -36,13 +43,12 @@ export default function OrganizationsPage() {
     const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0
 
     const handleDelete = async (orgId: string) => {
-        if (!confirm('Are you sure you want to delete this organization?')) return
         try {
             await adminService.deleteOrganization(orgId)
             toast.success('Organization deleted')
             mutate()
         } catch (e) {
-            toast.error('Failed to delete organization')
+            toastError(e, undefined, 'Failed to delete organization')
         }
     }
 
@@ -72,9 +78,11 @@ export default function OrganizationsPage() {
                     className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                 >
                     <option value="">All Types</option>
-                    <option value="school">School</option>
                     <option value="company">Company</option>
+                    <option value="university">University</option>
                     <option value="community">Community</option>
+                    <option value="nonprofit">Nonprofit</option>
+                    <option value="government">Government</option>
                 </select>
             </div>
 

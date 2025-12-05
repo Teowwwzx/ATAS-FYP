@@ -1,25 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { EventsTable } from '@/components/admin/EventsTable'
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
 import { Pagination } from '@/components/ui/Pagination'
 
-const PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 10
 
 export default function AdminEventsPage() {
     const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
     const [search, setSearch] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
+    const [typeFilter, setTypeFilter] = useState('')
+    const [organizerFilter, setOrganizerFilter] = useState('')
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+        return () => clearTimeout(t)
+    }, [search])
 
     const queryParams = {
         page,
-        page_size: PAGE_SIZE,
-        q_text: search || undefined,
+        page_size: pageSize,
+        q_text: debouncedSearch || undefined,
         status: statusFilter || undefined,
-        include_all_visibility: true
+        type: typeFilter || undefined,
+        include_all_visibility: true,
+        organizer_id: organizerFilter || undefined
     }
 
     const { data: events, mutate } = useSWR(
@@ -28,11 +39,11 @@ export default function AdminEventsPage() {
     )
 
     const { data: totalCount } = useSWR(
-        ['/events/count', { ...queryParams, page: undefined, page_size: undefined }],
-        () => adminService.getEventsCount({ ...queryParams, page: undefined, page_size: undefined })
+        ['/events/count', { ...queryParams, page: undefined }],
+        () => adminService.getEventsCount({ ...queryParams, page: undefined })
     )
 
-    const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0
+    const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0
 
     return (
         <div className="space-y-8">
@@ -54,6 +65,13 @@ export default function AdminEventsPage() {
                         className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                 </div>
+                <input
+                    type="text"
+                    placeholder="Organizer user id..."
+                    value={organizerFilter}
+                    onChange={(e) => { setOrganizerFilter(e.target.value); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                />
                 <select
                     value={statusFilter}
                     onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
@@ -62,8 +80,27 @@ export default function AdminEventsPage() {
                     <option value="">All Status</option>
                     <option value="published">Published</option>
                     <option value="draft">Draft</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="completed">Completed</option>
+                    <option value="declined">Declined</option>
+                    <option value="ended">Ended</option>
+                </select>
+                <select
+                    value={typeFilter}
+                    onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                >
+                    <option value="">All Types</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="hybrid">Hybrid</option>
+                </select>
+                <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
                 </select>
             </div>
 
@@ -74,7 +111,7 @@ export default function AdminEventsPage() {
                     totalPages={totalPages}
                     onPageChange={setPage}
                     totalItems={totalCount}
-                    pageSize={PAGE_SIZE}
+                    pageSize={pageSize}
                 />
             </div>
         </div>

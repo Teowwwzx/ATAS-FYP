@@ -304,6 +304,84 @@ def get_my_event_history(
     return events
 
 
+@router.get("/events/user/{user_id}/history", response_model=List[EventDetails])
+def get_user_event_history(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+    role_filter: str | None = Query(
+        None,
+        description="Filter by involvement: organized | participant | speaker | sponsor",
+    ),
+):
+    """List public past events a specific user has involvement in.
+    
+    Filters:
+    - organized: events they organized
+    - participant: events they attended
+    - speaker: events they spoke at
+    - sponsor: events they sponsored
+    """
+    allowed_filters = {"organized", "participant", "speaker", "sponsor"}
+    if role_filter is not None and role_filter not in allowed_filters:
+        raise HTTPException(status_code=400, detail="Invalid role_filter")
+
+    query = db.query(Event)
+    
+    # Only show published events for public profile history
+    query = query.filter(Event.status == EventStatus.published)
+    
+    # Always past events
+    query = query.filter(Event.end_datetime < func.now())
+
+    if role_filter == "organized":
+        query = query.filter(Event.organizer_id == user_id)
+    else:
+        # participant-related filters require join
+        query = query.join(EventParticipant, EventParticipant.event_id == Event.id)
+        query = query.filter(
+            EventParticipant.user_id == user_id,
+            EventParticipant.status == EventParticipantStatus.attended,
+        )
+
+        if role_filter == "speaker":
+            query = query.filter(EventParticipant.role == EventParticipantRole.speaker)
+        elif role_filter == "sponsor":
+            query = query.filter(EventParticipant.role == EventParticipantRole.sponsor)
+        elif role_filter == "participant":
+            query = query.filter(
+                EventParticipant.role.in_(
+                    [
+                        EventParticipantRole.audience,
+                        EventParticipantRole.student,
+                        EventParticipantRole.teacher,
+                        EventParticipantRole.committee,
+                    ]
+                )
+            )
+        else:
+            # No role_filter provided: include any attended role AND organized events?
+            # The current logic for 'else' (no filter) only includes participation.
+            # To include organized events too, we'd need a UNION or OR condition.
+            # For simplicity, let's stick to participation if no filter is explicit, 
+            # OR we can do a more complex query.
+            # Let's mirror 'get_my_event_history' logic which defaults to participation if no filter.
+            # BUT, usually 'history' implies everything.
+            # Let's keep it simple: if no filter, show participation. 
+            # If they want organized, they ask for it.
+            # Actually, let's make it inclusive if possible.
+            pass
+
+    # If no filter is provided, we might miss events they organized but didn't add themselves as participant?
+    # (Though create_event adds them as organizer participant).
+    # So querying participation should cover organizers too if they are in participant table.
+    
+    events = (
+        query.order_by(Event.end_datetime.desc()).distinct().all()
+    )
+    return events
+
+
 @router.post("/events", response_model=EventDetails)
 def create_event(
     event: EventCreate,

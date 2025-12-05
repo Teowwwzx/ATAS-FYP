@@ -20,8 +20,28 @@ import {
     unpublishEvent,
     openRegistration,
     closeRegistration,
+    getEventChecklist,
+    createEventChecklistItem,
+    updateEventChecklistItem,
+    getEventProposals,
+    createEventProposal,
+    deleteEventProposal,
 } from '@/services/api'
-import { EventDetails, EventParticipantDetails, ProfileResponse, EventCreate, EventParticipantRole, EventFormat, EventType, EventRegistrationType, EventVisibility } from '@/services/api.types'
+import {
+    EventDetails,
+    EventParticipantDetails,
+    ProfileResponse,
+    EventCreate,
+    EventParticipantRole,
+    EventFormat,
+    EventType,
+    EventRegistrationType,
+    EventVisibility,
+    EventChecklistItemResponse,
+    EventProposalResponse,
+    EventProposalCreate
+} from '@/services/api.types'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 export default function EventDetailsPage() {
     const params = useParams()
@@ -33,7 +53,7 @@ export default function EventDetailsPage() {
     const [joinOpen, setJoinOpen] = useState(false)
     const [participants, setParticipants] = useState<EventParticipantDetails[]>([])
     const [currentUser, setCurrentUser] = useState<ProfileResponse | null>(null)
-    
+
     const [editOpen, setEditOpen] = useState(false)
     const [editData, setEditData] = useState<Partial<EventCreate>>({})
     const [uploadingCover, setUploadingCover] = useState(false)
@@ -43,11 +63,19 @@ export default function EventDetailsPage() {
     const [searching, setSearching] = useState(false)
     const [profileMap, setProfileMap] = useState<Record<string, ProfileResponse>>({})
     const [organizerHistoryMatch, setOrganizerHistoryMatch] = useState(false)
-    
-    const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'manage'>('overview')
-    const [previewTab, setPreviewTab] = useState<'overview' | 'participants' | 'manage'>('overview')
+
+    const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'proposals' | 'checklist' | 'manage'>('overview')
+    const [previewTab, setPreviewTab] = useState<'overview' | 'participants' | 'proposals' | 'checklist' | 'manage'>('overview')
     const [previewOpen, setPreviewOpen] = useState(false)
-    
+
+    // New State for Checklist & Proposals
+    const [checklistItems, setChecklistItems] = useState<EventChecklistItemResponse[]>([])
+    const [proposals, setProposals] = useState<EventProposalResponse[]>([])
+    const [proposalOpen, setProposalOpen] = useState(false)
+    const [proposalData, setProposalData] = useState<EventProposalCreate>({ title: '', description: '' })
+    const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false)
+    const [deleteProposalId, setDeleteProposalId] = useState<string | null>(null)
+
     const loadData = useCallback(async () => {
         try {
             const [eventData, participantsData, userData] = await Promise.all([
@@ -60,7 +88,7 @@ export default function EventDetailsPage() {
             try {
                 const mineOrganized = await getMyEventHistory('organized')
                 setOrganizerHistoryMatch(!!mineOrganized.find(e => e.id === eventData.id))
-            } catch {}
+            } catch { }
             try {
                 const ids = Array.from(new Set(participantsData.map(p => p.user_id)))
                 const map: Record<string, ProfileResponse> = {}
@@ -68,10 +96,10 @@ export default function EventDetailsPage() {
                     try {
                         const prof = await getProfileByUserId(uid)
                         map[uid] = prof
-                    } catch {}
+                    } catch { }
                 }))
                 setProfileMap(map)
-            } catch {}
+            } catch { }
             setCurrentUser(userData)
         } catch (error: unknown) {
             console.error('Failed to load event details', error)
@@ -90,6 +118,52 @@ export default function EventDetailsPage() {
             loadData()
         }
     }, [id, loadData])
+
+    const isParticipant = participants.some((p) => p.user_id === currentUser?.user_id)
+
+    const isOrganizer = useMemo(() => {
+        if (!event || !currentUser) return false
+        return (
+            participants.some((p) => p.user_id === currentUser.user_id && p.role === 'organizer') ||
+            event.organizer_id === currentUser.user_id ||
+            organizerHistoryMatch
+        )
+    }, [participants, event, currentUser, organizerHistoryMatch])
+
+    // Fetch Checklist
+    useEffect(() => {
+        if ((activeTab === 'checklist' || previewTab === 'checklist') && id) {
+            getEventChecklist(id).then(async (items) => {
+                if (items.length === 0 && isOrganizer) {
+                    // Initialize hardcoded items
+                    const defaults = [
+                        { title: 'Pre-Event: Define Objectives' },
+                        { title: 'Pre-Event: Secure Venue' },
+                        { title: 'Pre-Event: Invite Speakers' },
+                        { title: 'Execution: Setup AV' },
+                        { title: 'Execution: Registration Desk' },
+                        { title: 'Post-Event: Send Thank You Emails' },
+                    ]
+                    const created = []
+                    for (const d of defaults) {
+                        try {
+                            created.push(await createEventChecklistItem(id, d))
+                        } catch { }
+                    }
+                    setChecklistItems(created)
+                } else {
+                    setChecklistItems(items)
+                }
+            }).catch(() => setChecklistItems([]))
+        }
+    }, [activeTab, previewTab, id, isOrganizer])
+
+    // Fetch Proposals
+    useEffect(() => {
+        if ((activeTab === 'proposals' || previewTab === 'proposals') && id) {
+            getEventProposals(id).then(setProposals).catch(() => setProposals([]))
+        }
+    }, [activeTab, previewTab, id])
 
     const confirmJoin = async () => {
         setJoining(true)
@@ -135,16 +209,27 @@ export default function EventDetailsPage() {
         }
     }
 
-    const isParticipant = participants.some((p) => p.user_id === currentUser?.user_id)
-    
-    const isOrganizer = useMemo(() => {
-        if (!event || !currentUser) return false
-        return (
-            participants.some((p) => p.user_id === currentUser.user_id && p.role === 'organizer') ||
-            event.organizer_id === currentUser.user_id ||
-            organizerHistoryMatch
-        )
-    }, [participants, event, currentUser, organizerHistoryMatch])
+    const toggleChecklist = async (item: EventChecklistItemResponse) => {
+        try {
+            const updated = await updateEventChecklistItem(id, item.id, { is_completed: !item.is_completed })
+            setChecklistItems(prev => prev.map(i => i.id === item.id ? updated : i))
+        } catch {
+            toast.error('Failed to update item')
+        }
+    }
+
+    const handleCreateProposal = async () => {
+        try {
+            await createEventProposal(id, proposalData)
+            setProposalOpen(false)
+            setProposalData({ title: '', description: '' })
+            const fresh = await getEventProposals(id)
+            setProposals(fresh)
+            toast.success('Proposal submitted')
+        } catch (error: unknown) {
+            toast.error('Failed to submit proposal')
+        }
+    }
 
     const canEditInvite = useMemo(() => {
         if (!event || !currentUser) return false
@@ -172,7 +257,7 @@ export default function EventDetailsPage() {
         const currentTab = isPreview ? previewTab : activeTab
         const setTab = isPreview ? setPreviewTab : setActiveTab
         const showOrganizerControls = !isPreview && (isOrganizer || canEditInvite)
-        
+
         return (
             <div className="bg-white shadow-sm overflow-hidden rounded-[2.5rem] border border-yellow-100">
                 {/* Cover Image */}
@@ -190,18 +275,18 @@ export default function EventDetailsPage() {
                             </h1>
                         </div>
                     )}
-                    
+
                     {/* Hover Overlay for Cover Edit */}
                     {canEditInvite && !isPreview && (
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center z-10">
                             <label className="cursor-pointer opacity-0 group-hover:opacity-100 bg-white text-zinc-900 px-6 py-3 rounded-full font-bold shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 hover:scale-105 flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 <span>{uploadingCover ? 'Uploading...' : 'Change Cover'}</span>
-                                <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setUploadingCover(true); try { const updated = await updateEventCover(event.id, file); setEvent(updated); toast.success('Cover updated'); } catch (error: unknown) { const er = error as { response?: { data?: { detail?: string } } }; toast.error(er?.response?.data?.detail || 'Failed to update cover'); } finally { setUploadingCover(false); } }} 
-                                    disabled={uploadingCover} 
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setUploadingCover(true); try { const updated = await updateEventCover(event.id, file); setEvent(updated); toast.success('Cover updated'); } catch (error: unknown) { const er = error as { response?: { data?: { detail?: string } } }; toast.error(er?.response?.data?.detail || 'Failed to update cover'); } finally { setUploadingCover(false); } }}
+                                    disabled={uploadingCover}
                                 />
                             </label>
                         </div>
@@ -257,7 +342,7 @@ export default function EventDetailsPage() {
                             </div>
                         ) : isParticipant ? (
                             <button
-                                onClick={handleLeave}
+                                onClick={() => setLeaveConfirmOpen(true)}
                                 disabled={joining}
                                 className="inline-flex items-center px-6 py-3 border-2 border-red-100 shadow-sm text-sm font-bold rounded-full text-red-600 bg-white hover:bg-red-50 hover:border-red-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                             >
@@ -298,6 +383,22 @@ export default function EventDetailsPage() {
                         Participants
                         <span className="ml-2 bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full text-xs">{participants.length}</span>
                     </button>
+                    {(isOrganizer || participants.some(p => p.user_id === currentUser?.user_id && (p.role === 'committee' || p.role === 'speaker'))) && (
+                        <button
+                            onClick={() => setTab('proposals')}
+                            className={`px-4 py-4 text-sm font-bold border-b-2 transition-colors ${currentTab === 'proposals' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-700'}`}
+                        >
+                            Proposals
+                        </button>
+                    )}
+                    {(isOrganizer || participants.some(p => p.user_id === currentUser?.user_id && p.role === 'committee')) && (
+                        <button
+                            onClick={() => setTab('checklist')}
+                            className={`px-4 py-4 text-sm font-bold border-b-2 transition-colors ${currentTab === 'checklist' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-700'}`}
+                        >
+                            Checklist
+                        </button>
+                    )}
                     {showOrganizerControls && (
                         <button
                             onClick={() => setTab('manage')}
@@ -349,27 +450,27 @@ export default function EventDetailsPage() {
                                     <h4 className="text-lg font-black text-zinc-900">All Participants</h4>
                                     {canEditInvite && !isPreview && (
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <input value={searchQuery} onChange={(e)=>setSearchQuery(e.target.value)} placeholder="Search profiles..." className="px-4 py-2 rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium text-sm w-40 sm:w-64" />
-                                            <select value={inviteRole} onChange={(e)=>setInviteRole(e.target.value as EventParticipantRole)} className="px-4 py-2 rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium text-sm">
+                                            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search profiles..." className="px-4 py-2 rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium text-sm w-40 sm:w-64" />
+                                            <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as EventParticipantRole)} className="px-4 py-2 rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium text-sm">
                                                 <option value="speaker">Speaker</option>
                                                 <option value="committee">Committee</option>
                                                 <option value="student">Student</option>
                                             </select>
-                                            <button onClick={async ()=>{ setSearching(true); try { const res = await findProfiles({ name: searchQuery }); setSearchResults(res); } catch { setSearchResults([]) } finally { setSearching(false) } }} className="px-4 py-2 rounded-xl bg-yellow-400 text-zinc-900 font-bold hover:bg-yellow-300 transition-all duration-200 text-sm">Search</button>
+                                            <button onClick={async () => { setSearching(true); try { const res = await findProfiles({ name: searchQuery }); setSearchResults(res); } catch { setSearchResults([]) } finally { setSearching(false) } }} disabled={searching} className="px-4 py-2 rounded-xl bg-yellow-400 text-zinc-900 font-bold hover:bg-yellow-300 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed">{searching ? '...' : 'Search'}</button>
                                         </div>
                                     )}
                                 </div>
-                                
+
                                 {/* Search Results */}
                                 {canEditInvite && !isPreview && searchResults.length > 0 && (
                                     <div className="mb-8 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                                         <h5 className="text-sm font-bold text-zinc-900 mb-3">Search Results</h5>
                                         <div className="space-y-2">
-                                            {searchResults.slice(0,5).map(r=> (
+                                            {searchResults.slice(0, 5).map(r => (
                                                 <div key={r.id} className="flex items-center justify-between text-sm bg-white p-3 rounded-xl shadow-sm">
-                                                <span className="font-medium text-zinc-900">{r.full_name}</span>
-                                                <button onClick={async ()=>{ try { await inviteEventParticipant(event.id, { user_id: r.user_id, role: inviteRole }); await loadData(); toast.success('Invitation sent') } catch (error: unknown) { const er = error as { response?: { data?: { detail?: string } } }; toast.error(er?.response?.data?.detail || 'Failed to invite') } }} className="px-3 py-1.5 rounded-lg bg-yellow-400 text-zinc-900 font-bold text-xs hover:bg-yellow-300">Invite as {inviteRole}</button>
-                                            </div>
+                                                    <span className="font-medium text-zinc-900">{r.full_name}</span>
+                                                    <button onClick={async () => { try { await inviteEventParticipant(event.id, { user_id: r.user_id, role: inviteRole }); await loadData(); toast.success('Invitation sent') } catch (error: unknown) { const er = error as { response?: { data?: { detail?: string } } }; toast.error(er?.response?.data?.detail || 'Failed to invite') } }} className="px-3 py-1.5 rounded-lg bg-yellow-400 text-zinc-900 font-bold text-xs hover:bg-yellow-300">Invite as {inviteRole}</button>
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
@@ -377,9 +478,14 @@ export default function EventDetailsPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div>
-                                        <h5 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">Speakers</h5>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h5 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Speakers</h5>
+                                            {canEditInvite && !isPreview && (
+                                                <button onClick={() => { setInviteRole('speaker'); (document.querySelector('input[placeholder="Search profiles..."]') as HTMLElement)?.focus() }} className="text-xs font-bold text-yellow-600 hover:text-yellow-700">+ Invite Speaker</button>
+                                            )}
+                                        </div>
                                         <ul className="space-y-2">
-                                            {participants.filter(p=>p.role==='speaker').map(p=> (
+                                            {participants.filter(p => p.role === 'speaker').map(p => (
                                                 <li key={p.id} className="flex items-center gap-3 bg-zinc-50 p-3 rounded-xl">
                                                     {profileMap[p.user_id]?.avatar_url ? (
                                                         <img src={profileMap[p.user_id]?.avatar_url || ''} alt="avatar" className="h-10 w-10 rounded-full object-cover" />
@@ -391,13 +497,13 @@ export default function EventDetailsPage() {
                                                     <span className="font-medium text-zinc-900">{profileMap[p.user_id]?.full_name || p.user_id}</span>
                                                 </li>
                                             ))}
-                                            {participants.filter(p=>p.role==='speaker').length===0 && (<li className="text-sm text-zinc-400 italic">No speakers assigned</li>)}
+                                            {participants.filter(p => p.role === 'speaker').length === 0 && (<li className="text-sm text-zinc-400 italic">No speakers assigned</li>)}
                                         </ul>
                                     </div>
                                     <div>
                                         <h5 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">Committee</h5>
                                         <ul className="space-y-2">
-                                            {participants.filter(p=>p.role==='committee').map(p=> (
+                                            {participants.filter(p => p.role === 'committee').map(p => (
                                                 <li key={p.id} className="flex items-center gap-3 bg-zinc-50 p-3 rounded-xl">
                                                     {profileMap[p.user_id]?.avatar_url ? (
                                                         <img src={profileMap[p.user_id]?.avatar_url || ''} alt="avatar" className="h-10 w-10 rounded-full object-cover" />
@@ -409,15 +515,15 @@ export default function EventDetailsPage() {
                                                     <span className="font-medium text-zinc-900">{profileMap[p.user_id]?.full_name || p.user_id}</span>
                                                 </li>
                                             ))}
-                                            {participants.filter(p=>p.role==='committee').length===0 && (<li className="text-sm text-zinc-400 italic">No committee members</li>)}
+                                            {participants.filter(p => p.role === 'committee').length === 0 && (<li className="text-sm text-zinc-400 italic">No committee members</li>)}
                                         </ul>
                                     </div>
                                 </div>
-                                
+
                                 <div className="mt-8">
                                     <h5 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">Students / Attendees</h5>
                                     <div className="flex flex-wrap gap-2">
-                                        {participants.filter(p=>p.role==='student' || p.role==='organizer').map(p=> (
+                                        {participants.filter(p => p.role === 'student' || p.role === 'organizer').map(p => (
                                             <div key={p.id} className="flex items-center gap-2 bg-zinc-50 pl-2 pr-4 py-2 rounded-full border border-zinc-100">
                                                 {profileMap[p.user_id]?.avatar_url ? (
                                                     <img src={profileMap[p.user_id]?.avatar_url || ''} alt="avatar" className="h-6 w-6 rounded-full object-cover" />
@@ -436,20 +542,69 @@ export default function EventDetailsPage() {
                         </div>
                     )}
 
+                    {currentTab === 'proposals' && (
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-zinc-100">
+                            <div className="flex items-center justify-between mb-6">
+                                <h4 className="text-lg font-black text-zinc-900">Proposals</h4>
+                                <button onClick={() => { setProposalData({ title: event.title, description: event.description || '' }); setProposalOpen(true) }} className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-300 text-sm">
+                                    + New Proposal
+                                </button>
+                            </div>
+                            {proposals.length === 0 ? (
+                                <div className="text-center py-12 text-zinc-500">No proposals yet.</div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {proposals.map(p => (
+                                        <div key={p.id} className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 flex justify-between items-start">
+                                            <div>
+                                                <h5 className="font-bold text-zinc-900">{p.title}</h5>
+                                                <p className="text-sm text-zinc-600 mt-1">{p.description}</p>
+                                                <div className="text-xs text-zinc-400 mt-2">Created {new Date(p.created_at).toLocaleDateString()}</div>
+                                            </div>
+                                            {isOrganizer && (
+                                                <button onClick={() => setDeleteProposalId(p.id)} className="text-red-500 text-xs font-bold hover:underline">Delete</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {currentTab === 'checklist' && (
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-zinc-100">
+                            <h4 className="text-lg font-black text-zinc-900 mb-6">Committee Checklist</h4>
+                            <div className="space-y-2">
+                                {checklistItems.map(item => (
+                                    <div key={item.id} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${item.is_completed ? 'bg-green-50' : 'bg-zinc-50'}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={item.is_completed}
+                                            onChange={() => toggleChecklist(item)}
+                                            className="w-5 h-5 rounded border-zinc-300 text-yellow-400 focus:ring-yellow-400"
+                                        />
+                                        <span className={`font-medium ${item.is_completed ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>{item.title}</span>
+                                    </div>
+                                ))}
+                                {checklistItems.length === 0 && <div className="text-center py-8 text-zinc-500">No checklist items.</div>}
+                            </div>
+                        </div>
+                    )}
+
                     {currentTab === 'manage' && (
                         <div className="space-y-6">
                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-zinc-100">
                                 <h4 className="text-lg font-black text-zinc-900 mb-4">Event Settings</h4>
                                 {isOrganizer && (
-                                    <button 
-                                        onClick={() => { setEditOpen(true); setEditData({ title: event.title, description: event.description || '', start_datetime: new Date(event.start_datetime).toISOString(), end_datetime: new Date(event.end_datetime).toISOString(), registration_type: event.registration_type, visibility: event.visibility, format: event.format, type: event.type, venue_remark: event.venue_remark || '' }) }} 
+                                    <button
+                                        onClick={() => { setEditOpen(true); setEditData({ title: event.title, description: event.description || '', start_datetime: new Date(event.start_datetime).toISOString(), end_datetime: new Date(event.end_datetime).toISOString(), registration_type: event.registration_type, visibility: event.visibility, format: event.format, type: event.type, venue_remark: event.venue_remark || '' }) }}
                                         className="w-full sm:w-auto px-8 py-3 bg-yellow-400 text-zinc-900 rounded-xl shadow-lg font-bold hover:bg-yellow-300 hover:scale-105 transition-all duration-200"
                                     >
                                         Edit Event Details
                                     </button>
                                 )}
                             </div>
-                            
+
                             <LifecycleControls event={event} isOrganizer={isOrganizer} onUpdated={setEvent} />
                         </div>
                     )}
@@ -461,7 +616,7 @@ export default function EventDetailsPage() {
     return (
         <>
             {renderEventView(false)}
-            
+
             <Dialog.Root open={previewOpen} onOpenChange={setPreviewOpen}>
                 <Dialog.Portal>
                     <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
@@ -508,14 +663,14 @@ export default function EventDetailsPage() {
                     <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-2xl rounded-2xl bg-white p-6 shadow-xl z-50">
                         <Dialog.Title className="text-lg font-black text-zinc-900">Edit Event</Dialog.Title>
                         <div className="mt-4 space-y-3">
-                            <input name="title" value={editData.title || ''} onChange={(e)=>setEditData(prev=>({...prev, title:e.target.value}))} placeholder="Title" className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
-                            <textarea name="description" value={editData.description || ''} onChange={(e)=>setEditData(prev=>({...prev, description:e.target.value}))} placeholder="Description" className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" rows={3} />
+                            <input name="title" value={editData.title || ''} onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))} placeholder="Title" className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
+                            <textarea name="description" value={editData.description || ''} onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))} placeholder="Description" className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" rows={3} />
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <input type="datetime-local" name="start_datetime" value={(editData.start_datetime || '').replace('Z','')} onChange={(e)=>setEditData(prev=>({...prev, start_datetime:e.target.value}))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
-                                <input type="datetime-local" name="end_datetime" value={(editData.end_datetime || '').replace('Z','')} onChange={(e)=>setEditData(prev=>({...prev, end_datetime:e.target.value}))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
+                                <input type="datetime-local" name="start_datetime" value={(editData.start_datetime || '').replace('Z', '')} onChange={(e) => setEditData(prev => ({ ...prev, start_datetime: e.target.value }))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
+                                <input type="datetime-local" name="end_datetime" value={(editData.end_datetime || '').replace('Z', '')} onChange={(e) => setEditData(prev => ({ ...prev, end_datetime: e.target.value }))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <select name="format" value={editData.format || event.format} onChange={(e)=>setEditData(prev=>({...prev, format:e.target.value as EventFormat}))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
+                                <select name="format" value={editData.format || event.format} onChange={(e) => setEditData(prev => ({ ...prev, format: e.target.value as EventFormat }))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
                                     <option value="workshop">Workshop</option>
                                     <option value="seminar">Seminar</option>
                                     <option value="webinar">Webinar</option>
@@ -523,33 +678,83 @@ export default function EventDetailsPage() {
                                     <option value="club_event">Club Event</option>
                                     <option value="other">Other</option>
                                 </select>
-                                <select name="type" value={editData.type || event.type} onChange={(e)=>setEditData(prev=>({...prev, type:e.target.value as EventType}))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
+                                <select name="type" value={editData.type || event.type} onChange={(e) => setEditData(prev => ({ ...prev, type: e.target.value as EventType }))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
                                     <option value="offline">Offline</option>
                                     <option value="online">Online</option>
                                     <option value="hybrid">Hybrid</option>
                                 </select>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <select name="registration_type" value={editData.registration_type || event.registration_type} onChange={(e)=>setEditData(prev=>({...prev, registration_type:e.target.value as EventRegistrationType}))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
+                                <select name="registration_type" value={editData.registration_type || event.registration_type} onChange={(e) => setEditData(prev => ({ ...prev, registration_type: e.target.value as EventRegistrationType }))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
                                     <option value="free">Free</option>
                                     <option value="paid">Paid</option>
                                 </select>
-                                <select name="visibility" value={editData.visibility || event.visibility} onChange={(e)=>setEditData(prev=>({...prev, visibility:e.target.value as EventVisibility}))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
+                                <select name="visibility" value={editData.visibility || event.visibility} onChange={(e) => setEditData(prev => ({ ...prev, visibility: e.target.value as EventVisibility }))} className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200">
                                     <option value="public">Public</option>
                                     <option value="private">Private</option>
                                 </select>
                             </div>
-                            <input name="venue_remark" value={editData.venue_remark || ''} onChange={(e)=>setEditData(prev=>({...prev, venue_remark:e.target.value}))} placeholder="Venue remark" className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
+                            <input name="venue_remark" value={editData.venue_remark || ''} onChange={(e) => setEditData(prev => ({ ...prev, venue_remark: e.target.value }))} placeholder="Venue remark" className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3 transition-all duration-200" />
                         </div>
                         <div className="mt-4 flex justify-end gap-2">
                             <Dialog.Close asChild>
                                 <button className="px-3 py-2 rounded border">Cancel</button>
                             </Dialog.Close>
-                            <button onClick={async ()=>{ try { const updated = await updateEvent(event.id, editData); setEvent(updated); setEditOpen(false); toast.success('Event updated') } catch (error: unknown) { const er = error as { response?: { data?: { detail?: string } } }; toast.error(er?.response?.data?.detail || 'Failed to update event') } }} className="px-3 py-2 rounded bg-yellow-400 text-zinc-900 font-bold hover:bg-yellow-300">Save Changes</button>
+                            <button onClick={async () => { try { const updated = await updateEvent(event.id, editData); setEvent(updated); setEditOpen(false); toast.success('Event updated') } catch (error: unknown) { const er = error as { response?: { data?: { detail?: string } } }; toast.error(er?.response?.data?.detail || 'Failed to update event') } }} className="px-3 py-2 rounded bg-yellow-400 text-zinc-900 font-bold hover:bg-yellow-300">Save Changes</button>
                         </div>
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
+
+            <Dialog.Root open={proposalOpen} onOpenChange={setProposalOpen}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/40" onClick={() => setProposalOpen(false)} />
+                    <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-lg rounded-2xl bg-white p-6 shadow-xl z-50">
+                        <Dialog.Title className="text-lg font-black text-zinc-900">New Proposal</Dialog.Title>
+                        <div className="mt-4 space-y-3">
+                            <input
+                                value={proposalData.title || ''}
+                                onChange={(e) => setProposalData(prev => ({ ...prev, title: e.target.value }))}
+                                placeholder="Proposal Title"
+                                className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3"
+                            />
+                            <textarea
+                                value={proposalData.description || ''}
+                                onChange={(e) => setProposalData(prev => ({ ...prev, description: e.target.value }))}
+                                placeholder="Proposal Description"
+                                className="w-full rounded-xl bg-zinc-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium px-4 py-3"
+                                rows={4}
+                            />
+                        </div>
+                        <div className="mt-4 flex justify-end gap-2">
+                            <Dialog.Close asChild>
+                                <button className="px-3 py-2 rounded border">Cancel</button>
+                            </Dialog.Close>
+                            <button onClick={handleCreateProposal} className="px-3 py-2 rounded bg-yellow-400 text-zinc-900 font-bold hover:bg-yellow-300">Submit Proposal</button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+            <ConfirmationModal
+                isOpen={leaveConfirmOpen}
+                onClose={() => setLeaveConfirmOpen(false)}
+                onConfirm={async () => { setLeaveConfirmOpen(false); await handleLeave() }}
+                title="Leave Event"
+                message="Are you sure you want to leave this event?"
+                confirmText="Leave"
+                cancelText="Cancel"
+                variant="danger"
+            />
+            <ConfirmationModal
+                isOpen={!!deleteProposalId}
+                onClose={() => setDeleteProposalId(null)}
+                onConfirm={async () => { if (deleteProposalId) { await deleteEventProposal(id, deleteProposalId); setProposals(prev => prev.filter(x => x.id !== deleteProposalId)); toast.success('Deleted'); } setDeleteProposalId(null) }}
+                title="Delete Proposal"
+                message="Delete proposal?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </>
     )
 }

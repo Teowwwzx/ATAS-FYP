@@ -13,6 +13,8 @@ import {
     SewingPinFilledIcon
 } from '@radix-ui/react-icons'
 import * as Dialog from '@radix-ui/react-dialog'
+import Image from 'next/image'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 interface OrganizationsTableProps {
     organizations: OrganizationResponse[]
@@ -22,6 +24,7 @@ interface OrganizationsTableProps {
 export function OrganizationsTable({ organizations, onDelete }: OrganizationsTableProps) {
     const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
+    const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
 
     const toggleExpand = (orgId: string) => {
         setExpandedOrgId(expandedOrgId === orgId ? null : orgId)
@@ -66,9 +69,12 @@ export function OrganizationsTable({ organizations, onDelete }: OrganizationsTab
                                                     onClick={(e) => { e.stopPropagation(); setPreviewImage(org.logo_url || null); }}
                                                     className="relative group flex-shrink-0"
                                                 >
-                                                    <img
+                                                    <Image
                                                         src={org.logo_url}
                                                         alt=""
+                                                        width={40}
+                                                        height={40}
+                                                        unoptimized
                                                         className="w-10 h-10 rounded-lg object-cover bg-gray-100 group-hover:opacity-80 transition-opacity"
                                                     />
                                                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -88,7 +94,7 @@ export function OrganizationsTable({ organizations, onDelete }: OrganizationsTab
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                                             <button
-                                                onClick={() => onDelete(org.id)}
+                                                onClick={() => setDeleteOrgId(org.id)}
                                                 className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Delete Organization"
                                             >
@@ -112,9 +118,12 @@ export function OrganizationsTable({ organizations, onDelete }: OrganizationsTab
                                                                 onClick={(e) => { e.stopPropagation(); setPreviewImage(org.cover_url || null); }}
                                                                 className="relative group block w-full max-w-xs overflow-hidden rounded-lg border border-gray-200"
                                                             >
-                                                                <img
+                                                                <Image
                                                                     src={org.cover_url}
                                                                     alt="Cover"
+                                                                    width={512}
+                                                                    height={128}
+                                                                    unoptimized
                                                                     className="w-full h-32 object-cover group-hover:opacity-90 transition-opacity"
                                                                 />
                                                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
@@ -171,9 +180,12 @@ export function OrganizationsTable({ organizations, onDelete }: OrganizationsTab
                             Full size preview of the organization image
                         </Dialog.Description>
                         {previewImage && (
-                            <img
+                            <Image
                                 src={previewImage}
                                 alt="Preview"
+                                width={1200}
+                                height={800}
+                                unoptimized
                                 className="w-full h-full object-contain rounded-lg"
                             />
                         )}
@@ -183,6 +195,16 @@ export function OrganizationsTable({ organizations, onDelete }: OrganizationsTab
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
+            <ConfirmationModal
+                isOpen={!!deleteOrgId}
+                onClose={() => setDeleteOrgId(null)}
+                onConfirm={() => { if (deleteOrgId) onDelete(deleteOrgId); setDeleteOrgId(null) }}
+                title="Delete Organization"
+                message="Delete this organization?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </>
     )
 }

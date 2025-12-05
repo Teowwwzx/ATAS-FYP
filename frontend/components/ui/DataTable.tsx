@@ -8,14 +8,16 @@ type Column = {
   width?: string
 }
 
-type DataTableProps<T extends Record<string, any>> = {
+type RowRecord = Record<string, React.ReactNode>
+
+type DataTableProps<T extends RowRecord> = {
   columns: Column[]
   rows: T[]
   className?: string
   emptyLabel?: string
 }
 
-export function DataTable<T extends Record<string, any>>({ columns, rows, className, emptyLabel = "No data" }: DataTableProps<T>) {
+export function DataTable<T extends RowRecord>({ columns, rows, className, emptyLabel = "No data" }: DataTableProps<T>) {
   return (
     <div className={["w-full overflow-x-auto", className].filter(Boolean).join(" ")}> 
       <table className="min-w-full table-fixed border-collapse text-sm">

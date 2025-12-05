@@ -1,27 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { UsersTable } from '@/components/admin/UsersTable'
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
 import { Pagination } from '@/components/ui/Pagination'
 import toast from 'react-hot-toast'
+import { toastError } from '@/lib/utils'
 
-const PAGE_SIZE = 10
+const DEFAULT_PAGE_SIZE = 10
 
 export default function UsersPage() {
     const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
     const [search, setSearch] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
+    const [verifiedFilter, setVerifiedFilter] = useState('')
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+        return () => clearTimeout(t)
+    }, [search])
 
     const queryParams = {
         page,
-        page_size: PAGE_SIZE,
-        email: search || undefined,
+        page_size: pageSize,
+        email: debouncedSearch || undefined,
         role: roleFilter || undefined,
-        status: statusFilter || undefined
+        status: statusFilter || undefined,
+        is_verified: verifiedFilter === '' ? undefined : verifiedFilter === 'true'
     }
 
     const { data: users, mutate } = useSWR(
@@ -30,11 +40,11 @@ export default function UsersPage() {
     )
 
     const { data: totalCount } = useSWR(
-        ['/users/count', { ...queryParams, page: undefined, page_size: undefined }],
-        () => adminService.getUsersCount({ ...queryParams, page: undefined, page_size: undefined })
+        ['/users/count', { ...queryParams, page: undefined }],
+        () => adminService.getUsersCount({ ...queryParams, page: undefined })
     )
 
-    const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0
+    const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0
 
     const handleSuspend = async (userId: string) => {
         try {
@@ -42,7 +52,7 @@ export default function UsersPage() {
             toast.success('User suspended')
             mutate()
         } catch (e) {
-            toast.error('Failed to suspend user')
+            toastError(e, undefined, 'Failed to suspend user')
         }
     }
 
@@ -52,7 +62,7 @@ export default function UsersPage() {
             toast.success('User activated')
             mutate()
         } catch (e) {
-            toast.error('Failed to activate user')
+            toastError(e, undefined, 'Failed to activate user')
         }
     }
 
@@ -62,7 +72,7 @@ export default function UsersPage() {
             toast.success('Expert verified')
             mutate()
         } catch (e) {
-            toast.error('Failed to verify expert')
+            toastError(e, undefined, 'Failed to verify expert')
         }
     }
 
@@ -72,7 +82,47 @@ export default function UsersPage() {
             toast.success('Expert revoked')
             mutate()
         } catch (e) {
-            toast.error('Failed to revoke expert')
+            toastError(e, undefined, 'Failed to revoke expert')
+        }
+    }
+
+    const handleApprovePending = async (userId: string) => {
+        try {
+            await adminService.approvePendingRoles(userId)
+            toast.success('Pending role(s) approved')
+            mutate()
+        } catch (e) {
+            toastError(e, undefined, 'Failed to approve pending role(s)')
+        }
+    }
+
+    const handleRejectPending = async (userId: string) => {
+        try {
+            await adminService.rejectPendingRoles(userId)
+            toast.success('Pending role(s) rejected')
+            mutate()
+        } catch (e) {
+            toastError(e, undefined, 'Failed to reject pending role(s)')
+        }
+    }
+
+    const handleAssignRole = async (userId: string, roleName: string) => {
+        try {
+            await adminService.assignRole(userId, roleName)
+            toast.success(`Assigned role: ${roleName}`)
+            mutate()
+        } catch (e) {
+            toastError(e, undefined, 'Failed to assign role')
+        }
+    }
+
+    const handleRemoveRole = async (userId: string, roleName: string) => {
+        try {
+            await adminService.removeRole(userId, roleName)
+            toast.success(`Removed role: ${roleName}`)
+            mutate()
+        } catch (e) {
+            toastError(e, undefined, 'Failed to remove role')
         }
     }
 
@@ -105,7 +155,10 @@ export default function UsersPage() {
                     <option value="student">Student</option>
                     <option value="teacher">Teacher</option>
                     <option value="organizer">Organizer</option>
+                    <option value="expert">Expert</option>
                     <option value="admin">Admin</option>
+                    <option value="customer_support">Customer Support</option>
+                    <option value="content_moderator">Content Moderator</option>
                 </select>
                 <select
                     value={statusFilter}
@@ -116,6 +169,24 @@ export default function UsersPage() {
                     <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                 </select>
+                <select
+                    value={verifiedFilter}
+                    onChange={(e) => { setVerifiedFilter(e.target.value); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                >
+                    <option value="">All Verification</option>
+                    <option value="true">Verified</option>
+                    <option value="false">Unverified</option>
+                </select>
+                <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                </select>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -125,13 +196,17 @@ export default function UsersPage() {
                     onActivate={handleActivate}
                     onVerifyExpert={handleVerifyExpert}
                     onRevokeExpert={handleRevokeExpert}
+                    onApprovePending={handleApprovePending}
+                    onRejectPending={handleRejectPending}
+                    onAssignRole={handleAssignRole}
+                    onRemoveRole={handleRemoveRole}
                 />
                 <Pagination
                     currentPage={page}
                     totalPages={totalPages}
                     onPageChange={setPage}
                     totalItems={totalCount}
-                    pageSize={PAGE_SIZE}
+                    pageSize={pageSize}
                 />
             </div>
         </div>

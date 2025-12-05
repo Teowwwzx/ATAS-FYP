@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
 import { findProfiles } from '@/services/api'
@@ -98,7 +99,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
                                             className="w-full flex items-center gap-3 p-3 hover:bg-yellow-50 rounded-xl transition-colors text-left group"
                                         >
                                             {profile.avatar_url ? (
-                                                <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-white group-hover:ring-yellow-200" />
+                                                <Image src={profile.avatar_url} alt="" width={40} height={40} className="rounded-full object-cover ring-2 ring-white group-hover:ring-yellow-200" />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold ring-2 ring-white group-hover:ring-yellow-200">
                                                     {profile.full_name?.charAt(0) || 'U'}
@@ -113,7 +114,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
                                 </div>
                             ) : query ? (
                                 <div className="p-8 text-center text-zinc-500">
-                                    No results found for "{query}"
+                                    No results found for {query}
                                 </div>
                             ) : null}
                         </div>

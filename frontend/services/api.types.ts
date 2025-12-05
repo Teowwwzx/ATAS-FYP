@@ -40,12 +40,14 @@ export interface RegisterSuccessResponse {
     status: 'active' | 'inactive' | 'frozen' | 'suspended'
 }
 
+export type RoleItem = string | { id: string; name: string }
+
 export interface UserResponse {
     id: string
     email: string
     is_verified: boolean
     status: 'active' | 'inactive' | 'frozen' | 'suspended'
-    roles: { id: string; name: string }[]
+    roles: RoleItem[]
     created_at: string
 }
 
@@ -355,4 +357,16 @@ export interface BroadcastNotificationRequest {
     target_role?: string
     target_user_id?: string
     link_url?: string
+}
+
+// --- Review Types ---
+
+export interface ReviewResponse {
+    id: string
+    event_id: string
+    reviewer_id: string
+    reviewee_id: string
+    rating: number
+    comment?: string | null
+    created_at: string
 }

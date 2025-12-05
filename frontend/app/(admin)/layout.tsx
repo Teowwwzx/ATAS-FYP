@@ -1,11 +1,10 @@
 'use client'
 
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, logout } from '@/services/api'
-import { UserMeResponse } from '@/services/api.types'
+import { logout } from '@/services/api'
 import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
+import { useAuthGuard } from '@/hooks/useAuthGuard'
 
 export default function AdminLayout({
     children,
@@ -13,41 +12,19 @@ export default function AdminLayout({
     children: React.ReactNode
 }) {
     const router = useRouter()
-    const [user, setUser] = useState<UserMeResponse | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-
-    useEffect(() => {
-        checkAdmin()
-    }, [])
-
-    const checkAdmin = async () => {
-        try {
-            const me = await getMe()
-            const allowedRoles = ['admin', 'customer_support', 'content_moderator']
-            if (!me.roles.some(r => allowedRoles.includes(r))) {
-                // Not an admin
-                setUser(null)
-            } else {
-                setUser(me)
-            }
-        } catch (error) {
-            console.error('Failed to check admin status', error)
-            // If 401, api interceptor handles redirect to login
-        } finally {
-            setIsLoading(false)
-        }
-    }
+    const allowedRoles = ['admin', 'customer_support', 'content_moderator']
+    const { user, roles, loading } = useAuthGuard(allowedRoles, false, '/admin/login')
 
     const handleLogout = async () => {
         await logout()
-        router.push('/login')
+        router.push('/admin/login')
     }
 
-    if (isLoading) {
+    if (loading) {
         return <LoadingBackdrop isLoading={true} />
     }
 
-    if (!user) {
+    if (!roles || !roles.some(r => allowedRoles.includes(r))) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md w-full">
