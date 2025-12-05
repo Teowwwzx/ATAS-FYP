@@ -386,3 +386,9 @@ def test_send_email_template(
     except Exception:
         # Still return ok to match frontend fallback behavior
         return {"message": "ok"}
+@router.get("/pending-roles", response_model=list[str])
+def list_pending_roles(db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
+    roles = db.query(Role).all()
+    names = [r.name for r in roles if isinstance(r.name, str) and r.name.endswith("_pending")]
+    # Return unique sorted list
+    return sorted(set(names))

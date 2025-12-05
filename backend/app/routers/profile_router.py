@@ -23,6 +23,12 @@ from app.models.user_model import Role, user_roles
 
 router = APIRouter()
 
+# Simple in-memory onboarding settings. Replace with DB storage as needed.
+ONBOARDING_SETTINGS: dict = {
+    "enabled_fields": ["full_name", "role"],
+    "required_fields": ["full_name", "role"],
+}
+
 @router.get("/discover", response_model=List[ProfileResponse])
 def discover_profiles(
     name: str | None = "",
@@ -152,7 +158,15 @@ def search_profiles(
 
 @router.put("/me/onboarding", response_model=ProfileResponse)
 def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    profile_update = ProfileUpdate(full_name=onboarding_data.full_name)
+    profile_update = ProfileUpdate(
+        full_name=onboarding_data.full_name,
+        bio=onboarding_data.bio,
+        linkedin_url=onboarding_data.linkedin_url,
+        github_url=onboarding_data.github_url,
+        instagram_url=onboarding_data.instagram_url,
+        twitter_url=onboarding_data.twitter_url,
+        website_url=onboarding_data.website_url,
+    )
     db_profile = profile_service.update_profile(db, user_id=current_user.id, profile=profile_update)
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -334,3 +348,28 @@ def detach_skill_from_my_profile(skill_id: uuid.UUID, db: Session = Depends(get_
     ))
     db.commit()
     return
+@router.get("/onboarding/settings")
+def get_onboarding_settings():
+    return ONBOARDING_SETTINGS
+
+@router.put("/onboarding/settings")
+def update_onboarding_settings(payload: dict, current_user: User = Depends(require_roles(["admin"]))):
+    allowed = {
+        "full_name",
+        "role",
+        "bio",
+        "linkedin_url",
+        "github_url",
+        "instagram_url",
+        "twitter_url",
+        "website_url",
+    }
+    enabled = payload.get("enabled_fields") or []
+    required = payload.get("required_fields") or []
+    if not isinstance(enabled, list) or not isinstance(required, list):
+        raise HTTPException(status_code=400, detail="enabled_fields and required_fields must be arrays")
+    if not set(enabled).issubset(allowed) or not set(required).issubset(allowed):
+        raise HTTPException(status_code=400, detail="Unknown field in settings")
+    ONBOARDING_SETTINGS["enabled_fields"] = list(enabled)
+    ONBOARDING_SETTINGS["required_fields"] = list(required)
+    return ONBOARDING_SETTINGS
