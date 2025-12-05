@@ -13,20 +13,40 @@ export interface AdminStats {
     total_users: number
     total_organizations: number
     total_audit_logs: number
+    pending_approvals: number
 }
 
 export const adminService = {
     // --- Stats ---
     getStats: async (): Promise<AdminStats> => {
-        const [users, orgs, logs] = await Promise.all([
+        const pendingRoles = [
+            'expert_pending',
+            'organizer_pending',
+            'sponsor_pending',
+            'committee_pending',
+            'student_pending',
+            'customer_support_pending',
+            'content_moderator_pending'
+        ]
+
+        const [users, orgs, logs, pendingCounts] = await Promise.all([
             api.get<{ total_count: number }>('/users/search/count'),
             api.get<{ total_count: number }>('/organizations/count'),
-            api.get<{ total_count: number }>('/admin/audit-logs/count')
+            api.get<{ total_count: number }>('/admin/audit-logs/count'),
+            Promise.all(
+                pendingRoles.map((role) =>
+                    api.get<{ total_count: number }>('/users/search/count', { params: { role } })
+                )
+            )
         ])
+
+        const pending_approvals = pendingCounts.reduce((sum, res) => sum + (res.data.total_count || 0), 0)
+
         return {
             total_users: users.data.total_count,
             total_organizations: orgs.data.total_count,
-            total_audit_logs: logs.data.total_count
+            total_audit_logs: logs.data.total_count,
+            pending_approvals
         }
     },
 

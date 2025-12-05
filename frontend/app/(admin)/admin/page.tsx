@@ -39,6 +39,13 @@ export default function AdminDashboardPage() {
             bg: 'bg-orange-500/10',
             text: 'text-orange-600',
         },
+        {
+            name: 'Pending Approvals',
+            value: stats?.pending_approvals,
+            icon: ReaderIcon,
+            bg: 'bg-yellow-500/10',
+            text: 'text-yellow-600',
+        },
     ]
 
     return (
