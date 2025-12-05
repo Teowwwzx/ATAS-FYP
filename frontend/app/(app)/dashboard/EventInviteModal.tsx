@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import { findProfiles, inviteEventParticipant } from '@/services/api'
+import { findProfiles, inviteEventParticipant, getEventParticipants } from '@/services/api'
 import { ProfileResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 // @ts-ignore
@@ -15,7 +15,7 @@ interface EventInviteModalProps {
     onSuccess?: () => void
 }
 
-export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: EventInviteModalProps) {
+export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSuccess }: EventInviteModalProps) {
     const [inviteRole, setInviteRole] = useState<'speaker' | 'audience'>('speaker')
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(false)
@@ -23,6 +23,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: Event
     const [selectedUsers, setSelectedUsers] = useState<string[]>([])
     const [proposals, setProposals] = useState<any[]>([])
     const [selectedProposalId, setSelectedProposalId] = useState<string>('')
+    const [joinedUserIds, setJoinedUserIds] = useState<Set<string>>(new Set())
 
     const fetchDefaultUsers = async () => {
         setLoading(true)
@@ -56,6 +57,12 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: Event
     // Load defaults on open or role change
     useEffect(() => {
         if (isOpen) {
+            // Fetch existing participants to exclude
+            getEventParticipants(eventId).then(participants => {
+                const ids = new Set(participants.map(p => p.user_id))
+                setJoinedUserIds(ids)
+            }).catch(console.error)
+
             if (search) {
                 doSearch(search)
             } else {
@@ -99,6 +106,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: Event
 
             const action = inviteRole === 'speaker' ? (selectedProposalId ? 'Proposals sent' : 'Invited as Speaker') : 'Invited as Attendee'
             toast.success(`${action} to ${selectedUsers.length} users!`)
+            if (onSuccess) onSuccess()
             onClose()
             setSelectedUsers([])
             setSelectedProposalId('')
@@ -110,6 +118,8 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: Event
             setLoading(false)
         }
     }
+
+    const visibleResults = results.filter(user => !joinedUserIds.has(user.user_id))
 
     return (
         <Transition appear show={isOpen} as={Fragment}>
@@ -210,7 +220,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: Event
                                             <div className="flex items-center justify-center h-full">
                                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
                                             </div>
-                                        ) : results.length === 0 ? (
+                                        ) : visibleResults.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center h-full text-zinc-400 space-y-2">
                                                 <svg className="w-12 h-12 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -218,7 +228,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: Event
                                                 <p className="font-medium">No users found</p>
                                             </div>
                                         ) : (
-                                            results.map(user => (
+                                            visibleResults.map(user => (
                                                 <div
                                                     key={user.id}
                                                     onClick={() => toggleUser(user.user_id)}

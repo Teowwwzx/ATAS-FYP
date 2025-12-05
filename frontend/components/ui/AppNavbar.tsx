@@ -9,6 +9,8 @@ import { isTokenExpired } from '@/lib/auth'
 import { ProfileResponse } from '@/services/api.types'
 import { SearchModal } from './SearchModal'
 import { NotificationBell } from './NotificationBell'
+import { Button } from './Button'
+import { Avatar } from './Avatar'
 
 export function AppNavbar() {
     const router = useRouter()
@@ -101,12 +103,13 @@ export function AppNavbar() {
                                     <NotificationBell />
                                 </div>
 
-                                <Link
+                                <Button
                                     href="/events/create"
-                                    className="bg-zinc-900 text-yellow-400 px-5 py-2.5 rounded-full text-sm font-bold hover:bg-zinc-800 hover:scale-105 transition-all duration-200 shadow-md"
+                                    variant="primary"
+                                    className="rounded-full"
                                 >
                                     Create Event
-                                </Link>
+                                </Button>
 
                                 <div className="relative">
                                     <button
@@ -117,17 +120,12 @@ export function AppNavbar() {
                                         <span className="text-zinc-700 font-bold hidden md:block pl-2">
                                             {profile?.full_name || 'User'}
                                         </span>
-                                        {profile?.avatar_url ? (
-                                            <img
-                                                className="rounded-full object-cover ring-2 ring-white h-9 w-9"
-                                                src={profile.avatar_url}
-                                                alt=""
-                                            />
-                                        ) : (
-                                            <div className="h-9 w-9 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold ring-2 ring-white">
-                                                {profile?.full_name?.charAt(0) || 'U'}
-                                            </div>
-                                        )}
+                                        <Avatar
+                                            src={profile?.avatar_url}
+                                            alt={profile?.full_name || 'User'}
+                                            fallback={profile?.full_name?.charAt(0)}
+                                            size="md"
+                                        />
                                     </button>
 
                                     {isMenuOpen && (

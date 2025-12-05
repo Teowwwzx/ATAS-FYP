@@ -11,3 +11,7 @@ export function toastError(error: unknown, id?: string, fallback?: string) {
   const msg = getApiErrorMessage(error, fallback)
   toast.error(msg, id ? { id } : undefined)
 }
+
+export function cn(...classes: (string | undefined | null | false)[]) {
+  return classes.filter(Boolean).join(' ')
+}

@@ -521,55 +521,43 @@ export const endEvent = async (eventId: string) => {
   }
 }
 
-// --- Notification Service (Mock) ---
+// --- Notification Service ---
 
 export interface NotificationItem {
   id: string
-  title: string
-  message: string
+  recipient_id: string
+  actor_id?: string
+  type: string
+  title?: string
+  content?: string // Backend uses 'content', frontend might expect 'message'. Adjusting to backend.
+  message?: string // Keeping for compatibility, will map content to message
+  link_url?: string
+  is_read: boolean
+  read?: boolean // Compatibility
   created_at: string
-  read: boolean
-  type: 'info' | 'invite' | 'alert'
-  link?: string
 }
 
 export const getNotifications = async () => {
-  // Mock response
-  return new Promise<NotificationItem[]>((resolve) => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: '1',
-          title: 'Welcome to ATAS!',
-          message: 'Thanks for joining. Create your first event now.',
-          created_at: new Date().toISOString(),
-          read: false,
-          type: 'info',
-          link: '/dashboard'
-        },
-        {
-          id: '2',
-          title: 'New Feature',
-          message: 'You can now invite speakers directly from your dashboard.',
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          read: true,
-          type: 'info'
-        }
-      ])
-    }, 500)
-  })
+  const response = await api.get<NotificationItem[]>('/notifications/me')
+  // Map backend response to frontend interface if needed
+  return response.data.map(n => ({
+    ...n,
+    message: n.content, // Backend uses content, frontend uses message
+    read: n.is_read
+  }))
 }
 
 export const markNotificationRead = async (id: string) => {
-  // Mock response
-  return new Promise<void>((resolve) => {
-    setTimeout(() => resolve(), 200)
-  })
+  const response = await api.put<NotificationItem>(`/notifications/${id}/read`)
+  return response.data
 }
 
 export const markAllNotificationsRead = async () => {
-  // Mock response
-  return new Promise<void>((resolve) => {
-    setTimeout(() => resolve(), 300)
-  })
+  const response = await api.put<{ updated_count: number }>(`/notifications/read-all`)
+  return
+}
+
+export const getUnreadNotificationCount = async () => {
+  const response = await api.get<{ unread_count: number }>(`/notifications/me/unread-count`)
+  return response.data
 }

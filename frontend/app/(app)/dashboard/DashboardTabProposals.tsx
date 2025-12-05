@@ -101,13 +101,20 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
     // Preview State
     const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
+    const [isRestricted, setIsRestricted] = useState(false)
+
     const fetchProposals = async () => {
         try {
             const data = await getEventProposals(event.id)
             setProposals(data)
-        } catch (error) {
-            console.error(error)
-            toast.error('Failed to load proposals')
+            setIsRestricted(false)
+        } catch (error: any) {
+            if (error.response?.status === 403) {
+                setIsRestricted(true)
+            } else {
+                console.error(error)
+                toast.error('Failed to load proposals')
+            }
         } finally {
             setLoading(false)
         }
@@ -207,6 +214,18 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                 loading ? (
                     <div className="flex justify-center py-12">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+                    </div>
+                ) : isRestricted ? (
+                    <div className="bg-zinc-50 rounded-[2rem] p-12 text-center border border-zinc-100 flex flex-col items-center justify-center space-y-4">
+                        <div className="w-16 h-16 bg-zinc-200 rounded-full flex items-center justify-center text-zinc-400">
+                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-zinc-900">Access Restricted</h3>
+                            <p className="text-zinc-500">Only organizers, committee members, and speakers can view proposals.</p>
+                        </div>
                     </div>
                 ) : proposals.length === 0 ? (
                     <div className="bg-zinc-50 rounded-[2rem] p-12 text-center border border-zinc-100 flex flex-col items-center justify-center">

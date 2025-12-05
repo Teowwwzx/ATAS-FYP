@@ -10,6 +10,7 @@ import { DashboardTabChecklist } from './DashboardTabChecklist'
 import { DashboardTabProposals } from './DashboardTabProposals'
 import { DashboardTabOverview } from './DashboardTabOverview'
 import { DashboardTabPeople } from './DashboardTabPeople'
+import { DashboardTabSettings } from './DashboardTabSettings'
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(' ')
@@ -18,19 +19,28 @@ function classNames(...classes: string[]) {
 interface DashboardTabsProps {
     event: EventDetails
     user: ProfileResponse | null
+    role?: string | null
     onUpdate: () => void // Callback to refresh parent data
 }
 
-export function DashboardTabs({ event, user, onUpdate }: DashboardTabsProps) {
+export function DashboardTabs({ event, user, role, onUpdate }: DashboardTabsProps) {
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [refreshPeople, setRefreshPeople] = useState(0)
 
-    const tabs = [
+    const isOrganizer = user?.user_id === event.organizer_id
+    // Roles allowing proposal access: Organizer, Committee, Speaker, Sponsor
+    // If exact role strings are needed, update checks. Assuming 'committee', 'speaker', 'sponsor'.
+    const canViewProposals = isOrganizer || ['committee', 'speaker', 'sponsor'].includes(role || '')
+
+    const allTabs = [
         { name: 'Overview', current: true },
-        { name: 'People', current: false },
-        { name: 'Proposals', current: false },
-        { name: 'Checklist', current: false },
+        { name: 'People', current: false, hidden: !isOrganizer }, // Organizer only for management
+        { name: 'Proposals', current: false, hidden: !canViewProposals },
+        { name: 'Checklist', current: false, hidden: !isOrganizer },
+        { name: 'Settings', current: false, hidden: !isOrganizer },
     ]
+
+    const tabs = allTabs.filter(t => !t.hidden)
 
     return (
         <div className="bg-white rounded-b-[2.5rem] shadow-2xl overflow-hidden min-h-[600px] flex flex-col">
@@ -57,29 +67,44 @@ export function DashboardTabs({ event, user, onUpdate }: DashboardTabsProps) {
 
                 <Tab.Panels className="flex-1 p-8 md:p-12 bg-zinc-50/50">
 
-                    {/* 1. Overview Tab (Now holds Settings) */}
-                    <Tab.Panel className="focus:outline-none animate-fadeIn">
-                        <DashboardTabOverview event={event} onUpdate={onUpdate} />
-                    </Tab.Panel>
+                    {/* 1. Overview Tab */}
+                    {!allTabs[0].hidden && (
+                        <Tab.Panel className="focus:outline-none animate-fadeIn">
+                            <DashboardTabOverview event={event} user={user} onUpdate={onUpdate} />
+                        </Tab.Panel>
+                    )}
 
                     {/* 2. People Tab */}
-                    <Tab.Panel className="focus:outline-none animate-fadeIn">
-                        <DashboardTabPeople
-                            event={event}
-                            onInvite={() => setIsInviteOpen(true)}
-                            key={refreshPeople}
-                        />
-                    </Tab.Panel>
+                    {!allTabs[1].hidden && (
+                        <Tab.Panel className="focus:outline-none animate-fadeIn">
+                            <DashboardTabPeople
+                                event={event}
+                                onInvite={() => setIsInviteOpen(true)}
+                                key={refreshPeople}
+                            />
+                        </Tab.Panel>
+                    )}
 
                     {/* 3. Proposals Tab */}
-                    <Tab.Panel className="focus:outline-none">
-                        <DashboardTabProposals event={event} />
-                    </Tab.Panel>
+                    {!allTabs[2].hidden && (
+                        <Tab.Panel className="focus:outline-none">
+                            <DashboardTabProposals event={event} />
+                        </Tab.Panel>
+                    )}
 
                     {/* 4. Checklist Tab */}
-                    <Tab.Panel className="focus:outline-none">
-                        <DashboardTabChecklist event={event} />
-                    </Tab.Panel>
+                    {!allTabs[3].hidden && (
+                        <Tab.Panel className="focus:outline-none">
+                            <DashboardTabChecklist event={event} />
+                        </Tab.Panel>
+                    )}
+
+                    {/* 5. Settings Tab */}
+                    {!allTabs[4].hidden && (
+                        <Tab.Panel className="focus:outline-none">
+                            <DashboardTabSettings event={event} onUpdate={onUpdate} />
+                        </Tab.Panel>
+                    )}
 
                 </Tab.Panels>
             </Tab.Group>

@@ -12,30 +12,21 @@ interface DashboardTabSettingsProps {
 export function DashboardTabSettings({ event, onUpdate }: DashboardTabSettingsProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
-    const [form, setForm] = useState({
-        title: event.title,
-        description: event.description || '',
-        venue_remark: event.venue_remark || '',
-        max_participant: event.max_participant || 0,
-        start_datetime: event.start_datetime.slice(0, 16), // Format for datetime-local
-        end_datetime: event.end_datetime.slice(0, 16),
-    })
 
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault()
+
+    // We can remove form state for title/desc if this tab no longer edits them.
+    // Keeping simple state for toggles or direct API calls.
+
+    const toggleVisibility = async () => {
         setLoading(true)
+        const newVisibility = event.visibility === 'public' ? 'private' : 'public'
         try {
-            await updateEvent(event.id, {
-                ...form,
-                max_participant: form.max_participant > 0 ? form.max_participant : null,
-                start_datetime: new Date(form.start_datetime).toISOString(),
-                end_datetime: new Date(form.end_datetime).toISOString(),
-            })
-            toast.success('Event settings updated')
+            await updateEvent(event.id, { visibility: newVisibility })
+            toast.success(`Event is now ${newVisibility}`)
             onUpdate()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to update event')
+            toast.error('Failed to change visibility')
         } finally {
             setLoading(false)
         }
@@ -77,85 +68,41 @@ export function DashboardTabSettings({ event, onUpdate }: DashboardTabSettingsPr
     return (
         <div className="space-y-12 animate-fadeIn max-w-6xl mx-auto">
 
-            {/* General Settings */}
+            {/* Visibility Settings */}
             <section>
-
-                <form onSubmit={handleUpdate} className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Event Title</label>
-                            <input
-                                type="text"
-                                value={form.title}
-                                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                className="block w-full rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 font-bold text-zinc-900"
-                            />
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Description</label>
-                            <textarea
-                                rows={4}
-                                value={form.description}
-                                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                className="block w-full rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Venue / Location</label>
-                            <input
-                                type="text"
-                                value={form.venue_remark}
-                                onChange={(e) => setForm({ ...form, venue_remark: e.target.value })}
-                                className="block w-full rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Max Participants</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={form.max_participant}
-                                onChange={(e) => setForm({ ...form, max_participant: parseInt(e.target.value) || 0 })}
-                                className="block w-full rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
-                            />
-                            <p className="text-[10px] text-zinc-400 mt-1 font-medium">Set to 0 for unlimited.</p>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Start Date & Time</label>
-                            <input
-                                type="datetime-local"
-                                value={form.start_datetime}
-                                onChange={(e) => setForm({ ...form, start_datetime: e.target.value })}
-                                className="block w-full rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">End Date & Time</label>
-                            <input
-                                type="datetime-local"
-                                value={form.end_datetime}
-                                onChange={(e) => setForm({ ...form, end_datetime: e.target.value })}
-                                className="block w-full rounded-xl border-zinc-200 bg-zinc-50/50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
-                            />
-                        </div>
+                <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h4 className="text-lg font-bold text-zinc-900 mb-1">
+                            Visibility
+                        </h4>
+                        <p className="text-zinc-500 text-sm font-medium">
+                            {event.visibility === 'public'
+                                ? 'Your event is visible to everyone.'
+                                : 'Only you can see this event.'}
+                        </p>
                     </div>
 
-                    <div className="pt-6 flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-8 py-3 bg-zinc-900 text-white rounded-xl font-bold shadow-lg hover:bg-zinc-800 transition-all hover:-translate-y-1 disabled:opacity-50"
-                        >
-                            {loading ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
-                </form>
+                    <button
+                        onClick={toggleVisibility}
+                        disabled={loading}
+                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 ${event.visibility === 'public' ? 'bg-yellow-400' : 'bg-zinc-200'
+                            }`}
+                    >
+                        <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${event.visibility === 'public' ? 'translate-x-7' : 'translate-x-1'
+                                }`}
+                        />
+                    </button>
+                </div>
             </section>
+
+            {/* Capacity Settings (Read-only logic for now based on previous impl, or we can move the input here if requested, but user said 'Overview should editing those event information') 
+               Wait, "setting is like setting registration, visibility and publishment". Capacity fits in "Event Details" usually, but sometimes limits are settings.
+               User said: "Overview should editing those event information" -> Title, Desc, Date, Venue, Capacity. 
+               Settings -> Registration Status, Visibility, Publish/Unpublish (Danger/Actions).
+               
+               I will NOT put Capacity input here. I will leave Capacity editing in Overview (Event Info form).
+            */}
 
             {/* Registration Controls */}
             {/* Registration Controls */}

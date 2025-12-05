@@ -1,6 +1,8 @@
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { EventDetails } from '@/services/api.types'
+import { Avatar } from './Avatar'
 
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -25,10 +27,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) =
             <div className="group relative h-[450px] w-full rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-zinc-100/10">
                 {/* Background Image */}
                 {event.cover_url ? (
-                    <img
+                    <Image
                         src={event.cover_url}
                         alt={event.title}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        priority={false}
                     />
                 ) : (
                     <div className="absolute inset-0 w-full h-full bg-zinc-800 flex items-center justify-center">
@@ -76,9 +81,16 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) =
                         {/* Organizer - Designed to stand out against image */}
                         <div className="pt-4 mt-2 border-t border-white/10 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-xs font-bold text-white overflow-hidden backdrop-blur-sm shrink-0">
-                                    {event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
-                                </div>
+                                <Avatar
+                                    src={null} // API doesn't seem to return organizer avatar URL yet? check EventDetails. Assuming 'organizer_id' is just an ID. 
+                                    // If strict type check fails, I might need to adjust.
+                                    // Actually, looking at previous code: 
+                                    // {event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
+                                    // It seems we only have ID. So just fallback.
+                                    fallback={event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
+                                    size="sm"
+                                    className="bg-white/10 border border-white/20 backdrop-blur-sm text-white"
+                                />
                                 <div className="text-xs">
                                     <span className="block text-zinc-400 font-medium uppercase tracking-wider text-[10px]">Hosted by</span>
                                     <span className="block text-white font-bold truncate max-w-[120px]">Event Host</span>

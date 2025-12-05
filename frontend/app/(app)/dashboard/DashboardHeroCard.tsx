@@ -20,11 +20,10 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
             className="w-full relative h-[400px] rounded-t-[2.5rem] overflow-hidden group cursor-pointer"
         >
             {/* Background Image */}
-            <Image
+            <img
                 src={coverUrl}
                 alt={event.title}
-                fill
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
 
             {/* Gradient Overlay */}

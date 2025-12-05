@@ -1,18 +1,22 @@
 import React, { useState } from 'react'
-import { EventDetails } from '@/services/api.types'
-import { updateEvent, openRegistration, closeRegistration, deleteEvent } from '@/services/api'
+import { EventDetails, ProfileResponse } from '@/services/api.types'
+import { updateEvent } from '@/services/api'
 import { toast } from 'react-hot-toast'
-import { Switch } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 
 interface DashboardTabOverviewProps {
     event: EventDetails
+    user: ProfileResponse | null
     onUpdate: () => void
 }
 
-export function DashboardTabOverview({ event, onUpdate }: DashboardTabOverviewProps) {
+export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOverviewProps) {
     const router = useRouter()
+    const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
+
+    // Check permissions
+    const canEdit = user?.user_id === event.organizer_id
 
     // Form State
     const [form, setForm] = useState({
@@ -24,12 +28,10 @@ export function DashboardTabOverview({ event, onUpdate }: DashboardTabOverviewPr
         end_datetime: event.end_datetime.slice(0, 16),
     })
 
-    // Toggles State (Derived or separate?)
-    // We use the event's actual state for initial rendering, but local state for optimistic UI updates? 
-    // Usually easier to trigger API calls directly on toggle.
-
     const handleUpdate = async (e?: React.FormEvent) => {
         if (e) e.preventDefault()
+        if (!canEdit) return
+
         setLoading(true)
         try {
             await updateEvent(event.id, {
@@ -39,6 +41,7 @@ export function DashboardTabOverview({ event, onUpdate }: DashboardTabOverviewPr
                 end_datetime: new Date(form.end_datetime).toISOString(),
             })
             toast.success('Event settings updated')
+            setIsEditing(false) // Exit edit mode on success
             onUpdate()
         } catch (error) {
             console.error(error)
@@ -48,126 +51,30 @@ export function DashboardTabOverview({ event, onUpdate }: DashboardTabOverviewPr
         }
     }
 
-    const toggleVisibility = async () => {
-        setLoading(true)
-        const newVisibility = event.visibility === 'public' ? 'private' : 'public'
-        try {
-            await updateEvent(event.id, { visibility: newVisibility })
-            toast.success(`Event is now ${newVisibility}`)
-            onUpdate()
-        } catch (error) {
-            console.error(error)
-            toast.error('Failed to change visibility')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const toggleRegistration = async () => {
-        setLoading(true)
-        try {
-            if (event.registration_status === 'opened') {
-                await closeRegistration(event.id)
-                toast.success('Registration closed')
-            } else {
-                await openRegistration(event.id)
-                toast.success('Registration opened')
-            }
-            onUpdate()
-        } catch (error) {
-            console.error(error)
-            toast.error('Failed to update registration status')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) return
-        setLoading(true)
-        try {
-            await deleteEvent(event.id)
-            toast.success('Event deleted')
-            router.push('/dashboard')
-        } catch (error) {
-            console.error(error)
-            toast.error('Failed to delete event')
-            setLoading(false)
-        }
-    }
-
     return (
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-8">
-
-            {/* Quick Toggles Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                {/* Visibility Toggle */}
-                <div className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm flex items-center justify-between">
-                    <div>
-                        <h4 className="font-bold text-zinc-900">Visibility</h4>
-                        <p className="text-xs text-zinc-500 font-medium">
-                            {event.visibility === 'public' ? 'Visible to everyone' : 'Only you can see this'}
-                        </p>
-                    </div>
-                    <Switch
-                        checked={event.visibility === 'public'}
-                        onChange={toggleVisibility}
-                        className={`${event.visibility === 'public' ? 'bg-yellow-400' : 'bg-zinc-200'
-                            } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2`}
-                    >
-                        <span className={`${event.visibility === 'public' ? 'translate-x-6' : 'translate-x-1'
-                            } inline-block h-5 w-5 transform rounded-full bg-white transition-transform`} />
-                    </Switch>
-                </div>
-
-                {/* Registration Toggle */}
-                <div className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm flex items-center justify-between">
-                    <div>
-                        <h4 className="font-bold text-zinc-900">Registration</h4>
-                        <p className="text-xs text-zinc-500 font-medium">
-                            {event.registration_status === 'opened' ? 'Open for signup' : 'Closed for now'}
-                        </p>
-                    </div>
-                    <Switch
-                        checked={event.registration_status === 'opened'}
-                        onChange={toggleRegistration}
-                        className={`${event.registration_status === 'opened' ? 'bg-green-500' : 'bg-zinc-200'
-                            } relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2`}
-                    >
-                        <span className={`${event.registration_status === 'opened' ? 'translate-x-6' : 'translate-x-1'
-                            } inline-block h-5 w-5 transform rounded-full bg-white transition-transform`} />
-                    </Switch>
-                </div>
-
-                {/* Capacity Toggle (Fake toggle for UI, usually just unlimited input) */}
-                <div className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm flex items-center justify-between">
-                    <div>
-                        <h4 className="font-bold text-zinc-900">Capacity</h4>
-                        <p className="text-xs text-zinc-500 font-medium">
-                            {event.max_participant ? `${event.max_participant} seats` : 'Unlimited seats'}
-                        </p>
-                    </div>
-                    <div className="text-xs font-bold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full">
-                        {event.max_participant ? 'LIMITED' : 'UNLIMITED'}
-                    </div>
-                </div>
-
-            </div>
-
-            {/* Event Details Form */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6">
+            <div className="w-full">
+                {isEditing && canEdit ? (
+                    // EDIT MODE
                     <form onSubmit={handleUpdate} className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm space-y-6">
                         <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-xl font-black text-zinc-900">Event Details</h3>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="px-5 py-2 bg-zinc-900 text-white rounded-xl font-bold text-sm shadow-md hover:bg-zinc-800 transition-all disabled:opacity-50"
-                            >
-                                {loading ? 'Saving...' : 'Save Changes'}
-                            </button>
+                            <h3 className="text-xl font-black text-zinc-900">Edit Event Details</h3>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditing(false)}
+                                    className="px-5 py-2 text-zinc-600 font-bold text-sm hover:text-zinc-900 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="px-5 py-2 bg-zinc-900 text-white rounded-xl font-bold text-sm shadow-md hover:bg-zinc-800 transition-all disabled:opacity-50"
+                                >
+                                    {loading ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -236,25 +143,69 @@ export function DashboardTabOverview({ event, onUpdate }: DashboardTabOverviewPr
                             </div>
                         </div>
                     </form>
-                </div>
+                ) : (
+                    // READ ONLY MODE
+                    <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm space-y-8">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black text-zinc-900 mb-2">{form.title}</h3>
+                                <div className="flex items-center gap-4 text-zinc-500 font-medium text-sm">
+                                    <span className="flex items-center gap-1.5">
+                                        <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {new Date(event.start_datetime).toLocaleDateString()}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <svg className="w-4 h-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        {form.venue_remark || 'No venue set'}
+                                    </span>
+                                </div>
+                            </div>
+                            {canEdit && (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="px-5 py-2 bg-white border-2 border-zinc-200 text-zinc-900 rounded-xl font-bold text-sm shadow-sm hover:border-zinc-300 hover:bg-zinc-50 transition-all flex items-center gap-2"
+                                >
+                                    <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    Edit Details
+                                </button>
+                            )}
+                        </div>
 
-                {/* Right Column: Danger Zone & Other Info */}
-                <div className="space-y-6">
-                    <div className="bg-red-50 rounded-[2rem] border border-red-100 p-8">
-                        <h4 className="text-lg font-bold text-red-900 mb-2">Danger Zone</h4>
-                        <p className="text-red-700/80 text-sm font-medium mb-6">
-                            Deleting this event will remove all data, including participants and proposals. This cannot be undone.
-                        </p>
-                        <button
-                            onClick={handleDelete}
-                            disabled={loading}
-                            className="w-full py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-all shadow-sm"
-                        >
-                            Delete Event
-                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-t border-zinc-100 pt-8">
+                            <div className="md:col-span-2 space-y-2">
+                                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Description</h4>
+                                <p className="text-zinc-700 leading-relaxed whitespace-pre-wrap">
+                                    {form.description || 'No description provided.'}
+                                </p>
+                            </div>
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Capacity</h4>
+                                    <p className="font-bold text-zinc-900 text-lg">
+                                        {event.max_participant ? `${event.max_participant} People` : 'Unlimited'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Time</h4>
+                                    <p className="font-bold text-zinc-900">
+                                        {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <span className="text-zinc-400 font-normal mx-2">to</span>
+                                        {new Date(event.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
+
     )
 }
