@@ -3,10 +3,19 @@
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { PersonIcon, BackpackIcon, ReaderIcon } from '@radix-ui/react-icons'
+import Link from 'next/link'
 
 export default function AdminDashboardPage() {
     const { data: stats, error, isLoading } = useSWR('admin-stats', async () => {
         return adminService.getStats()
+    })
+
+    const { data: expertPending } = useSWR('expert-pending-count', async () => {
+        return adminService.getUsersCount({ role: 'expert_pending' })
+    })
+
+    const { data: sponsorPending } = useSWR('sponsor-pending-count', async () => {
+        return adminService.getUsersCount({ role: 'sponsor_pending' })
     })
 
     if (isLoading) {
@@ -46,6 +55,20 @@ export default function AdminDashboardPage() {
             bg: 'bg-yellow-500/10',
             text: 'text-yellow-600',
         },
+        {
+            name: 'Expert Pending',
+            value: expertPending,
+            icon: ReaderIcon,
+            bg: 'bg-blue-500/10',
+            text: 'text-blue-600',
+        },
+        {
+            name: 'Sponsor Pending',
+            value: sponsorPending,
+            icon: ReaderIcon,
+            bg: 'bg-purple-500/10',
+            text: 'text-purple-600',
+        },
     ]
 
     return (
@@ -64,6 +87,15 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
                 ))}
+            </div>
+
+            <div className="mt-8">
+                <Link
+                    href="/admin/users?role=expert_pending"
+                    className="inline-block px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500"
+                >
+                    Review Expert Pending
+                </Link>
             </div>
         </div>
     )
