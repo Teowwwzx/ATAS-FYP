@@ -178,6 +178,11 @@ export const adminService = {
         return response.data
     },
 
+    broadcastEmailTemplate: async (data: import('./api.types').BroadcastEmailTemplateRequest) => {
+        const response = await api.post<{ count: number }>('/admin/notifications/broadcast-email', data)
+        return response.data
+    },
+
     // --- Counts ---
     getUsersCount: async (params?: {
         email?: string
@@ -245,6 +250,40 @@ export const adminService = {
 
     testSendEmailTemplate: async (id: string, email: string, variables: Record<string, string>) => {
         const response = await api.post<void>(`/admin/email-templates/${id}/test-send`, { email, variables })
+        return response.data
+    },
+
+    // --- Reviews ---
+    getReviews: async (params?: {
+        reviewer_email?: string
+        reviewee_email?: string
+        event_id?: string
+        min_rating?: number
+        max_rating?: number
+        start_after?: string
+        end_before?: string
+        page?: number
+        page_size?: number
+    }) => {
+        const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews`, { params })
+        return response.data
+    },
+
+    getReviewsCount: async (params?: {
+        reviewer_email?: string
+        reviewee_email?: string
+        event_id?: string
+        min_rating?: number
+        max_rating?: number
+        start_after?: string
+        end_before?: string
+    }) => {
+        const response = await api.get<{ total_count: number }>(`/reviews/count`, { params })
+        return response.data.total_count
+    },
+
+    deleteReview: async (reviewId: string, reason?: string) => {
+        const response = await api.delete<import('./api.types').ReviewResponse>(`/reviews/${reviewId}`, { data: { reason } })
         return response.data
     }
 }

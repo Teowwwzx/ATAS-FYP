@@ -22,19 +22,22 @@ export default function AdminDashboardPage() {
             name: 'Total Users',
             value: stats?.total_users,
             icon: PersonIcon,
-            color: 'bg-blue-500',
+            bg: 'bg-blue-500/10',
+            text: 'text-blue-600',
         },
         {
             name: 'Total Organizations',
             value: stats?.total_organizations,
             icon: BackpackIcon,
-            color: 'bg-purple-500',
+            bg: 'bg-purple-500/10',
+            text: 'text-purple-600',
         },
         {
             name: 'Audit Logs',
             value: stats?.total_audit_logs,
             icon: ReaderIcon,
-            color: 'bg-orange-500',
+            bg: 'bg-orange-500/10',
+            text: 'text-orange-600',
         },
     ]
 
@@ -45,8 +48,8 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {cards.map((card) => (
                     <div key={card.name} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center">
-                        <div className={`p-4 rounded-lg ${card.color} bg-opacity-10 mr-4`}>
-                            <card.icon className={`w-8 h-8 ${card.color.replace('bg-', 'text-')}`} />
+                        <div className={`p-4 rounded-lg ${card.bg} mr-4`}>
+                            <card.icon className={`w-8 h-8 ${card.text}`} />
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-500">{card.name}</p>

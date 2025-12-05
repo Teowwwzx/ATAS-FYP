@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 import uuid
@@ -156,12 +156,17 @@ def admin_count_reviews(
     return {"total_count": total}
 
 @router.delete("/reviews/{review_id}", response_model=ReviewResponse)
-def admin_delete_review(review_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
+def admin_delete_review(
+    review_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+    reason: str | None = Body(None),
+):
     item = db.query(Review).filter(Review.id == review_id, Review.deleted_at.is_(None)).first()
     if not item:
         raise HTTPException(status_code=404, detail="Review not found")
     item.deleted_at = func.now()
     db.add(item)
     db.commit()
-    log_admin_action(db, current_user.id, "review.delete", "review", review_id)
+    log_admin_action(db, current_user.id, "review.delete", "review", review_id, details=(reason or None))
     return item

@@ -41,7 +41,12 @@ export default function UsersPage() {
 
     const { data: totalCount } = useSWR(
         ['/users/count', { ...queryParams, page: undefined }],
-        () => adminService.getUsersCount({ ...queryParams, page: undefined })
+        () => adminService.getUsersCount({
+            email: queryParams.email,
+            role: queryParams.role,
+            status: queryParams.status,
+            is_verified: queryParams.is_verified
+        })
     )
 
     const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0
