@@ -220,5 +220,31 @@ export const adminService = {
     }) => {
         const response = await api.get<{ total_count: number }>('/admin/audit-logs/count', { params })
         return response.data.total_count
+    },
+
+    // --- Email Templates ---
+    getEmailTemplates: async () => {
+        const response = await api.get<import('./api.types').EmailTemplate[]>('/admin/email-templates')
+        return response.data
+    },
+
+    createEmailTemplate: async (data: Partial<import('./api.types').EmailTemplate>) => {
+        const response = await api.post<import('./api.types').EmailTemplate>('/admin/email-templates', data)
+        return response.data
+    },
+
+    updateEmailTemplate: async (id: string, data: Partial<import('./api.types').EmailTemplate>) => {
+        const response = await api.put<import('./api.types').EmailTemplate>(`/admin/email-templates/${id}`, data)
+        return response.data
+    },
+
+    deleteEmailTemplate: async (id: string) => {
+        const response = await api.delete<void>(`/admin/email-templates/${id}`)
+        return response.data
+    },
+
+    testSendEmailTemplate: async (id: string, email: string, variables: Record<string, string>) => {
+        const response = await api.post<void>(`/admin/email-templates/${id}/test-send`, { email, variables })
+        return response.data
     }
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { adminService } from '@/services/admin.service'
+import useSWR from 'swr'
 import { toast } from 'react-hot-toast'
 import { PaperPlaneIcon } from '@radix-ui/react-icons'
 
@@ -14,6 +15,10 @@ export default function AdminNotificationsPage() {
         link_url: ''
     })
     const [history, setHistory] = useState<any[]>([])
+    const { data: templates } = useSWR('admin-email-templates', () => adminService.getEmailTemplates())
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+    const [templateVars, setTemplateVars] = useState<string>('')
+    const [sendBoth, setSendBoth] = useState<boolean>(false)
 
     const fetchHistory = async () => {
         try {
@@ -34,24 +39,49 @@ export default function AdminNotificationsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!formData.title || !formData.content) {
-            toast.error('Title and content are required')
-            return
+        if (!selectedTemplateId) {
+            if (!formData.title || !formData.content) {
+                toast.error('Title and content are required')
+                return
+            }
         }
 
         setIsLoading(true)
         try {
-            const res = await adminService.broadcastNotification({
-                title: formData.title,
-                content: formData.content,
-                target_role: formData.target_role || undefined,
-                link_url: formData.link_url || undefined
-            })
-            toast.success(`Notification sent to ${res.count} users`)
-            setFormData({ title: '', content: '', target_role: '', link_url: '' })
-            fetchHistory() // Refresh history
+            if (selectedTemplateId) {
+                let vars: Record<string, string> = {}
+                try { vars = JSON.parse(templateVars || '{}') } catch {}
+                const res = await adminService.broadcastEmailTemplate({
+                    template_id: selectedTemplateId,
+                    variables: vars,
+                    target_role: formData.target_role || undefined,
+                })
+                toast.success(`Email broadcast queued to ${res.count} users`)
+                setSelectedTemplateId('')
+                setTemplateVars('')
+                if (sendBoth) {
+                    const res2 = await adminService.broadcastNotification({
+                        title: formData.title || 'Notification',
+                        content: formData.content || 'You have a new email message. Please check your inbox.',
+                        target_role: formData.target_role || undefined,
+                        link_url: formData.link_url || undefined
+                    })
+                    toast.success(`Notification sent to ${res2.count} users`)
+                }
+                setFormData(prev => ({ ...prev, title: '', content: '' }))
+            } else {
+                const res = await adminService.broadcastNotification({
+                    title: formData.title,
+                    content: formData.content,
+                    target_role: formData.target_role || undefined,
+                    link_url: formData.link_url || undefined
+                })
+                toast.success(`Notification sent to ${res.count} users`)
+                setFormData({ title: '', content: '', target_role: '', link_url: '' })
+            }
+            fetchHistory()
         } catch (error) {
-            toast.error('Failed to send notification')
+            toast.error('Failed to send')
             console.error(error)
         } finally {
             setIsLoading(false)
@@ -97,6 +127,33 @@ export default function AdminNotificationsPage() {
                                 />
                             </div>
 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Or choose an Email Template
+                                </label>
+                                <select
+                                    value={selectedTemplateId}
+                                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
+                                >
+                                    <option value="">None</option>
+                                    {(templates || []).map(t => (
+                                        <option key={t.id} value={t.id}>{t.name} — {t.subject}</option>
+                                    ))}
+                                </select>
+                                {selectedTemplateId && (
+                                    <div className="mt-3">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Template Variables (JSON)</label>
+                                        <textarea
+                                            value={templateVars}
+                                            onChange={(e) => setTemplateVars(e.target.value)}
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors h-24 font-mono text-xs"
+                                            placeholder='{"user_name":"Alice","verification_link":"https://..."}'
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -126,6 +183,10 @@ export default function AdminNotificationsPage() {
                                         className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
                                         placeholder="/dashboard"
                                     />
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <input id="sendBoth" type="checkbox" checked={sendBoth} onChange={(e)=>setSendBoth(e.target.checked)} />
+                                        <label htmlFor="sendBoth" className="text-sm text-gray-700">Also send in-app notification</label>
+                                    </div>
                                 </div>
                             </div>
 

@@ -9,7 +9,8 @@ import {
     ReaderIcon,
     ExitIcon,
     CalendarIcon,
-    BellIcon
+    BellIcon,
+    EnvelopeClosedIcon
 } from '@radix-ui/react-icons'
 import { useRouter } from 'next/navigation'
 
@@ -25,6 +26,7 @@ const menuItems = [
     { name: 'Categories', href: '/admin/categories', icon: ReaderIcon, roles: ['admin'] },
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon, roles: ['admin'] },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: ReaderIcon, roles: ['admin'] },
+    { name: 'Email Templates', href: '/admin/email-templates', icon: EnvelopeClosedIcon, roles: ['admin'] },
 ]
 
 export function AdminSidebar() {
@@ -75,7 +77,7 @@ export function AdminSidebar() {
                 <button
                     onClick={async () => {
                         localStorage.removeItem('atas_token')
-                        window.location.href = '/login'
+                        window.location.href = '/admin/login'
                     }}
                     className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 hover:text-red-900 mt-2"
                 >

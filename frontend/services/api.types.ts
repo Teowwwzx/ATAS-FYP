@@ -65,6 +65,7 @@ export interface ProfileResponse {
     id: string
     user_id: string
     full_name: string
+    email?: string
     bio?: string
     avatar_url?: string
     cover_url?: string
@@ -277,6 +278,7 @@ export interface CategoryCreate {
 export interface CategoryResponse {
     id: string
     name: string
+    created_at?: string
 }
 
 // --- Checklist Types ---
@@ -359,14 +361,12 @@ export interface BroadcastNotificationRequest {
     link_url?: string
 }
 
-// --- Review Types ---
-
-export interface ReviewResponse {
+export interface EmailTemplate {
     id: string
-    event_id: string
-    reviewer_id: string
-    reviewee_id: string
-    rating: number
-    comment?: string | null
-    created_at: string
+    name: string
+    subject: string
+    body_html: string
+    variables: string[]
+    created_at?: string
+    updated_at?: string
 }

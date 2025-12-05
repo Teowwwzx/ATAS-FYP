@@ -7,6 +7,7 @@ import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRe
 import { toast } from 'react-hot-toast'
 // @ts-ignore
 import { debounce } from 'lodash'
+import { EventCard } from '@/components/ui/EventCard'
 
 export default function DiscoverPage() {
     const [activeTab, setActiveTab] = useState<'events' | 'organizations' | 'people'>('events')
@@ -104,7 +105,7 @@ export default function DiscoverPage() {
             setFintechEvents(fintech)
             setAiEvents(ai)
             setCareerEvents(career)
-            
+
             // Also load initial "all" events
             loadFilteredEvents()
         } catch (err) {
@@ -147,50 +148,6 @@ export default function DiscoverPage() {
 
     const filteredOrgs = orgs.filter(o => o.name.toLowerCase().includes(orgSearch.toLowerCase()))
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-        })
-    }
-
-    const EventCard = ({ event }: { event: EventDetails }) => (
-        <Link key={event.id} href={`/events/${event.id}`} className="group h-full block">
-            <div className="flex flex-col h-full bg-white rounded-[2rem] shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-2">
-                <div className="h-48 bg-zinc-100 relative overflow-hidden">
-                    {event.cover_url ? (
-                        <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                    ) : (
-                        <div className="w-full h-full bg-yellow-400 flex items-center justify-center">
-                            <span className="text-zinc-900 text-6xl font-black opacity-20 select-none">{event.title.charAt(0)}</span>
-                        </div>
-                    )}
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-900 shadow-sm uppercase tracking-wide">
-                        {event.format.replace('_', ' ')}
-                    </div>
-                </div>
-                <div className="flex-1 p-6 flex flex-col justify-between">
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full uppercase tracking-wide">{event.type}</span>
-                            <span className={`text-xs font-bold uppercase tracking-wider ${event.registration_type === 'free' ? 'text-green-600' : 'text-zinc-400'}`}>{event.registration_type}</span>
-                        </div>
-                        <h3 className="text-xl font-black text-zinc-900 group-hover:text-yellow-500 transition-colors mb-2 leading-tight line-clamp-2">{event.title}</h3>
-                        <p className="text-zinc-500 text-sm line-clamp-2 font-medium leading-relaxed">{event.description || 'No description provided.'}</p>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-zinc-50 flex items-center text-sm font-bold text-zinc-600">
-                        <svg className="flex-shrink-0 mr-2 h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {formatDate(event.start_datetime)}
-                    </div>
-                </div>
-            </div>
-        </Link>
-    )
 
     return (
         <div>
@@ -251,7 +208,7 @@ export default function DiscoverPage() {
                                     onChange={(e) => setEventSearch(e.target.value)}
                                 />
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setEventFiltersOpen(!eventFiltersOpen)}
                                 className={`px-6 py-4 rounded-2xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 ${eventFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
                             >
@@ -265,8 +222,8 @@ export default function DiscoverPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Registration Status</label>
-                                        <select 
-                                            value={filterRegStatus} 
+                                        <select
+                                            value={filterRegStatus}
                                             onChange={(e) => setFilterRegStatus(e.target.value as EventRegistrationStatus)}
                                             className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
                                         >
@@ -277,8 +234,8 @@ export default function DiscoverPage() {
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Cost</label>
-                                        <select 
-                                            value={filterRegType} 
+                                        <select
+                                            value={filterRegType}
                                             onChange={(e) => setFilterRegType(e.target.value as EventRegistrationType)}
                                             className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
                                         >
@@ -289,8 +246,8 @@ export default function DiscoverPage() {
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Venue Type</label>
-                                        <select 
-                                            value={filterEventType} 
+                                        <select
+                                            value={filterEventType}
                                             onChange={(e) => setFilterEventType(e.target.value as EventType)}
                                             className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
                                         >
@@ -302,7 +259,7 @@ export default function DiscoverPage() {
                                     </div>
                                 </div>
                                 <div className="mt-6 flex justify-end">
-                                    <button 
+                                    <button
                                         onClick={() => { setFilterRegStatus(''); setFilterRegType(''); setFilterEventType('') }}
                                         className="text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
                                     >
@@ -342,7 +299,7 @@ export default function DiscoverPage() {
                                 <div key={cat.title}>
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-2xl font-black text-zinc-900">{cat.title}</h2>
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 setEventSearch(cat.title)
                                                 window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -369,7 +326,7 @@ export default function DiscoverPage() {
                                 {eventSearch || filterRegStatus || filterRegType || filterEventType ? 'Search Results' : 'All Events'}
                             </h2>
                         </div>
-                        
+
                         {eventsLoading ? (
                             <div className="flex justify-center items-center h-64">
                                 <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-yellow-400"></div>
@@ -476,7 +433,7 @@ export default function DiscoverPage() {
                                     onChange={(e) => setPeopleSearch(e.target.value)}
                                 />
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setPeopleFiltersOpen(!peopleFiltersOpen)}
                                 className={`px-6 py-4 rounded-2xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 ${peopleFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
                             >
@@ -490,8 +447,8 @@ export default function DiscoverPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Role</label>
-                                        <select 
-                                            value={peopleRole} 
+                                        <select
+                                            value={peopleRole}
                                             onChange={(e) => setPeopleRole(e.target.value)}
                                             className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
                                         >
@@ -503,9 +460,9 @@ export default function DiscoverPage() {
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Skill / Specialism</label>
-                                        <input 
-                                            type="text" 
-                                            value={peopleSkill} 
+                                        <input
+                                            type="text"
+                                            value={peopleSkill}
                                             onChange={(e) => setPeopleSkill(e.target.value)}
                                             placeholder="e.g. Python, Design, Marketing"
                                             className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
@@ -513,7 +470,7 @@ export default function DiscoverPage() {
                                     </div>
                                 </div>
                                 <div className="mt-6 flex justify-end">
-                                    <button 
+                                    <button
                                         onClick={() => { setPeopleRole(''); setPeopleSkill('') }}
                                         className="text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
                                     >

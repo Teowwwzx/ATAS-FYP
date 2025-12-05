@@ -66,7 +66,9 @@ export default function AdminCategoriesPage() {
                                     {categories.map((c) => (
                                         <tr key={c.id}>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{c.name}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{c.created_at ? new Date(c.created_at).toLocaleString() : '-'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {c.created_at ? new Date(c.created_at).toLocaleDateString() : '-'}
+                                            </td>
                                         </tr>
                                     ))}
                                     {categories.length === 0 && (

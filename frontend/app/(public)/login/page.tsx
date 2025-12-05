@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 import { getApiErrorMessage } from '@/lib/utils'
 
+import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 import { login, getMyProfile } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 
@@ -57,6 +58,8 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex bg-amber-50 font-sans">
+            <LoadingBackdrop isLoading={isLoading} />
+
             {/* Left Side - Playful Yellow */}
             <div className="hidden lg:flex lg:w-1/2 bg-yellow-400 relative flex-col justify-between p-12 lg:p-16 overflow-hidden">
                 {/* Abstract Shapes */}
