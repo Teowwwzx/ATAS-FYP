@@ -37,7 +37,10 @@ export default function OrganizationsPage() {
 
     const { data: totalCount } = useSWR(
         ['/organizations/count', { ...queryParams, page: undefined, page_size: undefined }],
-        () => adminService.getOrganizationsCount({ ...queryParams, page: undefined, page_size: undefined })
+        () => adminService.getOrganizationsCount({
+            name: queryParams.name,
+            type: queryParams.type
+        })
     )
 
     const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0

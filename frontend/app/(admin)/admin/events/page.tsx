@@ -40,7 +40,13 @@ export default function AdminEventsPage() {
 
     const { data: totalCount } = useSWR(
         ['/events/count', { ...queryParams, page: undefined }],
-        () => adminService.getEventsCount({ ...queryParams, page: undefined })
+        () => adminService.getEventsCount({
+            q_text: queryParams.q_text,
+            status: queryParams.status,
+            type: queryParams.type,
+            include_all_visibility: queryParams.include_all_visibility,
+            organizer_id: queryParams.organizer_id
+        })
     )
 
     const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0

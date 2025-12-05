@@ -16,20 +16,40 @@ export interface AdminStats {
     total_users: number
     total_organizations: number
     total_audit_logs: number
+    pending_approvals: number
 }
 
 export const adminService = {
     // --- Stats ---
     getStats: async (): Promise<AdminStats> => {
-        const [users, orgs, logs] = await Promise.all([
+        const pendingRoles = [
+            'expert_pending',
+            'organizer_pending',
+            'sponsor_pending',
+            'committee_pending',
+            'student_pending',
+            'customer_support_pending',
+            'content_moderator_pending'
+        ]
+
+        const [users, orgs, logs, pendingCounts] = await Promise.all([
             api.get<{ total_count: number }>('/users/search/count'),
             api.get<{ total_count: number }>('/organizations/count'),
-            api.get<{ total_count: number }>('/admin/audit-logs/count')
+            api.get<{ total_count: number }>('/admin/audit-logs/count'),
+            Promise.all(
+                pendingRoles.map((role) =>
+                    api.get<{ total_count: number }>('/users/search/count', { params: { role } })
+                )
+            )
         ])
+
+        const pending_approvals = pendingCounts.reduce((sum, res) => sum + (res.data.total_count || 0), 0)
+
         return {
             total_users: users.data.total_count,
             total_organizations: orgs.data.total_count,
-            total_audit_logs: logs.data.total_count
+            total_audit_logs: logs.data.total_count,
+            pending_approvals
         }
     },
 
@@ -183,6 +203,11 @@ export const adminService = {
         return response.data
     },
 
+    broadcastEmailTemplate: async (data: import('./api.types').BroadcastEmailTemplateRequest) => {
+        const response = await api.post<{ count: number }>('/admin/notifications/broadcast-email', data)
+        return response.data
+    },
+
     // --- Counts ---
     getUsersCount: async (params?: {
         email?: string
@@ -231,120 +256,61 @@ export const adminService = {
 
     // --- Email Templates ---
     getEmailTemplates: async () => {
-        try {
-            const response = await api.get<EmailTemplate[]>('/admin/email-templates')
-            return response.data
-        } catch {
-            const load = () => {
-                try {
-                    if (typeof window === 'undefined') return []
-                    const raw = localStorage.getItem('atas_admin_email_templates')
-                    return raw ? (JSON.parse(raw) as EmailTemplate[]) : []
-                } catch { return [] }
-            }
-            const save = (items: EmailTemplate[]) => {
-                try {
-                    if (typeof window === 'undefined') return
-                    localStorage.setItem('atas_admin_email_templates', JSON.stringify(items))
-                } catch { }
-            }
-            let items = load()
-            if (items.length === 0) {
-                const mkId = () => `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
-                items = [
-                    {
-                        id: mkId(),
-                        name: 'email_verification',
-                        subject: 'Verify your email',
-                        body_html: '<p>Hello {{user_name}},</p><p>Please verify your email by clicking <a href="{{verification_link}}">this link</a>.</p>',
-                        variables: ['user_name', 'verification_link'],
-                        updated_at: new Date().toISOString()
-                    },
-                    {
-                        id: mkId(),
-                        name: 'forgot_password',
-                        subject: 'Reset your password',
-                        body_html: '<p>Hello {{user_name}},</p><p>Reset your password using <a href="{{reset_link}}">this link</a>.</p>',
-                        variables: ['user_name', 'reset_link'],
-                        updated_at: new Date().toISOString()
-                    }
-                ]
-                save(items)
-            }
-            return items
-        }
-    },
-
-    getEmailTemplate: async (id: string) => {
-        const response = await api.get<EmailTemplate>(`/admin/email-templates/${id}`)
+        const response = await api.get<import('./api.types').EmailTemplate[]>('/admin/email-templates')
         return response.data
     },
 
-    createEmailTemplate: async (data: EmailTemplateCreate) => {
-        try {
-            const response = await api.post<EmailTemplate>('/admin/email-templates', data)
-            return response.data
-        } catch (_err: unknown) {
-            try {
-                if (typeof window === 'undefined') throw e
-                const raw = localStorage.getItem('atas_admin_email_templates')
-                const items: EmailTemplate[] = raw ? JSON.parse(raw) : []
-                const mkId = () => `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
-                const created: EmailTemplate = { id: mkId(), name: data.name, subject: data.subject, body_html: data.body_html, variables: [], updated_at: new Date().toISOString() }
-                items.push(created)
-                localStorage.setItem('atas_admin_email_templates', JSON.stringify(items))
-                return created
-            } catch { throw _err }
-        }
+    createEmailTemplate: async (data: Partial<import('./api.types').EmailTemplate>) => {
+        const response = await api.post<import('./api.types').EmailTemplate>('/admin/email-templates', data)
+        return response.data
     },
 
-    updateEmailTemplate: async (id: string, data: EmailTemplateUpdate) => {
-        try {
-            const response = await api.put<EmailTemplate>(`/admin/email-templates/${id}`, data)
-            return response.data
-        } catch (_err: unknown) {
-            try {
-                if (typeof window === 'undefined') throw _err
-                const raw = localStorage.getItem('atas_admin_email_templates')
-                const items: EmailTemplate[] = raw ? JSON.parse(raw) : []
-                const idx = items.findIndex(t => t.id === id)
-                if (idx >= 0) {
-                    const next = { ...items[idx], ...data, updated_at: new Date().toISOString() }
-                    items[idx] = next
-                    localStorage.setItem('atas_admin_email_templates', JSON.stringify(items))
-                    return next
-                }
-                throw _err
-            } catch { throw _err }
-        }
+    updateEmailTemplate: async (id: string, data: Partial<import('./api.types').EmailTemplate>) => {
+        const response = await api.put<import('./api.types').EmailTemplate>(`/admin/email-templates/${id}`, data)
+        return response.data
     },
 
     deleteEmailTemplate: async (id: string) => {
-        try {
-            const response = await api.delete<void>(`/admin/email-templates/${id}`)
-            return response.data
-        } catch (_err: unknown) {
-            try {
-                if (typeof window === 'undefined') throw _err
-                const raw = localStorage.getItem('atas_admin_email_templates')
-                const items: EmailTemplate[] = raw ? JSON.parse(raw) : []
-                const next = items.filter(t => t.id !== id)
-                localStorage.setItem('atas_admin_email_templates', JSON.stringify(next))
-                return undefined
-            } catch { throw _err }
-        }
+        const response = await api.delete<void>(`/admin/email-templates/${id}`)
+        return response.data
     },
 
-    // --- Email Templates: Test Send ---
-    testSendEmailTemplate: async (id: string, toEmail: string, variables?: Record<string, string>) => {
-        try {
-            const response = await api.post<{ message: string }>(`/admin/email-templates/${id}/test-send`, {
-                to_email: toEmail,
-                variables: variables || {}
-            })
-            return response.data
-        } catch {
-            return { message: 'ok' }
-        }
+    testSendEmailTemplate: async (id: string, email: string, variables: Record<string, string>) => {
+        const response = await api.post<void>(`/admin/email-templates/${id}/test-send`, { email, variables })
+        return response.data
+    },
+
+    // --- Reviews ---
+    getReviews: async (params?: {
+        reviewer_email?: string
+        reviewee_email?: string
+        event_id?: string
+        min_rating?: number
+        max_rating?: number
+        start_after?: string
+        end_before?: string
+        page?: number
+        page_size?: number
+    }) => {
+        const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews`, { params })
+        return response.data
+    },
+
+    getReviewsCount: async (params?: {
+        reviewer_email?: string
+        reviewee_email?: string
+        event_id?: string
+        min_rating?: number
+        max_rating?: number
+        start_after?: string
+        end_before?: string
+    }) => {
+        const response = await api.get<{ total_count: number }>(`/reviews/count`, { params })
+        return response.data.total_count
+    },
+
+    deleteReview: async (reviewId: string, reason?: string) => {
+        const response = await api.delete<import('./api.types').ReviewResponse>(`/reviews/${reviewId}`, { data: { reason } })
+        return response.data
     }
 }

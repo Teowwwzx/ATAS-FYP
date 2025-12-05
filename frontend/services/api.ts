@@ -1,4 +1,3 @@
-// frontend/services/api.ts
 import axios from 'axios'
 import { isTokenExpired, logout as clientLogout } from '@/lib/auth'
 import {
@@ -38,7 +37,7 @@ import {
   EventFormat,
   EventRegistrationType,
   EventRegistrationStatus,
-} from './api.types' // We'll create this types file next
+} from './api.types'
 
 // 1. Create an Axios instance
 const api = axios.create({
@@ -50,11 +49,6 @@ const api = axios.create({
 
 // 2. --- Authentication Service ---
 
-/**
- * Logs in a user.
- * Note: Uses form-data ('application/x-www-form-urlencoded')
- * as required by your backend's OAuth2PasswordRequestForm.
- */
 export const login = async ({ email, password }: AuthLogin) => {
   const params = new URLSearchParams()
   params.append('username', email)
@@ -72,11 +66,6 @@ export const login = async ({ email, password }: AuthLogin) => {
   return response.data
 }
 
-/**
- * Registers a new user.
- * Note: Uses JSON ('application/json') as required by your
- * Pydantic 'UserCreate' schema.
- */
 export const register = async ({ email, password }: AuthRegister) => {
   const response = await api.post<RegisterSuccessResponse>('/auth/register', {
     email,
@@ -85,9 +74,6 @@ export const register = async ({ email, password }: AuthRegister) => {
   return response.data
 }
 
-/**
- * Verifies a user's email using the token from the URL.
- */
 export const verifyEmail = async (token: string) => {
   const response = await api.get<VerifyEmailSuccessResponse>(
     `/auth/verify/${token}`,
@@ -95,20 +81,12 @@ export const verifyEmail = async (token: string) => {
   return response.data
 }
 
-/**
- * Sends a password reset email.
- */
 export const forgotPassword = async (email: string) => {
   const response = await api.post<{ message: string }>('/email/forgot-password', { email })
   return response.data
 }
 
-/**
- * Resets the user's password using the token.
- */
 export const resetPassword = async (data: import('./api.types').PasswordReset) => {
-  // The backend expects 'token' as a query param and 'password' in the body
-  // Based on: def reset_password(token: str, request: PasswordReset, ...)
   const response = await api.post<{ message: string }>(
     `/email/reset-password?token=${encodeURIComponent(data.token)}`,
     { password: data.password }
@@ -116,14 +94,9 @@ export const resetPassword = async (data: import('./api.types').PasswordReset) =
   return response.data
 }
 
-// 4. --- Onboarding Service (New Function) ---
+// 4. --- Onboarding Service ---
 
-/**
- * Completes the user's first-time onboarding.
- * Sends the full name and selected role.
- */
 export const completeOnboarding = async (data: OnboardingData) => {
-  // This uses the PUT /me/onboarding endpoint you just created
   const response = await api.put<ProfileResponse>('/profiles/me/onboarding', data)
   return response.data
 }
@@ -160,9 +133,7 @@ export const updateCoverPicture = async (file: File) => {
   return response.data
 }
 
-// 5. --- API Interceptor (Future-proofing) ---
-// This code will automatically add the JWT token to *every*
-// API request after the user logs in.
+// 5. --- API Interceptor ---
 
 api.interceptors.request.use(
   (config) => {
@@ -261,22 +232,6 @@ export const getMyEventHistory = async (
   return response.data
 }
 
-export const getUserEventHistory = async (
-  userId: string,
-  roleFilter?: 'organized' | 'participant' | 'speaker' | 'sponsor',
-) => {
-  const url = roleFilter
-    ? `/events/user/${userId}/history?role_filter=${encodeURIComponent(roleFilter)}`
-    : `/events/user/${userId}/history`
-  const response = await api.get<EventDetails[]>(url)
-  return response.data
-}
-
-export const getReviewsByUser = async (userId: string) => {
-  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/by-user/${userId}`)
-  return response.data
-}
-
 export const joinPublicEvent = async (eventId: string) => {
   const response = await api.post<EventParticipantDetails>(`/events/${eventId}/join`)
   return response.data
@@ -344,6 +299,25 @@ export const findProfiles = async (params: { email?: string; name?: string; skil
 
 export const getPublicProfiles = async () => {
   const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles`)
+  return response.data
+}
+
+// --- Reviews ---
+
+export const getReviewsByUser = async (userId: string) => {
+  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/by-user/${userId}`)
+  return response.data
+}
+
+export const createReview = async (data: import('./api.types').ReviewCreate) => {
+  const response = await api.post<import('./api.types').ReviewResponse>(`/reviews`, data)
+  return response.data
+}
+
+// --- My Checklist Items ---
+
+export const getMyChecklistItems = async (onlyOpen: boolean = true) => {
+  const response = await api.get<import('./api.types').EventChecklistItemResponse[]>(`/events/checklist/me`, { params: { only_open: onlyOpen } })
   return response.data
 }
 
@@ -505,21 +479,12 @@ api.interceptors.response.use(
       // Normalize network errors to a consistent shape
       error.response = error.response || { status: 0, data: { detail: 'Network Error' } }
     }
-    if (error?.response?.status === 503) {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/maintenance') {
-        window.location.href = '/maintenance'
-      }
-    }
     if (error?.response?.status === 401) {
       try {
         localStorage.removeItem('atas_token')
       } catch { }
       if (typeof window !== 'undefined') {
-        const path = window.location.pathname || ''
-        const target = path.startsWith('/admin') ? '/admin/login' : '/login'
-        if (path !== target) {
-          window.location.href = target
-        }
+        window.location.href = '/login'
       }
     }
     return Promise.reject(error)
@@ -556,10 +521,55 @@ export const endEvent = async (eventId: string) => {
   }
 }
 
-// Optional frontend maintenance gate via env var
-if (typeof window !== 'undefined') {
-  const mm = (process.env.NEXT_PUBLIC_MAINTENANCE_MODE || '').toLowerCase()
-  if ((mm === '1' || mm === 'true') && window.location.pathname !== '/maintenance') {
-    window.location.href = '/maintenance'
-  }
+// --- Notification Service (Mock) ---
+
+export interface NotificationItem {
+  id: string
+  title: string
+  message: string
+  created_at: string
+  read: boolean
+  type: 'info' | 'invite' | 'alert'
+  link?: string
+}
+
+export const getNotifications = async () => {
+  // Mock response
+  return new Promise<NotificationItem[]>((resolve) => {
+    setTimeout(() => {
+      resolve([
+        {
+          id: '1',
+          title: 'Welcome to ATAS!',
+          message: 'Thanks for joining. Create your first event now.',
+          created_at: new Date().toISOString(),
+          read: false,
+          type: 'info',
+          link: '/dashboard'
+        },
+        {
+          id: '2',
+          title: 'New Feature',
+          message: 'You can now invite speakers directly from your dashboard.',
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          read: true,
+          type: 'info'
+        }
+      ])
+    }, 500)
+  })
+}
+
+export const markNotificationRead = async (id: string) => {
+  // Mock response
+  return new Promise<void>((resolve) => {
+    setTimeout(() => resolve(), 200)
+  })
+}
+
+export const markAllNotificationsRead = async () => {
+  // Mock response
+  return new Promise<void>((resolve) => {
+    setTimeout(() => resolve(), 300)
+  })
 }

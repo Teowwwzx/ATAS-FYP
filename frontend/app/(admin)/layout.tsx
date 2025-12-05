@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { logout } from '@/services/api'
 import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
+import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell'
 
 export default function AdminLayout({
     children,
@@ -55,6 +56,11 @@ export default function AdminLayout({
         <div className="flex min-h-screen bg-gray-50">
             <AdminSidebar />
             <main className="flex-1 overflow-y-auto">
+                <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+                    <div className="px-8 py-4 flex items-center justify-end">
+                        <AdminNotificationBell />
+                    </div>
+                </div>
                 <div className="p-8">
                     {children}
                 </div>

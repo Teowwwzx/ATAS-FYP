@@ -57,7 +57,7 @@ export interface VerifyEmailSuccessResponse {
 
 export interface OnboardingData {
     full_name: string
-    role: 'student' | 'expert' // Based on your onboarding Q&A
+    role: 'student' | 'expert' | 'sponsor'
 }
 
 // Based on your profile_schema.py -> ProfileResponse
@@ -65,6 +65,7 @@ export interface ProfileResponse {
     id: string
     user_id: string
     full_name: string
+    email?: string
     bio?: string
     avatar_url?: string
     cover_url?: string
@@ -75,6 +76,8 @@ export interface ProfileResponse {
     website_url?: string
     visibility: 'public' | 'private'
     tags?: { id: string; name: string }[]
+    average_rating?: number
+    reviews_count?: number
 }
 
 export interface ProfileUpdate {
@@ -277,6 +280,7 @@ export interface CategoryCreate {
 export interface CategoryResponse {
     id: string
     name: string
+    created_at?: string
 }
 
 // --- Checklist Types ---
@@ -295,6 +299,27 @@ export interface EventChecklistItemUpdate {
     assigned_user_id?: string | null
     sort_order?: number | null
     due_datetime?: string | null
+}
+
+// --- Review Types ---
+
+export interface ReviewCreate {
+    event_id: string
+    reviewee_id: string
+    rating: number
+    comment?: string | null
+}
+
+export interface ReviewResponse {
+    id: string
+    event_id: string
+    org_id?: string | null
+    reviewer_id: string
+    reviewee_id: string
+    rating: number
+    comment?: string | null
+    created_at: string
+    updated_at?: string | null
 }
 
 export interface EventChecklistItemResponse {
@@ -359,14 +384,18 @@ export interface BroadcastNotificationRequest {
     link_url?: string
 }
 
-// --- Review Types ---
+export interface BroadcastEmailTemplateRequest {
+    template_id: string
+    variables: Record<string, string>
+    target_role?: string
+}
 
-export interface ReviewResponse {
+export interface EmailTemplate {
     id: string
-    event_id: string
-    reviewer_id: string
-    reviewee_id: string
-    rating: number
-    comment?: string | null
-    created_at: string
+    name: string
+    subject: string
+    body_html: string
+    variables: string[]
+    created_at?: string
+    updated_at?: string
 }

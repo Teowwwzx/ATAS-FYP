@@ -6,17 +6,20 @@ import { createEvent, pingApi } from '@/services/api'
 import { FormInput } from '@/components/auth/FormInput'
 import { EventCreate, EventType } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
-import GooglePlacesAutocomplete from 'react-google-places-autocomplete'
+import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
+import { useLoadScript } from '@react-google-maps/api'
+
+const libraries: ("places")[] = ["places"]
 
 export default function CreateEventPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const [mounted, setMounted] = useState(false)
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    const { isLoaded } = useLoadScript({
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        libraries,
+    })
 
     const [formData, setFormData] = useState<EventCreate>({
         title: '',
@@ -27,15 +30,20 @@ export default function CreateEventPage() {
         end_datetime: '',
         registration_type: 'free',
         visibility: 'public',
-        venue_remark: 'Asia Pacific University', // Default value
-        venue_place_id: 'ChIJmzrzi9gIzDERX9f2J0f8wR0', // APU Place ID (approximate/example, will be updated by selection)
+        venue_remark: 'Asia Pacific University',
+        venue_place_id: '',
     })
 
-    // Default value for the autocomplete component
-    const [venueValue, setVenueValue] = useState<any>({
-        label: 'Asia Pacific University of Technology & Innovation (APU)',
-        value: { place_id: 'ChIJmzrzi9gIzDERX9f2J0f8wR0' }
-    })
+    const handleSelect = async (address: string) => {
+        setFormData(prev => ({ ...prev, venue_remark: address }))
+        try {
+            const results = await geocodeByAddress(address)
+            const placeId = results[0].place_id
+            setFormData(prev => ({ ...prev, venue_place_id: placeId }))
+        } catch (error) {
+            console.error('Error selecting place', error)
+        }
+    }
 
     const toLocalInputValue = (d: Date) => {
         const pad = (n: number) => n.toString().padStart(2, '0')
@@ -55,31 +63,12 @@ export default function CreateEventPage() {
         setFormData((prev) => ({ ...prev, [name]: value }))
     }
 
-    // Auto-match type based on format
-    useEffect(() => {
-        let suggested: EventType = 'offline'
-        if (formData.format === 'webinar') {
-            suggested = 'online'
-        } else if (formData.format === 'panel_discussion') {
-            suggested = 'offline'
-        } else {
-            // Keep existing logic or default to offline
-            suggested = 'offline'
-        }
-
-        // Only update if it's different to avoid loops, though useEffect dependency handles it
-        if (formData.type !== suggested) {
-            setFormData(prev => ({ ...prev, type: suggested }))
-        }
-    }, [formData.format])
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
         setLoading(true)
 
         try {
-            // Validate dates
             if (new Date(formData.end_datetime) <= new Date(formData.start_datetime)) {
                 toast.error('End date must be after start date')
                 setLoading(false)
@@ -109,6 +98,18 @@ export default function CreateEventPage() {
             setLoading(false)
         }
     }
+
+    // Auto-matching logic
+    useEffect(() => {
+        if (formData.format === 'webinar') {
+            setFormData(prev => ({ ...prev, type: 'online', venue_remark: 'Zoom / Google Meet' }))
+        } else if (formData.format === 'panel_discussion') {
+            setFormData(prev => ({ ...prev, type: 'offline' }))
+            if (!formData.venue_remark) {
+                setFormData(prev => ({ ...prev, venue_remark: 'Asia Pacific University' }))
+            }
+        }
+    }, [formData.format])
 
     return (
         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-sm border border-yellow-100">
@@ -262,69 +263,69 @@ export default function CreateEventPage() {
                     </div>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                <div className="relative z-20">
+                    <label htmlFor="venue_remark" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
                         Venue / Location
                     </label>
-                    <div className="mt-1">
-                        {mounted && (
-                            <GooglePlacesAutocomplete
-                                apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-                                autocompletionRequest={{
-                                    componentRestrictions: { country: ['my'] },
-                                }}
-                                selectProps={{
-                                    value: venueValue,
-                                    onChange: (val: any) => {
-                                        setVenueValue(val)
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            venue_remark: val?.label || '',
-                                            venue_place_id: val?.value?.place_id || ''
-                                        }))
-                                    },
-                                    placeholder: 'Search for a location...',
-                                    noOptionsMessage: () => (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "No options" : "API Key missing"),
-                                    styles: {
-                                        control: (provided) => ({
-                                            ...provided,
-                                            borderRadius: '1rem',
-                                            backgroundColor: 'rgb(249 250 251)', // bg-gray-50
-                                            border: 'none',
-                                            padding: '0.5rem',
-                                            boxShadow: 'none',
-                                        }),
-                                        input: (provided) => ({
-                                            ...provided,
-                                            color: '#18181b', // text-zinc-900
-                                            fontWeight: 500,
-                                        }),
-                                        option: (provided, state) => ({
-                                            ...provided,
-                                            backgroundColor: state.isFocused ? '#fef08a' : 'white', // yellow-200 on hover
-                                            color: '#18181b',
-                                        }),
-                                    }
-                                }}
-                            />
-                        )}
-                    </div>
+                    {isLoaded ? (
+                        <PlacesAutocomplete
+                            value={formData.venue_remark || ''}
+                            onChange={(address) => setFormData(prev => ({ ...prev, venue_remark: address }))}
+                            onSelect={handleSelect}
+                        >
+                            {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
+                                <div className="relative">
+                                    <input
+                                        {...getInputProps({
+                                            placeholder: 'Search for a location...',
+                                            className: "block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                                        })}
+                                    />
+                                    {suggestions.length > 0 && (
+                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-zinc-100 overflow-hidden">
+                                            {loading && <div className="p-3 text-sm text-zinc-500">Loading...</div>}
+                                            {suggestions.map((suggestion) => {
+                                                const className = suggestion.active
+                                                    ? 'px-4 py-3 bg-yellow-50 cursor-pointer'
+                                                    : 'px-4 py-3 bg-white cursor-pointer hover:bg-gray-50';
+
+                                                // Create a div wrapper to hold props and content to avoid duplicate key issues or spread issues
+                                                const { key, ...optionProps } = getSuggestionItemProps(suggestion, { className });
+
+                                                return (
+                                                    <div
+                                                        key={suggestion.placeId}
+                                                        {...optionProps}
+                                                    >
+                                                        <div className="font-bold text-zinc-900 text-sm">{suggestion.formattedSuggestion.mainText}</div>
+                                                        <div className="text-xs text-zinc-500">{suggestion.formattedSuggestion.secondaryText}</div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </PlacesAutocomplete>
+                    ) : (
+                        <div className="w-full px-5 py-4 bg-zinc-100 rounded-2xl text-zinc-500 font-medium">
+                            Loading Maps...
+                        </div>
+                    )}
                 </div>
 
-                {
-                    error && (
-                        <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
-                            <div className="flex">
-                                <div className="ml-3">
-                                    <h3 className="text-sm font-bold text-red-800">Error</h3>
-                                    <div className="mt-1 text-sm text-red-700 font-medium">
-                                        <p>{error}</p>
-                                    </div>
+                {error && (
+                    <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
+                        <div className="flex">
+                            <div className="ml-3">
+                                <h3 className="text-sm font-bold text-red-800">Error</h3>
+                                <div className="mt-1 text-sm text-red-700 font-medium">
+                                    <p>{error}</p>
                                 </div>
                             </div>
                         </div>
-                    )
-                }
+                    </div>
+                )}
 
                 <div className="flex justify-end gap-4 pt-4">
                     <button
@@ -342,7 +343,7 @@ export default function CreateEventPage() {
                         {loading ? 'Creating...' : 'Create Event'}
                     </button>
                 </div>
-            </form >
-        </div >
+            </form>
+        </div>
     )
 }

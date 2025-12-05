@@ -2652,3 +2652,67 @@ def scan_user_attendance(
     db.commit()
     db.refresh(participant)
     return participant
+
+
+@router.post("/events/{event_id}/proposals/ai-suggest")
+def suggest_event_proposal(
+    event_id: uuid.UUID,
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    # Organizer or admin only
+    is_admin = any(
+        r.name == "admin"
+        for r in db.query(Role).join(user_roles, Role.id == user_roles.c.role_id).filter(user_roles.c.user_id == current_user.id).all()
+    )
+    if not is_admin and event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    event_payload = {
+        "title": event.title,
+        "format": getattr(event, "format", None),
+        "start_datetime": getattr(event, "start_datetime", None).isoformat() if getattr(event, "start_datetime", None) else None,
+        "end_datetime": getattr(event, "end_datetime", None).isoformat() if getattr(event, "end_datetime", None) else None,
+        "registration_type": getattr(event, "registration_type", None).value if getattr(event, "registration_type", None) else None,
+        "visibility": getattr(event, "visibility", None).value if getattr(event, "visibility", None) else None,
+        "capacity": getattr(event, "capacity", None),
+        "location": getattr(event, "location", None),
+    }
+
+    expert_profile = None
+    expert_id = body.get("expert_id")
+    if expert_id:
+        try:
+            ex_uid = uuid.UUID(expert_id)
+            from app.models.profile_model import Profile
+            prof = db.query(Profile).filter(Profile.user_id == ex_uid).first()
+            if prof is not None:
+                # Tags
+                from app.models.profile_model import profile_tags, Tag
+                tag_rows = (
+                    db.query(Tag.name)
+                    .join(profile_tags, Tag.id == profile_tags.c.tag_id)
+                    .filter(profile_tags.c.profile_id == prof.id)
+                    .all()
+                )
+                expert_profile = {
+                    "full_name": getattr(prof, "full_name", None),
+                    "tags": [t[0] for t in tag_rows] if tag_rows else [],
+                }
+        except Exception:
+            expert_profile = None
+
+    from app.services.ai_service import generate_proposal
+    options = {
+        "tone": body.get("tone"),
+        "length_hint": body.get("length_hint"),
+        "audience_level": body.get("audience_level"),
+        "language": body.get("language"),
+        "sections": body.get("sections"),
+    }
+    result = generate_proposal(event_payload, expert_profile, options)
+    return result

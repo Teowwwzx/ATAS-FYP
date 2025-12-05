@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
+
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { getMyProfile, logout, pingApi } from '@/services/api'
 import { isTokenExpired } from '@/lib/auth'
 import { ProfileResponse } from '@/services/api.types'
 import { SearchModal } from './SearchModal'
+import { NotificationBell } from './NotificationBell'
 
 export function AppNavbar() {
     const router = useRouter()
@@ -15,7 +16,6 @@ export function AppNavbar() {
     const [profile, setProfile] = useState<ProfileResponse | null>(null)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [searchOpen, setSearchOpen] = useState(false)
-    const [imageError, setImageError] = useState(false)
 
     useEffect(() => {
         const load = async () => {
@@ -97,6 +97,10 @@ export function AppNavbar() {
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </button>
 
+                                <div className="hidden md:block">
+                                    <NotificationBell />
+                                </div>
+
                                 <Link
                                     href="/events/create"
                                     className="bg-zinc-900 text-yellow-400 px-5 py-2.5 rounded-full text-sm font-bold hover:bg-zinc-800 hover:scale-105 transition-all duration-200 shadow-md"
@@ -107,23 +111,18 @@ export function AppNavbar() {
                                 <div className="relative">
                                     <button
                                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                        className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 items-center gap-3 pl-2 pr-1 h-11 border border-gray-100 hover:shadow-md transition-all"
+                                        className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 items-center gap-3 pl-2 pr-1 py-1 border border-gray-100 hover:shadow-md transition-all"
                                     >
                                         <span className="sr-only">Open user menu</span>
                                         <span className="text-zinc-700 font-bold hidden md:block pl-2">
                                             {profile?.full_name || 'User'}
                                         </span>
-                                        {profile?.avatar_url && !imageError ? (
-                                            <div className="relative h-9 w-9 rounded-full overflow-hidden ring-2 ring-white">
-                                                <Image
-                                                    className="object-cover"
-                                                    src={profile.avatar_url}
-                                                    alt=""
-                                                    fill
-                                                    sizes="36px"
-                                                    onError={() => setImageError(true)}
-                                                />
-                                            </div>
+                                        {profile?.avatar_url ? (
+                                            <img
+                                                className="rounded-full object-cover ring-2 ring-white h-9 w-9"
+                                                src={profile.avatar_url}
+                                                alt=""
+                                            />
                                         ) : (
                                             <div className="h-9 w-9 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold ring-2 ring-white">
                                                 {profile?.full_name?.charAt(0) || 'U'}
