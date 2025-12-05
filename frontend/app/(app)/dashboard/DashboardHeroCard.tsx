@@ -31,12 +31,14 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
 
             {/* Badges - Top Right */}
+            {/* Badges - Top Right */}
             <div className="absolute top-8 right-8 z-20 flex gap-3">
-                <span className="px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-bold backdrop-blur-md border border-white/20 hover:bg-white/30 transition-colors">
-                    {event.format.replace('_', ' ').toUpperCase()}
+                <span className="px-4 py-1.5 rounded-full bg-zinc-900/40 text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg capitalize">
+                    {event.format.replace('_', ' ')}
                 </span>
-                <span className="px-4 py-1.5 rounded-full bg-white/20 text-white text-sm font-bold backdrop-blur-md border border-white/20 hover:bg-white/30 transition-colors">
-                    {event.type.toUpperCase()}
+                <span className={`px-4 py-1.5 rounded-full text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg uppercase ${event.type === 'online' ? 'bg-blue-500/60' : event.type === 'offline' ? 'bg-green-500/60' : 'bg-purple-500/60'
+                    }`}>
+                    {event.type}
                 </span>
             </div>
 

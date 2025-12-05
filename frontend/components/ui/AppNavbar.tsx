@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
+
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { getMyProfile, logout, pingApi } from '@/services/api'
@@ -118,12 +118,10 @@ export function AppNavbar() {
                                             {profile?.full_name || 'User'}
                                         </span>
                                         {profile?.avatar_url ? (
-                                            <Image
+                                            <img
                                                 className="rounded-full object-cover ring-2 ring-white h-9 w-9"
                                                 src={profile.avatar_url}
                                                 alt=""
-                                                width={36}
-                                                height={36}
                                             />
                                         ) : (
                                             <div className="h-9 w-9 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold ring-2 ring-white">

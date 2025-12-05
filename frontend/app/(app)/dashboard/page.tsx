@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { getMyEvents, getMyProfile, getEventById } from '@/services/api'
-import { EventDetails, ProfileResponse } from '@/services/api.types'
+import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems } from '@/services/api'
+import { EventDetails, ProfileResponse, UserMeResponse } from '@/services/api.types'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -19,6 +19,9 @@ export default function DashboardPage() {
     const [nextEvent, setNextEvent] = useState<EventDetails | null>(null)
     const [user, setUser] = useState<ProfileResponse | null>(null)
     const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+    const [me, setMe] = useState<UserMeResponse | null>(null)
+    const [openChecklistCount, setOpenChecklistCount] = useState(0)
+    const tasksCount = ((user?.full_name || '').trim().length === 0 || (me?.roles || []).some(r => r.includes('pending'))) ? 1 + openChecklistCount : openChecklistCount
 
     useEffect(() => {
         fetchData()
@@ -26,12 +29,16 @@ export default function DashboardPage() {
 
     const fetchData = async () => {
         try {
-            const [eventsData, profileData] = await Promise.all([
+            const [eventsData, profileData, meData, checklistItems] = await Promise.all([
                 getMyEvents(),
-                getMyProfile()
+                getMyProfile(),
+                getMe().catch(() => null),
+                getMyChecklistItems(true).catch(() => [])
             ])
 
             setUser(profileData)
+            setMe(meData)
+            setOpenChecklistCount((checklistItems || []).length)
 
             // Find the most relevant upcoming event
             // Note: MyEventItem uses event_id, not id
@@ -68,22 +75,29 @@ export default function DashboardPage() {
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
 
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 w-full animate-fadeIn">
-                    <div>
-                        <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-2">
-                            Welcome back, {user?.full_name?.split(' ')[0]}!
-                        </h1>
-                        <p className="text-zinc-500 font-medium">
-                            Here is your next upcoming event.
-                        </p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 w-full animate-fadeIn">
+                <div>
+                    <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-2">
+                        Welcome back, {user?.full_name?.split(' ')[0]}!
+                    </h1>
+                    <p className="text-zinc-500 font-medium">
+                        Here is your next upcoming event.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="px-4 py-2 bg-white border-2 border-yellow-300 text-zinc-900 rounded-xl shadow-sm">
+                        <div className="text-xs font-bold text-zinc-500">Tasks to Settle</div>
+                        <div className="text-2xl font-black">
+                            {tasksCount}
+                        </div>
+                        <div className="text-[10px] text-zinc-400">Includes onboarding</div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setIsPreviewOpen(true)}
-                            className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
-                        >
-                            Preview
-                        </button>
+                    <button
+                        onClick={() => setIsPreviewOpen(true)}
+                        className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
+                    >
+                        Preview
+                    </button>
                         <button
                             onClick={() => toast.success('Event Published!')}
                             className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"

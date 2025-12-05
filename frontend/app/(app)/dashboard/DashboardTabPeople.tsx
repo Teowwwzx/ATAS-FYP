@@ -73,10 +73,7 @@ export function DashboardTabPeople({ event, onInvite }: DashboardTabPeopleProps)
     return (
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h3 className="text-xl font-black text-zinc-900">People</h3>
-                    <p className="text-zinc-500 font-medium">Manage who is involved in your event.</p>
-                </div>
+                <div />
                 {onInvite && (
                     <button
                         onClick={onInvite}
@@ -102,8 +99,8 @@ export function DashboardTabPeople({ event, onInvite }: DashboardTabPeopleProps)
                         key={f.key}
                         onClick={() => setFilter(f.key as any)}
                         className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition-all ${filter === f.key
-                                ? 'bg-zinc-900 text-white shadow-md'
-                                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+                            ? 'bg-zinc-900 text-white shadow-md'
+                            : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
                             }`}
                     >
                         {f.label}
@@ -136,12 +133,10 @@ export function DashboardTabPeople({ event, onInvite }: DashboardTabPeopleProps)
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-4">
                                             {item.profile?.avatar_url ? (
-                                                <Image
+                                                <img
                                                     src={item.profile.avatar_url}
                                                     alt={item.profile.full_name}
-                                                    width={40}
-                                                    height={40}
-                                                    className="rounded-full object-cover ring-2 ring-zinc-50"
+                                                    className="w-10 h-10 rounded-full object-cover ring-2 ring-zinc-50"
                                                 />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold">

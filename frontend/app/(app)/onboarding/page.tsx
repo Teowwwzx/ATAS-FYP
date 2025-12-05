@@ -2,117 +2,106 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { completeOnboarding } from '@/services/api'
-import { FormInput } from '@/components/auth/FormInput'
+import { completeOnboarding, getMyProfile } from '@/services/api'
+import type { OnboardingData } from '@/services/api.types'
+import { toast } from 'react-hot-toast'
 
 export default function OnboardingPage() {
-    const router = useRouter()
-    const [fullName, setFullName] = useState('')
-    const [role, setRole] = useState<'student' | 'expert'>('student')
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
+  const router = useRouter()
+  const [form, setForm] = useState<OnboardingData>({ full_name: '', role: 'student' })
+  const [loading, setLoading] = useState(false)
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError('')
-        setLoading(true)
+  const updateField = (key: keyof OnboardingData, value: string) => {
+    setForm(prev => ({ ...prev, [key]: value }))
+  }
 
-        try {
-            await completeOnboarding({ full_name: fullName, role })
-            router.push('/dashboard')
-        } catch (err: any) {
-            console.error(err)
-            if (err.response?.data?.detail) {
-                setError(err.response.data.detail)
-            } else {
-                setError('Failed to complete onboarding. Please try again.')
-            }
-        } finally {
-            setLoading(false)
-        }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (loading) return
+    if (!form.full_name.trim()) {
+      toast.error('Please enter your full name')
+      return
     }
+    setLoading(true)
+    try {
+      await completeOnboarding(form)
+      const prof = await getMyProfile()
+      const chosePending = form.role === 'expert' || form.role === 'sponsor'
+      if (chosePending) {
+        toast.success('Request submitted. Admin will review your role.')
+      } else {
+        toast.success('Onboarding completed')
+      }
+      router.push('/discover')
+    } catch (error: unknown) {
+      const e = error as { response?: { data?: { detail?: string } } }
+      toast.error(e.response?.data?.detail || 'Failed to complete onboarding')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    return (
-        <div className="flex min-h-screen flex-col justify-center bg-amber-50 py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md mb-8">
-                <div className="mx-auto h-20 w-20 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-lg transform rotate-3 mb-6">
-                    <span className="text-3xl font-black text-zinc-900">AT</span>
-                </div>
-                <h2 className="text-center text-4xl font-black text-zinc-900 tracking-tight">
-                    Welcome to ATAS!
-                </h2>
-                <p className="mt-3 text-center text-lg text-zinc-500 font-medium">
-                    Let's get to know you better.
-                </p>
+  return (
+    <div className="min-h-screen bg-amber-50">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden">
+          <div className="px-6 sm:px-10 py-8 border-b border-zinc-100">
+            <h1 className="text-2xl font-black text-zinc-900">Welcome! Let’s set up your account</h1>
+            <p className="text-zinc-500 mt-2">Choose your primary role and tell us your name.</p>
+          </div>
+          <form onSubmit={handleSubmit} className="px-6 sm:px-10 py-8 space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Full name</label>
+              <input
+                type="text"
+                value={form.full_name}
+                onChange={(e) => updateField('full_name', e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                placeholder="e.g., Alex Chen"
+              />
             </div>
 
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-10 px-6 shadow-sm sm:rounded-[2.5rem] sm:px-12 border border-yellow-100">
-                    <form className="space-y-8" onSubmit={handleSubmit}>
-                        <FormInput
-                            id="fullName"
-                            label="Full Name"
-                            type="text"
-                            placeholder="e.g. John Doe"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                        />
-
-                        <div>
-                            <label className="block text-sm font-bold text-zinc-900 mb-3 ml-1">
-                                I am a...
-                            </label>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setRole('student')}
-                                    className={`flex items-center justify-center px-4 py-4 border-2 rounded-2xl text-sm font-bold transition-all duration-200 ${role === 'student'
-                                        ? 'border-yellow-400 bg-yellow-50 text-zinc-900 shadow-md transform -translate-y-1'
-                                        : 'border-zinc-100 bg-white text-zinc-500 hover:border-yellow-200 hover:bg-yellow-50/50'
-                                        }`}
-                                >
-                                    Student
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setRole('expert')}
-                                    className={`flex items-center justify-center px-4 py-4 border-2 rounded-2xl text-sm font-bold transition-all duration-200 ${role === 'expert'
-                                        ? 'border-yellow-400 bg-yellow-50 text-zinc-900 shadow-md transform -translate-y-1'
-                                        : 'border-zinc-100 bg-white text-zinc-500 hover:border-yellow-200 hover:bg-yellow-50/50'
-                                        }`}
-                                >
-                                    Expert / Speaker
-                                </button>
-                            </div>
-                        </div>
-
-                        {error && (
-                            <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
-                                <div className="flex">
-                                    <div className="ml-3">
-                                        <h3 className="text-sm font-bold text-red-800">
-                                            Error
-                                        </h3>
-                                        <div className="mt-1 text-sm text-red-700 font-medium">
-                                            <p>{error}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full flex justify-center py-4 px-4 border border-transparent rounded-full shadow-lg text-base font-bold text-zinc-900 bg-yellow-400 hover:bg-yellow-300 hover:scale-[1.02] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                            >
-                                {loading ? 'Saving...' : 'Get Started'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+            <div>
+              <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Choose role</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { key: 'student', title: 'Student', desc: 'Join events and organize activities' },
+                  { key: 'expert', title: 'Expert (Pending)', desc: 'Be a speaker; requires admin approval' },
+                  { key: 'sponsor', title: 'Sponsor (Pending)', desc: 'Support events; requires admin approval' },
+                ].map((opt) => (
+                  <label key={opt.key} className={`cursor-pointer rounded-2xl border ${form.role === opt.key ? 'border-yellow-400 bg-yellow-50' : 'border-zinc-200 bg-white'} p-4 shadow-sm hover:shadow-md transition-all`}>
+                    <div className="flex items-start">
+                      <input
+                        type="radio"
+                        name="role"
+                        value={opt.key}
+                        checked={form.role === opt.key}
+                        onChange={(e) => updateField('role', e.target.value)}
+                        className="mt-1 mr-3"
+                      />
+                      <div>
+                        <div className="font-bold text-zinc-900">{opt.title}</div>
+                        <div className="text-sm text-zinc-500 mt-1">{opt.desc}</div>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-3 rounded-xl bg-yellow-400 text-zinc-900 font-bold shadow-[0_4px_0_rgb(0,0,0)] hover:shadow-[0_2px_0_rgb(0,0,0)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Saving...' : 'Continue'}
+              </button>
+            </div>
+          </form>
         </div>
-    )
+      </div>
+    </div>
+  )
 }
+

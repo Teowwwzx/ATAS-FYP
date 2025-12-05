@@ -12,6 +12,7 @@ interface EventInviteModalProps {
     onClose: () => void
     eventId: string
     eventTitle: string
+    onSuccess?: () => void
 }
 
 export function EventInviteModal({ isOpen, onClose, eventId, eventTitle }: EventInviteModalProps) {

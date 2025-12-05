@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { getProfileByUserId } from '@/services/api'
+import { getProfileByUserId, getReviewsByUser } from '@/services/api'
 import { ProfileResponse } from '@/services/api.types'
+import type { ReviewResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 
 export default function PublicProfilePage() {
@@ -13,6 +14,7 @@ export default function PublicProfilePage() {
     const [profile, setProfile] = useState<ProfileResponse | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [reviews, setReviews] = useState<ReviewResponse[]>([])
 
     useEffect(() => {
         if (userId) {
@@ -20,6 +22,10 @@ export default function PublicProfilePage() {
                 try {
                     const data = await getProfileByUserId(userId)
                     setProfile(data)
+                    try {
+                        const revs = await getReviewsByUser(userId)
+                        setReviews(revs)
+                    } catch { }
                 } catch (error: unknown) {
                     const e = error as { response?: { status?: number; data?: { detail?: string } } }
                     setError(e.response?.data?.detail || 'Failed to load profile.')
@@ -132,6 +138,43 @@ export default function PublicProfilePage() {
                             </div>
                         </a>
                     ))}
+                </div>
+
+                {/* Reviews */}
+                <div className="mt-12">
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-zinc-900">Reviews</h3>
+                                <p className="text-sm text-zinc-500">Ratings and comments from events</p>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-2xl font-black text-yellow-500">
+                                    {reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '—'}
+                                </div>
+                                <div className="text-xs text-zinc-500">{reviews.length} review(s)</div>
+                            </div>
+                        </div>
+                        {reviews.length === 0 ? (
+                            <div className="p-6 text-zinc-500">No reviews yet.</div>
+                        ) : (
+                            <ul className="divide-y divide-gray-100">
+                                {reviews.map(r => (
+                                    <li key={r.id} className="px-6 py-4">
+                                        <div className="flex items-start gap-4">
+                                            <div className="h-10 w-10 rounded-full bg-yellow-50 flex items-center justify-center text-zinc-900 font-bold">
+                                                {r.rating}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm text-zinc-700">{r.comment || 'No comment provided.'}</p>
+                                                <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0,8)}… • By: {r.reviewer_id.slice(0,8)}… • {new Date(r.created_at).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

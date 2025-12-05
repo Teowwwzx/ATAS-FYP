@@ -57,7 +57,7 @@ export interface VerifyEmailSuccessResponse {
 
 export interface OnboardingData {
     full_name: string
-    role: 'student' | 'expert' // Based on your onboarding Q&A
+    role: 'student' | 'expert' | 'sponsor'
 }
 
 // Based on your profile_schema.py -> ProfileResponse
@@ -76,6 +76,8 @@ export interface ProfileResponse {
     website_url?: string
     visibility: 'public' | 'private'
     tags?: { id: string; name: string }[]
+    average_rating?: number
+    reviews_count?: number
 }
 
 export interface ProfileUpdate {
@@ -299,6 +301,27 @@ export interface EventChecklistItemUpdate {
     due_datetime?: string | null
 }
 
+// --- Review Types ---
+
+export interface ReviewCreate {
+    event_id: string
+    reviewee_id: string
+    rating: number
+    comment?: string | null
+}
+
+export interface ReviewResponse {
+    id: string
+    event_id: string
+    org_id?: string | null
+    reviewer_id: string
+    reviewee_id: string
+    rating: number
+    comment?: string | null
+    created_at: string
+    updated_at?: string | null
+}
+
 export interface EventChecklistItemResponse {
     id: string
     event_id: string
@@ -359,6 +382,12 @@ export interface BroadcastNotificationRequest {
     target_role?: string
     target_user_id?: string
     link_url?: string
+}
+
+export interface BroadcastEmailTemplateRequest {
+    template_id: string
+    variables: Record<string, string>
+    target_role?: string
 }
 
 export interface EmailTemplate {

@@ -302,6 +302,25 @@ export const getPublicProfiles = async () => {
   return response.data
 }
 
+// --- Reviews ---
+
+export const getReviewsByUser = async (userId: string) => {
+  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/by-user/${userId}`)
+  return response.data
+}
+
+export const createReview = async (data: import('./api.types').ReviewCreate) => {
+  const response = await api.post<import('./api.types').ReviewResponse>(`/reviews`, data)
+  return response.data
+}
+
+// --- My Checklist Items ---
+
+export const getMyChecklistItems = async (onlyOpen: boolean = true) => {
+  const response = await api.get<import('./api.types').EventChecklistItemResponse[]>(`/events/checklist/me`, { params: { only_open: onlyOpen } })
+  return response.data
+}
+
 // --- Organizations ---
 
 export const getPublicOrganizations = async () => {

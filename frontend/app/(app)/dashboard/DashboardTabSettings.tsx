@@ -75,16 +75,10 @@ export function DashboardTabSettings({ event, onUpdate }: DashboardTabSettingsPr
     }
 
     return (
-        <div className="space-y-12 animate-fadeIn max-w-4xl mx-auto">
+        <div className="space-y-12 animate-fadeIn max-w-6xl mx-auto">
 
             {/* General Settings */}
             <section>
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 className="text-xl font-black text-zinc-900">General Settings</h3>
-                        <p className="text-zinc-500 font-medium">Update your event's basic information.</p>
-                    </div>
-                </div>
 
                 <form onSubmit={handleUpdate} className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -164,51 +158,37 @@ export function DashboardTabSettings({ event, onUpdate }: DashboardTabSettingsPr
             </section>
 
             {/* Registration Controls */}
+            {/* Registration Controls */}
             <section>
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 className="text-xl font-black text-zinc-900">Registration</h3>
-                        <p className="text-zinc-500 font-medium">Control who can join your event.</p>
-                    </div>
-                </div>
-
                 <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm flex items-center justify-between">
                     <div>
                         <h4 className="text-lg font-bold text-zinc-900 mb-1">
-                            Registration is currently {event.registration_status === 'opened' ? (
-                                <span className="text-green-500">OPEN</span>
-                            ) : (
-                                <span className="text-red-500">CLOSED</span>
-                            )}
+                            Registration Status
                         </h4>
                         <p className="text-zinc-500 text-sm font-medium">
                             {event.registration_status === 'opened'
-                                ? 'Participants can register for this event.'
-                                : 'No new registrations are accepted.'}
+                                ? 'Participants are currently allowed to register.'
+                                : 'Registration is closed. No new participants can join.'}
                         </p>
                     </div>
+
+                    {/* Toggle Switch */}
                     <button
                         onClick={toggleRegistration}
                         disabled={loading}
-                        className={`px-6 py-3 rounded-xl font-bold transition-all shadow-sm ${event.registration_status === 'opened'
-                                ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                                : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 ${event.registration_status === 'opened' ? 'bg-green-500' : 'bg-zinc-200'
                             }`}
                     >
-                        {event.registration_status === 'opened' ? 'Close Registration' : 'Open Registration'}
+                        <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${event.registration_status === 'opened' ? 'translate-x-7' : 'translate-x-1'
+                                }`}
+                        />
                     </button>
                 </div>
             </section>
 
             {/* Danger Zone */}
             <section>
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 className="text-xl font-black text-red-500">Danger Zone</h3>
-                        <p className="text-zinc-500 font-medium">Irreversible actions.</p>
-                    </div>
-                </div>
-
                 <div className="bg-red-50 rounded-[2rem] border border-red-100 p-8">
                     <div className="flex items-center justify-between">
                         <div>

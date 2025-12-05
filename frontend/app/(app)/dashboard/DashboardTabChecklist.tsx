@@ -132,12 +132,9 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
     }
 
     return (
-        <div className="max-w-4xl mx-auto animate-fadeIn space-y-6">
+        <div className="max-w-6xl mx-auto animate-fadeIn space-y-6">
             <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-xl font-black text-zinc-900">Event Checklist</h3>
-                    <p className="text-zinc-500 font-medium">Manage your tasks and progress.</p>
-                </div>
+                <div />
                 {!loading && items.length === 0 && (
                     <button
                         onClick={loadDefaults}
@@ -180,8 +177,8 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                 <button
                                                     onClick={() => handleToggle(item)}
                                                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.is_completed
-                                                            ? 'bg-green-500 border-green-500 text-white'
-                                                            : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
+                                                        ? 'bg-green-500 border-green-500 text-white'
+                                                        : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
                                                         }`}
                                                 >
                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -247,8 +244,8 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                     }}
                                     placeholder={newItemUser ? newItemUser.full_name : "@ Assign"}
                                     className={`bg-white text-xs font-bold py-2 px-3 rounded-xl border transition-all w-32 truncate ${newItemUser
-                                            ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                            : 'border-zinc-200 text-zinc-500 focus:border-yellow-400 focus:ring-0'
+                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                        : 'border-zinc-200 text-zinc-500 focus:border-yellow-400 focus:ring-0'
                                         }`}
                                 />
                                 {userSearch && userOptions.length > 0 && !newItemUser && (
