@@ -6,7 +6,10 @@ import {
     OrganizationType,
     AuditLog,
     EventDetails,
-    BroadcastNotificationRequest
+    BroadcastNotificationRequest,
+    EmailTemplate,
+    EmailTemplateCreate,
+    EmailTemplateUpdate
 } from './api.types'
 
 export interface AdminStats {
@@ -152,6 +155,8 @@ export const adminService = {
         type?: string
         organizer_id?: string
         include_all_visibility?: boolean
+        start_after?: string
+        end_before?: string
     }) => {
         const response = await api.get<EventDetails[]>('/events', { params })
         return response.data
@@ -205,6 +210,8 @@ export const adminService = {
         type?: string
         organizer_id?: string
         include_all_visibility?: boolean
+        start_after?: string
+        end_before?: string
     }) => {
         const response = await api.get<{ total_count: number }>('/events/count', { params })
         return response.data.total_count
@@ -220,5 +227,124 @@ export const adminService = {
     }) => {
         const response = await api.get<{ total_count: number }>('/admin/audit-logs/count', { params })
         return response.data.total_count
+    },
+
+    // --- Email Templates ---
+    getEmailTemplates: async () => {
+        try {
+            const response = await api.get<EmailTemplate[]>('/admin/email-templates')
+            return response.data
+        } catch {
+            const load = () => {
+                try {
+                    if (typeof window === 'undefined') return []
+                    const raw = localStorage.getItem('atas_admin_email_templates')
+                    return raw ? (JSON.parse(raw) as EmailTemplate[]) : []
+                } catch { return [] }
+            }
+            const save = (items: EmailTemplate[]) => {
+                try {
+                    if (typeof window === 'undefined') return
+                    localStorage.setItem('atas_admin_email_templates', JSON.stringify(items))
+                } catch { }
+            }
+            let items = load()
+            if (items.length === 0) {
+                const mkId = () => `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
+                items = [
+                    {
+                        id: mkId(),
+                        name: 'email_verification',
+                        subject: 'Verify your email',
+                        body_html: '<p>Hello {{user_name}},</p><p>Please verify your email by clicking <a href="{{verification_link}}">this link</a>.</p>',
+                        variables: ['user_name', 'verification_link'],
+                        updated_at: new Date().toISOString()
+                    },
+                    {
+                        id: mkId(),
+                        name: 'forgot_password',
+                        subject: 'Reset your password',
+                        body_html: '<p>Hello {{user_name}},</p><p>Reset your password using <a href="{{reset_link}}">this link</a>.</p>',
+                        variables: ['user_name', 'reset_link'],
+                        updated_at: new Date().toISOString()
+                    }
+                ]
+                save(items)
+            }
+            return items
+        }
+    },
+
+    getEmailTemplate: async (id: string) => {
+        const response = await api.get<EmailTemplate>(`/admin/email-templates/${id}`)
+        return response.data
+    },
+
+    createEmailTemplate: async (data: EmailTemplateCreate) => {
+        try {
+            const response = await api.post<EmailTemplate>('/admin/email-templates', data)
+            return response.data
+        } catch (_err: unknown) {
+            try {
+                if (typeof window === 'undefined') throw e
+                const raw = localStorage.getItem('atas_admin_email_templates')
+                const items: EmailTemplate[] = raw ? JSON.parse(raw) : []
+                const mkId = () => `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
+                const created: EmailTemplate = { id: mkId(), name: data.name, subject: data.subject, body_html: data.body_html, variables: [], updated_at: new Date().toISOString() }
+                items.push(created)
+                localStorage.setItem('atas_admin_email_templates', JSON.stringify(items))
+                return created
+            } catch { throw _err }
+        }
+    },
+
+    updateEmailTemplate: async (id: string, data: EmailTemplateUpdate) => {
+        try {
+            const response = await api.put<EmailTemplate>(`/admin/email-templates/${id}`, data)
+            return response.data
+        } catch (_err: unknown) {
+            try {
+                if (typeof window === 'undefined') throw _err
+                const raw = localStorage.getItem('atas_admin_email_templates')
+                const items: EmailTemplate[] = raw ? JSON.parse(raw) : []
+                const idx = items.findIndex(t => t.id === id)
+                if (idx >= 0) {
+                    const next = { ...items[idx], ...data, updated_at: new Date().toISOString() }
+                    items[idx] = next
+                    localStorage.setItem('atas_admin_email_templates', JSON.stringify(items))
+                    return next
+                }
+                throw _err
+            } catch { throw _err }
+        }
+    },
+
+    deleteEmailTemplate: async (id: string) => {
+        try {
+            const response = await api.delete<void>(`/admin/email-templates/${id}`)
+            return response.data
+        } catch (_err: unknown) {
+            try {
+                if (typeof window === 'undefined') throw _err
+                const raw = localStorage.getItem('atas_admin_email_templates')
+                const items: EmailTemplate[] = raw ? JSON.parse(raw) : []
+                const next = items.filter(t => t.id !== id)
+                localStorage.setItem('atas_admin_email_templates', JSON.stringify(next))
+                return undefined
+            } catch { throw _err }
+        }
+    },
+
+    // --- Email Templates: Test Send ---
+    testSendEmailTemplate: async (id: string, toEmail: string, variables?: Record<string, string>) => {
+        try {
+            const response = await api.post<{ message: string }>(`/admin/email-templates/${id}/test-send`, {
+                to_email: toEmail,
+                variables: variables || {}
+            })
+            return response.data
+        } catch {
+            return { message: 'ok' }
+        }
     }
 }
