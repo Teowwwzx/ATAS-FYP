@@ -399,3 +399,24 @@ export interface EmailTemplate {
     created_at?: string
     updated_at?: string
 }
+
+// --- AI Proposal Types ---
+
+export interface ProposalSuggestRequest {
+    tone?: string
+    length_hint?: string
+    audience_level?: string
+    language?: string
+    sections?: string[]
+    expert_id?: string
+}
+
+export interface ProposalSuggestResponse {
+    title: string
+    short_intro: string
+    value_points: string[]
+    logistics: string
+    closing: string
+    email_subjects: string[]
+    raw_text: string
+}

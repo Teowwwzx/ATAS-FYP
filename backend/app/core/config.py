@@ -13,4 +13,10 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
     CLOUDINARY_CLOUD_NAME: str = ""
 
+    # AI
+    AI_PROVIDER: str = "gemini"
+    AI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+
 settings = Settings()

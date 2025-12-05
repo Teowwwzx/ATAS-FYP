@@ -2752,7 +2752,7 @@ def suggest_event_proposal(
 
     event_payload = {
         "title": event.title,
-        "format": getattr(event, "format", None),
+        "format": getattr(event, "format", None).value if getattr(event, "format", None) else None,
         "start_datetime": getattr(event, "start_datetime", None).isoformat() if getattr(event, "start_datetime", None) else None,
         "end_datetime": getattr(event, "end_datetime", None).isoformat() if getattr(event, "end_datetime", None) else None,
         "registration_type": getattr(event, "registration_type", None).value if getattr(event, "registration_type", None) else None,
