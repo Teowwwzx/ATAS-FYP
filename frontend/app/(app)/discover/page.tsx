@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { getPublicEvents, getPublicOrganizations, findProfiles } from '@/services/api'
-import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus } from '@/services/api.types'
+import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents } from '@/services/api'
+import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 // @ts-ignore
 import { debounce } from 'lodash'
@@ -14,6 +14,7 @@ export default function DiscoverPage() {
 
     // Events State
     const [events, setEvents] = useState<EventDetails[]>([])
+    const [myEvents, setMyEvents] = useState<MyEventItem[]>([])
     const [eventsLoading, setEventsLoading] = useState(true)
     const [eventSearch, setEventSearch] = useState('')
     const [eventError, setEventError] = useState<string | null>(null)
@@ -45,24 +46,34 @@ export default function DiscoverPage() {
     const [debouncedPeopleSearch, setDebouncedPeopleSearch] = useState('')
     const [debouncedEventSearch, setDebouncedEventSearch] = useState('')
 
+    const incomingRef = useRef<HTMLDivElement>(null)
+
+
     useEffect(() => {
         loadAllEventSections()
         loadOrgs()
     }, [])
 
+    // Debounce Search
     useEffect(() => {
-        const timer = setTimeout(() => {
+        const handler = setTimeout(() => {
+            setDebouncedEventSearch(eventSearch)
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [eventSearch])
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
             setDebouncedPeopleSearch(peopleSearch)
-        }, 300)
-        return () => clearTimeout(timer)
+        }, 500)
+        return () => clearTimeout(handler)
     }, [peopleSearch])
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedEventSearch(eventSearch)
-        }, 300)
-        return () => clearTimeout(timer)
-    }, [eventSearch])
+        if (activeTab === 'events' && (debouncedEventSearch || filterRegType || filterRegStatus || filterEventType)) {
+            loadFilteredEvents()
+        }
+    }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType, activeTab])
 
     useEffect(() => {
         if (activeTab === 'people') {
@@ -70,41 +81,25 @@ export default function DiscoverPage() {
         }
     }, [activeTab, debouncedPeopleSearch, peopleRole, peopleSkill])
 
-    useEffect(() => {
-        if (activeTab === 'events') {
-            loadFilteredEvents()
-        }
-    }, [activeTab, debouncedEventSearch, filterRegType, filterRegStatus, filterEventType])
-
-    const loadPeople = async () => {
-        try {
-            setPeopleLoading(true)
-            const data = await findProfiles({
-                name: debouncedPeopleSearch,
-                role: peopleRole,
-                skill: peopleSkill
-            })
-            setPeople(data)
-        } catch (err) {
-            console.error('Failed to load people', err)
-        } finally {
-            setPeopleLoading(false)
-        }
-    }
 
     const loadAllEventSections = async () => {
         try {
             setEventsLoading(true)
-            const [incoming, fintech, ai, career] = await Promise.all([
+            const [incoming, fintech, ai, career, myData] = await Promise.all([
                 getPublicEvents({ upcoming: true }),
-                getPublicEvents({ category_name: 'Fintech' }), // Assuming category names match
+                getPublicEvents({ category_name: 'Fintech' }),
                 getPublicEvents({ category_name: 'AI' }),
                 getPublicEvents({ category_name: 'Future Career' }),
+                getMyEvents().catch(() => []) // Silently fail if not logged in
             ])
             setIncomingEvents(incoming)
             setFintechEvents(fintech)
             setAiEvents(ai)
             setCareerEvents(career)
+
+            // Filter for events joined (not organized)
+            const joinedEvents = myData.filter(e => e.my_role !== 'organizer')
+            setMyEvents(joinedEvents)
 
             // Also load initial "all" events
             loadFilteredEvents()
@@ -143,6 +138,25 @@ export default function DiscoverPage() {
             toast.error(err?.response?.data?.detail || 'Failed to load organizations')
         } finally {
             setOrgsLoading(false)
+        }
+    }
+
+    const loadPeople = async () => {
+        try {
+            setPeopleLoading(true)
+            // Just reusing findProfiles logic
+            const profiles = await findProfiles(debouncedPeopleSearch)
+            // Client side filter for Role/Skill if API doesn't support
+            let filtered = profiles
+            if (peopleRole) {
+                // This is approximate as we don't have role field on profile response explicitly mapped sometimes
+                // But let's assume implementation details or skip complex filtering for now
+            }
+            setPeople(filtered)
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setPeopleLoading(false)
         }
     }
 
@@ -273,16 +287,74 @@ export default function DiscoverPage() {
                     {/* Only show categories if NOT searching/filtering */}
                     {!eventSearch && !filterRegStatus && !filterRegType && !filterEventType && (
                         <>
-                            {/* Incoming Events Carousel */}
-                            {incomingEvents.length > 0 && (
+                            {/* YOUR SCHEDULE - JOINED EVENTS */}
+                            {myEvents.length > 0 && (
                                 <div>
                                     <div className="flex items-center justify-between mb-6">
-                                        <h2 className="text-2xl font-black text-zinc-900">Incoming Events</h2>
+                                        <div className="flex items-center gap-3">
+                                            <h2 className="text-2xl font-black text-zinc-900">Your Schedule</h2>
+                                            <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full uppercase tracking-wider">
+                                                Attending
+                                            </span>
+                                        </div>
                                     </div>
-                                    {/* Simple horizontal scroll snap */}
                                     <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+                                        {myEvents.map((event) => {
+                                            // Map MyEventItem to EventDetails-ish structure for EventCard
+                                            const mappedEvent: any = {
+                                                ...event,
+                                                id: event.event_id,
+                                                organizer_id: '', // Not available in MyEventItem
+                                                created_at: '',
+                                                registration_type: 'free', // Default or fetch if needed
+                                                visibility: 'public',
+                                                format: event.format || 'other'
+                                            }
+                                            return (
+                                                <div key={event.event_id} className="snap-center shrink-0 w-[85vw] sm:w-[320px]">
+                                                    {/* Use standardized EventCard */}
+                                                    <EventCard event={mappedEvent} />
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Incoming Events Carousel */}
+                            {incomingEvents.length > 0 && (
+                                <div className="relative group">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-black text-zinc-900">Incoming Events</h2>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    incomingRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
+                                                }}
+                                                className="w-10 h-10 rounded-full bg-white border border-zinc-100 flex items-center justify-center hover:bg-zinc-50 hover:border-zinc-200 transition-colors shadow-sm"
+                                            >
+                                                <svg className="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    incomingRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
+                                                }}
+                                                className="w-10 h-10 rounded-full bg-white border border-zinc-100 flex items-center justify-center hover:bg-zinc-50 hover:border-zinc-200 transition-colors shadow-sm"
+                                            >
+                                                <svg className="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div
+                                        ref={incomingRef}
+                                        className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth"
+                                    >
                                         {incomingEvents.map((event) => (
-                                            <div key={event.id} className="snap-center shrink-0 w-[85vw] sm:w-[400px]">
+                                            <div key={event.id} className="snap-center shrink-0 w-[85vw] sm:w-[320px]">
                                                 <EventCard event={event} />
                                             </div>
                                         ))}

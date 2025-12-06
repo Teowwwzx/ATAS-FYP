@@ -1,14 +1,17 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { getProfileByUserId, getReviewsByUser } from '@/services/api'
-import { ProfileResponse } from '@/services/api.types'
-import type { ReviewResponse } from '@/services/api.types'
+import React, { useState, useEffect, Fragment } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { getProfileByUserId, getReviewsByUser, getPublicEvents, getMyEvents, inviteEventParticipant } from '@/services/api'
+import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
+import { Dialog, Transition } from '@headlessui/react'
+import { EventCard } from '@/components/ui/EventCard'
+import { Button } from '@/components/ui/Button'
 
 export default function PublicProfilePage() {
     const params = useParams()
+    const router = useRouter()
     const userId = params.id as string
 
     const [profile, setProfile] = useState<ProfileResponse | null>(null)
@@ -16,20 +19,35 @@ export default function PublicProfilePage() {
     const [error, setError] = useState<string | null>(null)
     const [reviews, setReviews] = useState<ReviewResponse[]>([])
 
+    // Event State
+    const [organizedEvents, setOrganizedEvents] = useState<EventDetails[]>([])
+
+    // Invite State
+    const [showInviteModal, setShowInviteModal] = useState(false)
+    const [myEvents, setMyEvents] = useState<MyEventItem[]>([])
+    const [selectedEventId, setSelectedEventId] = useState<string>('')
+    const [inviting, setInviting] = useState(false)
+
     useEffect(() => {
         if (userId) {
             const fetchProfile = async () => {
                 try {
-                    const data = await getProfileByUserId(userId)
-                    setProfile(data)
+                    const [profileData, eventsData] = await Promise.all([
+                        getProfileByUserId(userId),
+                        getPublicEvents()
+                    ])
+                    setProfile(profileData)
+
+                    // Filter Organized Events
+                    const userEvents = eventsData.filter(e => e.organizer_id === userId)
+                    setOrganizedEvents(userEvents)
+
                     try {
                         const revs = await getReviewsByUser(userId)
                         setReviews(revs)
                     } catch { }
-                } catch (error: unknown) {
-                    const e = error as { response?: { status?: number; data?: { detail?: string } } }
-                    setError(e.response?.data?.detail || 'Failed to load profile.')
-                    // Don't toast error on 404/403, just show in UI
+                } catch (error: any) {
+                    setError(error.response?.data?.detail || 'Failed to load profile.')
                 } finally {
                     setIsLoading(false)
                 }
@@ -37,6 +55,37 @@ export default function PublicProfilePage() {
             fetchProfile()
         }
     }, [userId])
+
+    // Fetch my events when opening modal
+    useEffect(() => {
+        if (showInviteModal) {
+            getMyEvents()
+                .then(events => {
+                    // Only show events where I am organizer
+                    setMyEvents(events.filter(e => e.my_role === 'organizer'))
+                })
+                .catch(() => toast.error('Failed to load your events'))
+        }
+    }, [showInviteModal])
+
+    const handleInvite = async () => {
+        if (!selectedEventId) return
+        setInviting(true)
+        try {
+            await inviteEventParticipant(selectedEventId, {
+                user_id: userId,
+                role: 'speaker', // Defaulting to speaker as per user request
+                description: 'Invited via Profile'
+            })
+            toast.success('Invitation sent successfully!')
+            setShowInviteModal(false)
+        } catch (error: any) {
+            console.error(error)
+            toast.error(error.response?.data?.detail || 'Failed to send invitation')
+        } finally {
+            setInviting(false)
+        }
+    }
 
     if (isLoading) {
         return (
@@ -103,12 +152,46 @@ export default function PublicProfilePage() {
                         </div>
 
                         {/* Name & Bio */}
-                        <div className="flex-1 pb-4 text-center sm:text-left">
-                            <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-1">{profile.full_name}</h1>
-                            {/* We don't have email/role in public profile response currently, so skipping */}
-                            <p className="text-lg text-zinc-600 font-medium max-w-2xl">{profile.bio || 'No bio provided.'}</p>
+                        <div className="flex-1 pb-4 text-center sm:text-left space-y-4">
+                            <div>
+                                <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-1">{profile.full_name}</h1>
+                                {/* We don't have email/role in public profile response currently, so skipping */}
+                                <p className="text-lg text-zinc-600 font-medium max-w-2xl">{profile.bio || 'No bio provided.'}</p>
+                            </div>
+
+                            <button
+                                onClick={() => setShowInviteModal(true)}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                </svg>
+                                Invite to Speak
+                            </button>
                         </div>
                     </div>
+                </div>
+
+                {/* Event Highlights Section */}
+                <div className="mt-12 space-y-8">
+                    {/* Organized Events */}
+                    {organizedEvents.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-black text-zinc-900">Events Organized</h2>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                {organizedEvents.map(event => (
+                                    <EventCard key={event.id} event={event} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Social Links */}
@@ -167,7 +250,7 @@ export default function PublicProfilePage() {
                                             </div>
                                             <div className="flex-1">
                                                 <p className="text-sm text-zinc-700">{r.comment || 'No comment provided.'}</p>
-                                                <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0,8)}… • By: {r.reviewer_id.slice(0,8)}… • {new Date(r.created_at).toLocaleString()}</p>
+                                                <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0, 8)}… • By: {r.reviewer_id.slice(0, 8)}… • {new Date(r.created_at).toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </li>
@@ -177,6 +260,92 @@ export default function PublicProfilePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Invitation Modal */}
+            <Transition appear show={showInviteModal} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setShowInviteModal(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-[2rem] bg-white p-6 shadow-xl transition-all border border-zinc-100">
+                                    <Dialog.Title as="h3" className="text-xl font-black text-zinc-900 mb-4">
+                                        Invite {profile.full_name} to Speak
+                                    </Dialog.Title>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+                                                Select Event
+                                            </label>
+                                            {myEvents.length === 0 ? (
+                                                <div className="text-center p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                                    <p className="text-sm text-zinc-500 mb-2">You don't have any organized events.</p>
+                                                    <Button href="/dashboard" variant="primary" size="sm">Create Event</Button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                                    {myEvents.map(event => (
+                                                        <div
+                                                            key={event.event_id}
+                                                            onClick={() => setSelectedEventId(event.event_id)}
+                                                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${selectedEventId === event.event_id
+                                                                    ? 'border-yellow-400 bg-yellow-50 shadow-sm'
+                                                                    : 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-3 h-3 rounded-full ${selectedEventId === event.event_id ? 'bg-yellow-500' : 'bg-zinc-200'}`} />
+                                                            <div>
+                                                                <p className="font-bold text-zinc-900 text-sm">{event.title}</p>
+                                                                <p className="text-xs text-zinc-500">{new Date(event.start_datetime).toLocaleDateString()}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-3 justify-end pt-4">
+                                            <button
+                                                onClick={() => setShowInviteModal(false)}
+                                                className="px-4 py-2 text-zinc-500 font-bold hover:bg-zinc-100 rounded-xl transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleInvite}
+                                                disabled={!selectedEventId || inviting}
+                                                className="px-6 py-2 bg-zinc-900 text-yellow-400 font-bold rounded-xl shadow-md hover:bg-zinc-800 disabled:opacity-50 transition-all"
+                                            >
+                                                {inviting ? 'Sending...' : 'Send Invitation'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </div>
     )
 }

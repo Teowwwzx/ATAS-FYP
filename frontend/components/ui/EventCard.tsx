@@ -24,7 +24,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) =
 
     return (
         <Link href={`/events/${event.id}`} className={`block h-full ${className}`}>
-            <div className="group relative h-[450px] w-full rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-zinc-100/10">
+            <div className="group relative h-[400px] w-full rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-zinc-100/10">
                 {/* Background Image */}
                 {event.cover_url ? (
                     <Image
@@ -45,16 +45,20 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) =
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-95" />
 
                 {/* Badges - Top Right */}
-                <div className="absolute top-6 right-6 flex gap-2 z-10">
-                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                        {event.format.replace('_', ' ')}
-                    </span>
-                    <span className={`px-3 py-1 rounded-full backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${event.registration_type === 'free'
-                        ? 'bg-green-500/20 text-green-100 border-green-500/30'
-                        : 'bg-yellow-500/20 text-yellow-100 border-yellow-500/30'
-                        }`}>
-                        {event.registration_type}
-                    </span>
+                <div className="absolute top-6 right-6 flex gap-2 z-10 w-full justify-end px-6">
+                    {event.format && (
+                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                            {event.format.replace('_', ' ')}
+                        </span>
+                    )}
+                    {event.registration_type && (
+                        <span className={`px-3 py-1 rounded-full backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${event.registration_type === 'free'
+                            ? 'bg-green-500/20 text-green-100 border-green-500/30'
+                            : 'bg-yellow-500/20 text-yellow-100 border-yellow-500/30'
+                            }`}>
+                            {event.registration_type}
+                        </span>
+                    )}
                 </div>
 
                 {/* Content Overlay */}
@@ -62,7 +66,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) =
 
                     <div className="space-y-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                         {/* Title */}
-                        <h3 className="text-3xl font-black text-white leading-tight truncate group-hover:text-yellow-400 transition-colors">
+                        <h3 className="text-2xl font-black text-white leading-tight truncate group-hover:text-yellow-400 transition-colors">
                             {event.title}
                         </h3>
 

@@ -73,9 +73,16 @@ export default function DashboardPage() {
             setNextEvent(fullEvent)
             setRole(listItem?.my_role || null)
             setView('detail')
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            toast.error('Failed to load event details')
+            if (error?.response?.status === 404) {
+                toast.error('Event not found or has been deleted')
+                // Remove from local list to preventing re-clicking
+                setEvents(prev => prev.filter(e => e.event_id !== eventId))
+                setSelectedEventId(null)
+            } else {
+                toast.error('Failed to load event details')
+            }
             setView('list')
         } finally {
             setLoading(false)
@@ -98,7 +105,7 @@ export default function DashboardPage() {
 
     return (
         <div className="w-full max-w-[95%] 2xl:max-w-screen-2xl mx-auto px-4 py-8">
-            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="flex flex-col items-center justify-center">
 
                 {view === 'list' ? (
                     <DashboardEventList
@@ -163,6 +170,12 @@ export default function DashboardPage() {
                                     user={user}
                                     role={role}
                                     onUpdate={() => fetchEventDetails(selectedEventId!)}
+                                    onDelete={() => {
+                                        setSelectedEventId(null)
+                                        setNextEvent(null)
+                                        setView('list')
+                                        fetchData()
+                                    }}
                                 />
                             </div>
                         ) : (

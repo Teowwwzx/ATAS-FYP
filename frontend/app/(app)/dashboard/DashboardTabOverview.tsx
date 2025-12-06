@@ -3,6 +3,7 @@ import { EventDetails, ProfileResponse } from '@/services/api.types'
 import { updateEvent } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { differenceInDays, differenceInHours } from 'date-fns'
 
 interface DashboardTabOverviewProps {
     event: EventDetails
@@ -17,6 +18,12 @@ export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOver
 
     // Check permissions
     const canEdit = user?.user_id === event.organizer_id
+
+    // Date Logic
+    const startDate = new Date(event.start_datetime)
+    const daysLeft = differenceInDays(startDate, new Date())
+    const hoursLeft = differenceInHours(startDate, new Date())
+    const isPast = hoursLeft < 0
 
     // Form State
     const [form, setForm] = useState({
@@ -53,6 +60,51 @@ export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOver
 
     return (
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-8">
+            {/* Status & Countdown Card */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 bg-zinc-900 rounded-[2rem] p-8 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400 rounded-full blur-[80px] opacity-10 -mr-16 -mt-16"></div>
+                    <div className="relative z-10">
+                        <h2 className="text-3xl font-black mb-2">{event.title}</h2>
+                        <p className="text-zinc-400 font-medium mb-8 max-w-lg">{event.description ? event.description.slice(0, 100) + '...' : 'Plan and manage your event here.'}</p>
+
+                        <div className="flex gap-8">
+                            <div>
+                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Status</p>
+                                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${event.status === 'published' ? 'bg-green-500/20 text-green-300' : 'bg-white/10 text-zinc-300'
+                                    }`}>
+                                    {event.status}
+                                </span>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Countdown</p>
+                                <div className="text-3xl font-black text-yellow-400">
+                                    {isPast ? (
+                                        <span className="text-zinc-500">Event Ended</span>
+                                    ) : (
+                                        <>
+                                            {daysLeft} <span className="text-sm font-bold text-white">Days Left</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Quick Stats or Actions */}
+                <div className="bg-white border border-zinc-200 rounded-[2rem] p-8 shadow-sm flex flex-col justify-center items-center text-center">
+                    <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mb-4">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-zinc-900 mb-1">Participants</h3>
+                    <p className="text-sm text-zinc-500 mb-4">Manage your audience.</p>
+                    <button onClick={() => document.getElementById('tab-people')?.click()} className="text-yellow-600 font-bold hover:underline">View People &rarr;</button>
+                </div>
+            </div>
+
             <div className="w-full">
                 {isEditing && canEdit ? (
                     // EDIT MODE

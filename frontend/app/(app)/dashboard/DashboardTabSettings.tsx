@@ -7,9 +7,10 @@ import { useRouter } from 'next/navigation'
 interface DashboardTabSettingsProps {
     event: EventDetails
     onUpdate: () => void
+    onDelete: () => void
 }
 
-export function DashboardTabSettings({ event, onUpdate }: DashboardTabSettingsProps) {
+export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTabSettingsProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
 
@@ -57,7 +58,7 @@ export function DashboardTabSettings({ event, onUpdate }: DashboardTabSettingsPr
         try {
             await deleteEvent(event.id)
             toast.success('Event deleted')
-            router.push('/dashboard')
+            onDelete() // Use callback instead of router.push
         } catch (error) {
             console.error(error)
             toast.error('Failed to delete event')

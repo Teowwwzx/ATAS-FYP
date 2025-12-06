@@ -21,9 +21,10 @@ interface DashboardTabsProps {
     user: ProfileResponse | null
     role?: string | null
     onUpdate: () => void // Callback to refresh parent data
+    onDelete: () => void // Callback when event is deleted
 }
 
-export function DashboardTabs({ event, user, role, onUpdate }: DashboardTabsProps) {
+export function DashboardTabs({ event, user, role, onUpdate, onDelete }: DashboardTabsProps) {
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [refreshPeople, setRefreshPeople] = useState(0)
 
@@ -102,7 +103,7 @@ export function DashboardTabs({ event, user, role, onUpdate }: DashboardTabsProp
                     {/* 5. Settings Tab */}
                     {!allTabs[4].hidden && (
                         <Tab.Panel className="focus:outline-none">
-                            <DashboardTabSettings event={event} onUpdate={onUpdate} />
+                            <DashboardTabSettings event={event} onUpdate={onUpdate} onDelete={onDelete} />
                         </Tab.Panel>
                     )}
 
