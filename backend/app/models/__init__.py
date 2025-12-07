@@ -7,6 +7,7 @@ from app.models.profile_model import Profile
 from app.models.review_model import Review
 from app.models.skill_model import Skill
 from app.models.user_model import User
+from app.models.email_template_model import EmailTemplate
 
 __all__ = [
     "AuditLog",
@@ -18,4 +19,5 @@ __all__ = [
     "Review",
     "Skill",
     "User",
+    "EmailTemplate",
 ]

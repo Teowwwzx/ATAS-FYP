@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { EventDetails } from '@/services/api.types'
 import { adminService } from '@/services/admin.service'
+import { getProfileByUserId } from '@/services/api'
+import useSWR from 'swr'
 import { toast } from 'react-hot-toast'
 import { toastError } from '@/lib/utils'
 import {
@@ -17,6 +19,7 @@ import { format } from 'date-fns'
 import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
+import { getMe } from '@/services/api'
 
 interface EventsTableProps {
     events: EventDetails[]
@@ -28,12 +31,45 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
     const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
     const [deleteEventId, setDeleteEventId] = useState<string | null>(null)
+    const [moderationTargetId, setModerationTargetId] = useState<string | null>(null)
+    const [moderationType, setModerationType] = useState<'unpublish' | 'delete' | null>(null)
+    const [moderationReason, setModerationReason] = useState<string>('')
+    const { data: me } = useSWR('/users/me', () => getMe(), { revalidateOnFocus: false, dedupingInterval: 60000 })
+    const roles = useMemo(() => (me?.roles || []).map(r => typeof r === 'string' ? r : r.name), [me])
+    const isSuperAdmin = useMemo(() => roles.includes('super_admin'), [roles])
 
-    const handleDelete = async (eventId: string) => {
+    const notifyOrganizer = async (event: EventDetails, action: 'unpublish' | 'delete', reason?: string) => {
+        const title = action === 'unpublish' ? 'Event Unpublished' : 'Event Removed'
+        const base = action === 'unpublish'
+            ? `Your event "${event.title}" has been unpublished by an administrator for review. Please update content or contact support.`
+            : `Your event "${event.title}" has been removed by a super administrator due to policy violations. If you believe this is a mistake, contact support.`
+        const content = reason ? `${base}\n\nReason: ${reason}` : base
+        try {
+            const res = await adminService.broadcastEmailTemplate({
+                template_name: 'moderation_notice',
+                variables: { event_title: event.title, reason: reason || '' },
+                target_user_id: event.organizer_id,
+            })
+            if (!res || typeof res.count !== 'number' || res.count === 0) {
+                await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id })
+            }
+        } catch {
+            try { await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id }) } catch { }
+        }
+    }
+
+    const handleDelete = async (eventId: string, reason?: string) => {
         setIsLoading(eventId)
         try {
+            const ev = events.find(e => e.id === eventId)
+            if (!ev) throw new Error('Event not found')
+            if (ev.status === 'published') {
+                toast.error('Unpublish the event before deleting')
+                return
+            }
             await adminService.deleteEvent(eventId)
             toast.success('Event deleted')
+            await notifyOrganizer(ev, 'delete', reason)
             onRefresh()
         } catch (error) {
             toastError(error, undefined, 'Failed to delete event')
@@ -55,11 +91,13 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
         }
     }
 
-    const handleUnpublish = async (eventId: string) => {
+    const handleUnpublish = async (eventId: string, reason?: string) => {
         setIsLoading(eventId)
         try {
             await adminService.unpublishEvent(eventId)
             toast.success('Event unpublished')
+            const ev = events.find(e => e.id === eventId)
+            if (ev) await notifyOrganizer(ev, 'unpublish', reason)
             onRefresh()
         } catch (error) {
             toastError(error, undefined, 'Failed to unpublish event')
@@ -137,9 +175,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">
-                                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
-                                                {event.organizer_id.slice(0, 8)}...
-                                            </span>
+                                            <OrganizerName userId={event.organizer_id} />
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">
                                             {format(new Date(event.start_datetime), 'MMM d, yyyy')}
@@ -165,7 +201,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                     </button>
                                                 ) : (
                                                     <button
-                                                        onClick={() => handleUnpublish(event.id)}
+                                                        onClick={() => { setModerationTargetId(event.id); setModerationType('unpublish'); setModerationReason(''); }}
                                                         disabled={isLoading === event.id}
                                                         className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                                                         title="Unpublish"
@@ -174,14 +210,26 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                     </button>
                                                 )}
 
-                                                <button
-                                                    onClick={() => setDeleteEventId(event.id)}
-                                                    disabled={isLoading === event.id}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
+                                                {isSuperAdmin ? (
+                                                    event.status === 'published' ? (
+                                                        <button
+                                                            disabled
+                                                            className="p-2 text-gray-300 rounded-lg cursor-not-allowed"
+                                                            title="Unpublish first to delete"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => { setModerationTargetId(event.id); setModerationType('delete'); setModerationReason('') }}
+                                                            disabled={isLoading === event.id}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    )
+                                                ) : null}
                                             </div>
                                         </td>
                                     </tr>
@@ -250,18 +298,53 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                 </Dialog.Portal>
             </Dialog.Root>
 
-            <ConfirmationModal
-                isOpen={!!deleteEventId}
-                onClose={() => setDeleteEventId(null)}
-                onConfirm={() => { if (deleteEventId) handleDelete(deleteEventId); setDeleteEventId(null) }}
-                title="Delete Event"
-                message="Are you sure you want to delete this event? This action cannot be undone."
-                confirmText="Delete"
-                cancelText="Cancel"
-                variant="danger"
-            />
+            {/* Delete reason modal */}
+            <Dialog.Root open={!!moderationTargetId && moderationType === 'delete'} onOpenChange={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-2xl z-50 w-full max-w-lg outline-none">
+                        <Dialog.Title className="text-lg font-bold text-gray-900 mb-2">Delete Event (Super Admin)</Dialog.Title>
+                        <p className="text-sm text-gray-700 mb-4">Only unpublished events can be deleted. The organizer will be notified. Please provide a reason.</p>
+                        <textarea value={moderationReason} onChange={(e) => setModerationReason(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-28 text-sm" placeholder="Reason (required)" />
+                        <div className="mt-4 flex items-center justify-end gap-2">
+                            <button className="px-3 py-2 border border-gray-300 rounded-lg" onClick={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Cancel</button>
+                            <button className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700" disabled={!moderationReason.trim()} onClick={() => { if (moderationTargetId) handleDelete(moderationTargetId, moderationReason.trim()); setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Delete</button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+
+            <Dialog.Root open={!!moderationTargetId && moderationType === 'unpublish'} onOpenChange={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-2xl z-50 w-full max-w-lg outline-none">
+                        <Dialog.Title className="text-lg font-bold text-gray-900 mb-2">Unpublish Event</Dialog.Title>
+                        <p className="text-sm text-gray-700 mb-4">Provide a reason for unpublishing. The organizer will be notified.</p>
+                        <textarea value={moderationReason} onChange={(e) => setModerationReason(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-28 text-sm" placeholder="Reason (required)" />
+                        <div className="mt-4 flex items-center justify-end gap-2">
+                            <button className="px-3 py-2 border border-gray-300 rounded-lg" onClick={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Cancel</button>
+                            <button className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-lg font-bold hover:bg-yellow-300" disabled={!moderationReason.trim()} onClick={() => { if (moderationTargetId) handleUnpublish(moderationTargetId, moderationReason.trim()); setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Unpublish</button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
         </>
     )
+}
+
+function OrganizerName({ userId }: { userId: string }) {
+    const { data } = useSWR(['/profiles', userId], () => getProfileByUserId(userId), {
+        revalidateOnFocus: false,
+        dedupingInterval: 300000,
+    })
+    if (!data) {
+        return (
+            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                {userId.slice(0, 8)}...
+            </span>
+        )
+    }
+    return <span className="text-gray-700 font-medium">{data.full_name || userId.slice(0, 8) + '...'}</span>
 }
 
 // Helper component to avoid React fragment key warning with map

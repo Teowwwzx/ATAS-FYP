@@ -12,7 +12,16 @@ interface DashboardHeroCardProps {
 
 export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) {
     const startDate = new Date(event.start_datetime)
-    const coverUrl = event.cover_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
+    const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
+    const pickCover = () => {
+        const url = event.cover_url || ''
+        try {
+            const u = new URL(url)
+            if (allowedHosts.has(u.hostname)) return url
+        } catch {}
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
+    }
+    const coverUrl = pickCover()
 
     return (
         <div

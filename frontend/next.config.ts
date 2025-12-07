@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
         hostname: 'placehold.co',
       }
     ],
-  },
+  }
 };
 
 export default nextConfig;

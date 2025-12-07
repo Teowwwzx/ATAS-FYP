@@ -29,6 +29,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
     const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({})
     const [suspendUserId, setSuspendUserId] = useState<string | null>(null)
     const [rejectPendingUserId, setRejectPendingUserId] = useState<string | null>(null)
+    const [activateUserId, setActivateUserId] = useState<string | null>(null)
     const [removeRoleTarget, setRemoveRoleTarget] = useState<{ userId: string; role: string } | null>(null)
 
     const toggleExpand = (userId: string) => {
@@ -105,7 +106,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                                             </button>
                                         ) : (
                                             <button
-                                                onClick={() => onActivate(user.id)}
+                                                onClick={() => setActivateUserId(user.id)}
                                                 className="text-green-600 hover:text-green-900 font-medium"
                                             >
                                                 Activate
@@ -229,6 +230,16 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                 confirmText="Suspend"
                 cancelText="Cancel"
                 variant="danger"
+            />
+            <ConfirmationModal
+                isOpen={!!activateUserId}
+                onClose={() => setActivateUserId(null)}
+                onConfirm={() => { if (activateUserId) onActivate(activateUserId); setActivateUserId(null) }}
+                title="Activate User"
+                message="Reactivate this user and restore access?"
+                confirmText="Activate"
+                cancelText="Cancel"
+                variant="primary"
             />
             <ConfirmationModal
                 isOpen={!!rejectPendingUserId}

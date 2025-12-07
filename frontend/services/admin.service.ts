@@ -6,7 +6,10 @@ import {
     OrganizationType,
     AuditLog,
     EventDetails,
-    BroadcastNotificationRequest
+    BroadcastNotificationRequest,
+    EmailTemplate,
+    EmailTemplateCreate,
+    EmailTemplateUpdate
 } from './api.types'
 
 export interface AdminStats {
@@ -19,15 +22,22 @@ export interface AdminStats {
 export const adminService = {
     // --- Stats ---
     getStats: async (): Promise<AdminStats> => {
-        const pendingRoles = [
-            'expert_pending',
-            'organizer_pending',
-            'sponsor_pending',
-            'committee_pending',
-            'student_pending',
-            'customer_support_pending',
-            'content_moderator_pending'
-        ]
+        // Try dynamic roles; fallback to defaults if endpoint not available
+        let pendingRoles: string[] = []
+        try {
+            const pr = await api.get<string[]>('/admin/pending-roles')
+            pendingRoles = pr.data || []
+        } catch {
+            pendingRoles = [
+                'expert_pending',
+                'organizer_pending',
+                'sponsor_pending',
+                'committee_pending',
+                'student_pending',
+                'customer_support_pending',
+                'content_moderator_pending'
+            ]
+        }
 
         const [users, orgs, logs, pendingCounts] = await Promise.all([
             api.get<{ total_count: number }>('/users/search/count'),
@@ -48,6 +58,21 @@ export const adminService = {
             total_audit_logs: logs.data.total_count,
             pending_approvals
         }
+    },
+
+    // --- Onboarding Settings ---
+    getOnboardingSettings: async () => {
+        const response = await api.get<{ enabled_fields: string[]; required_fields: string[] }>(
+            '/profiles/onboarding/settings'
+        )
+        return response.data
+    },
+    updateOnboardingSettings: async (data: { enabled_fields: string[]; required_fields: string[] }) => {
+        const response = await api.put<{ enabled_fields: string[]; required_fields: string[] }>(
+            '/profiles/onboarding/settings',
+            data
+        )
+        return response.data
     },
 
     // --- Users ---
@@ -172,6 +197,8 @@ export const adminService = {
         type?: string
         organizer_id?: string
         include_all_visibility?: boolean
+        start_after?: string
+        end_before?: string
     }) => {
         const response = await api.get<EventDetails[]>('/events', { params })
         return response.data
@@ -230,6 +257,8 @@ export const adminService = {
         type?: string
         organizer_id?: string
         include_all_visibility?: boolean
+        start_after?: string
+        end_before?: string
     }) => {
         const response = await api.get<{ total_count: number }>('/events/count', { params })
         return response.data.total_count

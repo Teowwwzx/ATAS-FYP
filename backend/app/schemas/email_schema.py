@@ -5,3 +5,17 @@ class PasswordResetRequest(BaseModel):
 
 class PasswordReset(BaseModel):
     password: str
+
+
+class EmailTemplateCreate(BaseModel):
+    name: str
+    subject: str
+    body_html: str
+    variables: list[str] | None = None
+
+
+class EmailTemplateUpdate(BaseModel):
+    name: str | None = None
+    subject: str | None = None
+    body_html: str | None = None
+    variables: list[str] | None = None

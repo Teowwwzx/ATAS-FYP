@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { AuditLogsTable } from '@/components/admin/AuditLogsTable'
@@ -13,22 +13,16 @@ export default function AuditLogsPage() {
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
     const [actionFilter, setActionFilter] = useState('')
-    const [debouncedAction, setDebouncedAction] = useState('')
     const [actorFilter, setActorFilter] = useState('')
     const [targetTypeFilter, setTargetTypeFilter] = useState('')
     const [targetIdFilter, setTargetIdFilter] = useState('')
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
 
-    useEffect(() => {
-        const t = setTimeout(() => setDebouncedAction(actionFilter.trim()), 300)
-        return () => clearTimeout(t)
-    }, [actionFilter])
-
     const queryParams = {
         page,
         page_size: pageSize,
-        action: debouncedAction || undefined,
+        action: actionFilter || undefined,
         start_after: startDate || undefined,
         end_before: endDate || undefined,
         actor_user_id: actorFilter || undefined,
@@ -43,14 +37,7 @@ export default function AuditLogsPage() {
 
     const { data: totalCount } = useSWR(
         ['/admin/audit-logs/count', { ...queryParams, page: undefined }],
-        () => adminService.getAuditLogsCount({
-            action: queryParams.action,
-            actor_user_id: queryParams.actor_user_id,
-            target_type: queryParams.target_type,
-            target_id: queryParams.target_id,
-            start_after: queryParams.start_after,
-            end_before: queryParams.end_before,
-        })
+        () => adminService.getAuditLogsCount({ ...queryParams, page: undefined })
     )
 
     const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0

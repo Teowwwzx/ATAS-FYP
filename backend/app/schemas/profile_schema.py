@@ -101,3 +101,9 @@ class JobExperienceResponse(JobExperienceBase):
 class OnboardingUpdate(BaseModel):
     full_name: str
     role: str
+    bio: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    instagram_url: Optional[str] = None
+    twitter_url: Optional[str] = None
+    website_url: Optional[str] = None

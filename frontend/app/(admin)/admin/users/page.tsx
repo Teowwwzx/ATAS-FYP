@@ -19,6 +19,7 @@ export default function UsersPage() {
     const [roleFilter, setRoleFilter] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [verifiedFilter, setVerifiedFilter] = useState('')
+    const [bulkLoading, setBulkLoading] = useState(false)
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
@@ -161,10 +162,34 @@ export default function UsersPage() {
                     <option value="teacher">Teacher</option>
                     <option value="organizer">Organizer</option>
                     <option value="expert">Expert</option>
+                    <option value="expert_pending">Expert (Pending)</option>
                     <option value="admin">Admin</option>
                     <option value="customer_support">Customer Support</option>
                     <option value="content_moderator">Content Moderator</option>
                 </select>
+                {roleFilter === 'expert_pending' && (
+                    <button
+                        onClick={async () => {
+                            if (!users || users.length === 0) return
+                            setBulkLoading(true)
+                            try {
+                                await Promise.all(
+                                    users.map((u) => adminService.approvePendingRoles(u.id))
+                                )
+                                toast.success('Approved all expert_pending on this page')
+                                mutate()
+                            } catch (e) {
+                                toastError(e, undefined, 'Bulk approve failed')
+                            } finally {
+                                setBulkLoading(false)
+                            }
+                        }}
+                        disabled={bulkLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-500 disabled:opacity-50"
+                    >
+                        {bulkLoading ? 'Approving...' : 'Approve All (Page)'}
+                    </button>
+                )}
                 <select
                     value={statusFilter}
                     onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}

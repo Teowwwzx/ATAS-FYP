@@ -4,12 +4,18 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { completeOnboarding, getMyProfile } from '@/services/api'
 import type { OnboardingData } from '@/services/api.types'
+import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
 
 export default function OnboardingPage() {
   const router = useRouter()
   const [form, setForm] = useState<OnboardingData>({ full_name: '', role: 'student' })
   const [loading, setLoading] = useState(false)
+  const [settings, setSettings] = useState<{ enabled_fields: string[]; required_fields: string[] }>({ enabled_fields: ['full_name','role'], required_fields: ['full_name','role'] })
+
+  React.useEffect(() => {
+    adminService.getOnboardingSettings().then(setSettings).catch(() => {})
+  }, [])
 
   const updateField = (key: keyof OnboardingData, value: string) => {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -18,14 +24,18 @@ export default function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (loading) return
-    if (!form.full_name.trim()) {
+    if (settings.required_fields.includes('full_name') && !form.full_name.trim()) {
       toast.error('Please enter your full name')
+      return
+    }
+    if (settings.required_fields.includes('bio') && !String(form.bio || '').trim()) {
+      toast.error('Please enter your bio')
       return
     }
     setLoading(true)
     try {
       await completeOnboarding(form)
-      const prof = await getMyProfile()
+      await getMyProfile()
       const chosePending = form.role === 'expert' || form.role === 'sponsor'
       if (chosePending) {
         toast.success('Request submitted. Admin will review your role.')
@@ -88,6 +98,57 @@ export default function OnboardingPage() {
                 ))}
               </div>
             </div>
+
+            {settings.enabled_fields.includes('bio') && (
+              <div>
+                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Bio</label>
+                <textarea
+                  value={form.bio || ''}
+                  onChange={(e) => updateField('bio', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                  placeholder="Tell us about yourself"
+                />
+              </div>
+            )}
+
+            {settings.enabled_fields.includes('linkedin_url') && (
+              <div>
+                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">LinkedIn URL</label>
+                <input
+                  type="url"
+                  value={form.linkedin_url || ''}
+                  onChange={(e) => updateField('linkedin_url', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                  placeholder="https://linkedin.com/in/username"
+                />
+              </div>
+            )}
+
+            {settings.enabled_fields.includes('github_url') && (
+              <div>
+                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">GitHub URL</label>
+                <input
+                  type="url"
+                  value={form.github_url || ''}
+                  onChange={(e) => updateField('github_url', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                  placeholder="https://github.com/username"
+                />
+              </div>
+            )}
+
+            {settings.enabled_fields.includes('website_url') && (
+              <div>
+                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Website URL</label>
+                <input
+                  type="url"
+                  value={form.website_url || ''}
+                  onChange={(e) => updateField('website_url', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                  placeholder="https://your-site.example"
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3">
               <button

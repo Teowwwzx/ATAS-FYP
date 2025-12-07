@@ -58,6 +58,12 @@ export interface VerifyEmailSuccessResponse {
 export interface OnboardingData {
     full_name: string
     role: 'student' | 'expert' | 'sponsor'
+    bio?: string
+    linkedin_url?: string
+    github_url?: string
+    instagram_url?: string
+    twitter_url?: string
+    website_url?: string
 }
 
 // Based on your profile_schema.py -> ProfileResponse
