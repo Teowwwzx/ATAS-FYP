@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { getProfileByUserId, getReviewsByUser, getPublicEvents, getMyEvents, inviteEventParticipant } from '@/services/api'
 import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
@@ -159,15 +160,24 @@ export default function PublicProfilePage() {
                                 <p className="text-lg text-zinc-600 font-medium max-w-2xl">{profile.bio || 'No bio provided.'}</p>
                             </div>
 
-                            <button
-                                onClick={() => setShowInviteModal(true)}
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                </svg>
-                                Invite to Speak
-                            </button>
+                            <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+                                <Link
+                                    href={`/main/book/${userId}`}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    Book Expert
+                                </Link>
+                                <button
+                                    onClick={() => setShowInviteModal(true)}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    </svg>
+                                    Invite to Speak
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -309,8 +319,8 @@ export default function PublicProfilePage() {
                                                             key={event.event_id}
                                                             onClick={() => setSelectedEventId(event.event_id)}
                                                             className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${selectedEventId === event.event_id
-                                                                    ? 'border-yellow-400 bg-yellow-50 shadow-sm'
-                                                                    : 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
+                                                                ? 'border-yellow-400 bg-yellow-50 shadow-sm'
+                                                                : 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
                                                                 }`}
                                                         >
                                                             <div className={`w-3 h-3 rounded-full ${selectedEventId === event.event_id ? 'bg-yellow-500' : 'bg-zinc-200'}`} />

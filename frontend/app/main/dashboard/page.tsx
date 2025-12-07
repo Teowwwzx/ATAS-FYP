@@ -100,7 +100,7 @@ function ExpertDashboard() {
                   </div>
                   <div className="text-xs text-yellow-600 mt-1 uppercase font-bold tracking-wide">Action Required</div>
                 </div>
-                <Link href={`/main/events/${evt.event_id}`} className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-bold text-sm hover:bg-yellow-600">
+                <Link href={`/main/requests/${evt.event_id}`} className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-bold text-sm hover:bg-yellow-600">
                   View Request
                 </Link>
               </div>

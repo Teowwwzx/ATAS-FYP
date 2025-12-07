@@ -66,7 +66,7 @@ export function DashboardTabs({ event, user, role, onUpdate, onDelete }: Dashboa
                     </Tab.List>
                 </div>
 
-                <Tab.Panels className="flex-1 p-8 md:p-12 bg-zinc-50/50">
+                <Tab.Panels className="flex-1 p-6 md:p-8 bg-zinc-50/50">
 
                     {/* 1. Overview Tab */}
                     {!allTabs[0].hidden && (

@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getEventById, getEventParticipants, respondInvitationMe, getMe } from '@/services/api'
-import { EventDetails, UserMeResponse, EventParticipantStatus, EventParticipantDetails } from '@/services/api.types'
+import { EventDetails, UserMeResponse, EventParticipantDetails } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
+import { EventHeroCard } from '@/components/ui/EventHeroCard'
 
 export default function EventDetailsPage() {
     const params = useParams()
@@ -13,6 +14,7 @@ export default function EventDetailsPage() {
     const eventId = params.id as string
 
     const [event, setEvent] = useState<EventDetails | null>(null)
+    const [participants, setParticipants] = useState<EventParticipantDetails[]>([])
     const [myParticipant, setMyParticipant] = useState<EventParticipantDetails | null>(null)
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState<UserMeResponse | null>(null)
@@ -26,6 +28,7 @@ export default function EventDetailsPage() {
                     getMe().catch(() => null)
                 ])
                 setEvent(evt)
+                setParticipants(parts)
                 setUser(me)
                 if (me) {
                     const found = parts.find(p => p.user_id === me.id)
@@ -47,6 +50,7 @@ export default function EventDetailsPage() {
             toast.success(`Invitation ${status}`)
             // Refresh
             const parts = await getEventParticipants(eventId)
+            setParticipants(parts)
             if (user) {
                 const found = parts.find(p => p.user_id === user.id)
                 setMyParticipant(found || null)
@@ -60,125 +64,85 @@ export default function EventDetailsPage() {
     if (loading) return <div className="p-6">Loading...</div>
     if (!event) return <div className="p-6">Event not found</div>
 
-    // Expert View: Pending Invitation
-    if (myParticipant?.status === 'pending') {
-        return (
-            <div className="max-w-3xl mx-auto p-6">
-                <div className="bg-white border rounded-2xl shadow-sm p-8 text-center space-y-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 mb-4">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                    </div>
-                    <h1 className="text-3xl font-bold text-gray-900">Invitation Request</h1>
-                    <p className="text-lg text-gray-600">
-                        You have been invited to speak at <strong>{event.title}</strong>.
-                    </p>
+    // Expert View: Pending Invitation (Disabled for testing public view)
+    // if (myParticipant?.status === 'pending') { ... } 
 
-                    <div className="bg-gray-50 text-left p-6 rounded-xl border border-gray-100">
-                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Details</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs text-gray-500">Date & Time</label>
-                                <p className="font-medium text-gray-900">
-                                    {new Date(event.start_datetime).toLocaleString()}
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-500">Duration</label>
-                                <p className="font-medium text-gray-900">
-                                    {Math.round((new Date(event.end_datetime).getTime() - new Date(event.start_datetime).getTime()) / 60000)} mins
-                                </p>
-                            </div>
-                            <div className="col-span-1 md:col-span-2">
-                                <label className="block text-xs text-gray-500">Description</label>
-                                <div className="prose prose-sm mt-1 text-gray-800 whitespace-pre-wrap">
-                                    {myParticipant.description || event.description}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-500">Role</label>
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                                    {myParticipant.role}
+    // Normal Event Page
+    // Find organizer
+    const organizer = participants.find(p => p.role === 'organizer')
+
+    return (
+        <div className="max-w-[1400px] mx-auto p-4 md:p-8 animate-fadeIn">
+            <div className="mb-8">
+                <Link href="/main/events" className="text-zinc-500 hover:text-zinc-900 mb-6 inline-flex items-center gap-2 font-medium transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Back to Events
+                </Link>
+
+                {/* Hero Card */}
+                <div className="mb-12">
+                    <EventHeroCard event={event} enableImagePreview />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                    {/* Left Column: About */}
+                    <div className="lg:col-span-8 space-y-10">
+                        {/* Status for My Participant */}
+                        {myParticipant && (
+                            <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-zinc-100 shadow-sm">
+                                <span className="text-zinc-500 font-medium">Your Status</span>
+                                <span className={`px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide border ${myParticipant.status === 'accepted' ? 'bg-green-100 text-green-700 border-green-200' :
+                                    myParticipant.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                                        'bg-zinc-100 text-zinc-600 border-zinc-200'
+                                    }`}>
+                                    {myParticipant.status}
                                 </span>
+                            </div>
+                        )}
+
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-4">
+                                <div className="h-1 w-10 bg-yellow-400 rounded-full"></div>
+                                <h3 className="text-xl font-black text-zinc-900 uppercase tracking-wide">About This Event</h3>
+                            </div>
+                            <div className="prose prose-lg max-w-none text-zinc-600 leading-relaxed">
+                                <p className="whitespace-pre-wrap">{event.description}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                        <button
-                            onClick={() => handleResponse('rejected')}
-                            className="px-6 py-3 rounded-xl border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors w-full sm:w-auto"
-                        >
-                            Decline
-                        </button>
-                        <button
-                            onClick={() => handleResponse('accepted')}
-                            className="px-6 py-3 rounded-xl bg-yellow-500 text-white font-bold hover:bg-yellow-600 shadow-lg shadow-yellow-500/30 transition-all w-full sm:w-auto"
-                        >
-                            Accept Invitation
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )
-    }
+                    {/* Right Column: Register & Organizer */}
+                    <div className="lg:col-span-4 space-y-8">
+                        {/* Register Card */}
+                        <div className="bg-white p-6 rounded-2xl border border-zinc-100 shadow-xl shadow-zinc-200/50">
+                            <button
+                                className="w-full bg-yellow-400 text-zinc-900 font-black py-4 rounded-xl hover:bg-yellow-500 transition-all shadow-lg hover:shadow-xl active:scale-95 text-lg"
+                                onClick={() => {/* Handle registration logic */ }}
+                            >
+                                Register Now
+                            </button>
+                        </div>
 
-    // Normal Event Page
-    return (
-        <div className="max-w-5xl mx-auto p-6">
-            <div className="mb-6">
-                <Link href="/main/events" className="text-gray-500 hover:text-gray-900 mb-4 inline-block">&larr; Back to Events</Link>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
-                        <p className="text-gray-500 mt-1 flex items-center gap-2">
-                            <span>{new Date(event.start_datetime).toLocaleString()}</span>
-                            <span>&bull;</span>
-                            <span className="capitalize">{event.format.replace('_', ' ')}</span>
-                        </p>
-                    </div>
-                    {myParticipant && (
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${myParticipant.status === 'accepted' ? 'bg-green-100 text-green-800 border-green-200' :
-                            myParticipant.status === 'rejected' ? 'bg-red-100 text-red-800 border-red-200' :
-                                'bg-gray-100 text-gray-800 border-gray-200'
-                            }`}>
-                            {myParticipant.status.charAt(0).toUpperCase() + myParticipant.status.slice(1)}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Cover Image */}
-                    <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden relative">
-                        {event.cover_url ? (
-                            <img src={event.cover_url} alt={event.title} className="object-cover w-full h-full" />
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400">No Cover Image</div>
-                        )}
-                    </div>
-
-                    <div className="prose max-w-none">
-                        <h3 className="text-lg font-bold text-gray-900">About this event</h3>
-                        <p className="whitespace-pre-wrap">{event.description}</p>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                        <h3 className="font-bold text-gray-900 mb-4">Registration</h3>
-                        <div className="space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Price</span>
-                                <span className="font-medium capitalize">{event.registration_type}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Type</span>
-                                <span className="font-medium capitalize">{event.type}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Availability</span>
-                                <span className="font-medium capitalize">{event.visibility}</span>
+                        {/* Organizer Card */}
+                        <div>
+                            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4 px-2">Organizer</h4>
+                            <div className="bg-white p-4 rounded-2xl border border-zinc-200 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                                <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-xl font-bold text-zinc-400 overflow-hidden">
+                                    {organizer ? (
+                                        <img
+                                            src={`https://ui-avatars.com/api/?name=${organizer.user_id}&background=random`}
+                                            alt="Org"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : 'O'}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-zinc-900">Event Host</p>
+                                    <p className="text-xs text-zinc-500 font-medium">View Profile</p>
+                                </div>
+                                <div className="ml-auto w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
                             </div>
                         </div>
                     </div>
