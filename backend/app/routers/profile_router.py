@@ -13,7 +13,12 @@ from typing import List
 from fastapi import File, UploadFile
 from sqlalchemy import or_
 from sqlalchemy.sql import func
-from app.models.profile_model import Profile, ProfileVisibility, Tag, profile_tags
+from app.models.profile_model import Profile, ProfileVisibility, Tag, profile_tags, Education, JobExperience
+from app.schemas.profile_schema import (
+    ProfileCreate, ProfileResponse, ProfileUpdate, OnboardingUpdate,
+    EducationCreate, EducationResponse,
+    JobExperienceCreate, JobExperienceResponse
+)
 from app.models.skill_model import Skill
 from app.models.profile_model import profile_skills
 from app.models.user_model import User as UserModel
@@ -59,7 +64,7 @@ def discover_profiles(
         page_size = 20
     items = (
         q.distinct()
-        .order_by(Profile.full_name.asc())
+        .order_by(Profile.average_rating.desc(), Profile.full_name.asc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -83,6 +88,8 @@ def discover_profiles(
             "user_id": p.user_id,
             "full_name": p.full_name,
             "bio": p.bio,
+            "title": p.title,
+            "availability": p.availability,
             "avatar_url": p.avatar_url,
             "cover_url": p.cover_url,
             "linkedin_url": p.linkedin_url,
@@ -91,7 +98,9 @@ def discover_profiles(
             "twitter_url": p.twitter_url,
             "website_url": p.website_url,
             "visibility": p.visibility,
-            "tags": [],
+            "tags": p.tags,
+            "educations": p.educations,
+            "job_experiences": p.job_experiences,
             "average_rating": float(avg),
             "reviews_count": int(cnt),
         })
@@ -373,3 +382,41 @@ def update_onboarding_settings(payload: dict, current_user: User = Depends(requi
     ONBOARDING_SETTINGS["enabled_fields"] = list(enabled)
     ONBOARDING_SETTINGS["required_fields"] = list(required)
     return ONBOARDING_SETTINGS
+
+# --- Education ---
+
+@router.post("/me/educations", response_model=EducationResponse)
+def add_my_education(body: EducationCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    item = Education(**body.model_dump(), user_id=current_user.id)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@router.delete("/me/educations/{edu_id}", status_code=204)
+def delete_my_education(edu_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    item = db.query(Education).filter(Education.id == edu_id, Education.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Education not found")
+    db.delete(item)
+    db.commit()
+    return
+
+# --- Job Experience ---
+
+@router.post("/me/job_experiences", response_model=JobExperienceResponse)
+def add_my_job_experience(body: JobExperienceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    item = JobExperience(**body.model_dump(), user_id=current_user.id)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@router.delete("/me/job_experiences/{job_id}", status_code=204)
+def delete_my_job_experience(job_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    item = db.query(JobExperience).filter(JobExperience.id == job_id, JobExperience.user_id == current_user.id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Job Experience not found")
+    db.delete(item)
+    db.commit()
+    return

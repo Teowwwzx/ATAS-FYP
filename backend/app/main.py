@@ -51,6 +51,10 @@ app.include_router(profile_router.router, prefix="/api/v1/profiles", tags=["Prof
 if _has_org_router:
     app.include_router(organization_router.router, prefix="/api/v1", tags=["Organizations"])
 app.include_router(review_router.router, prefix="/api/v1", tags=["Reviews"])
+app.include_router(notification_router.router, prefix="/api/v1", tags=["Notifications"])
+
+from app.routers import ai_router
+app.include_router(ai_router.router, prefix="/api/v1/ai", tags=["AI"])
 
 if os.environ.get("PYTEST_CURRENT_TEST"):
     SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"

@@ -1,7 +1,7 @@
 # model/profile_model.py
 
 
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Table
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Table, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -44,13 +44,27 @@ class Profile(Base):
     instagram_url = Column(String, nullable=True)
     twitter_url = Column(String, nullable=True)
     website_url = Column(String, nullable=True)
+    
+    # Efficient Trust Flow fields
+    title = Column(String, nullable=True) # e.g. "Senior Engineer @ Grab"
+    average_rating = Column(Float, nullable=False, default=0.0)
+    availability = Column(String, nullable=True) # e.g. "Weekdays after 8pm"
+
     visibility = Column(Enum(ProfileVisibility), default=ProfileVisibility.public, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     tags = relationship("Tag", secondary=profile_tags, back_populates="profiles")
     skills = relationship("Skill", secondary=profile_skills, back_populates="profiles")
     user = relationship("User", back_populates="profile")
+
+    @property
+    def educations(self):
+        return self.user.educations if self.user else []
+
+    @property
+    def job_experiences(self):
+        return self.user.job_experiences if self.user else []
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -76,6 +90,8 @@ class Education(Base):
     remark = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    user = relationship("User", back_populates="educations")
 
 class JobExperience(Base):
     __tablename__ = "job_experiences"
@@ -89,3 +105,5 @@ class JobExperience(Base):
     end_datetime = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="job_experiences")

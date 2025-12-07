@@ -44,6 +44,16 @@ class User(Base):
     roles = relationship("Role", secondary=user_roles, back_populates="users")
     profile = relationship("Profile", back_populates="user", uselist=False)
     organizations = relationship("Organization", secondary="organization_members", back_populates="members")
+    educations = relationship("Education", back_populates="user", cascade="all, delete-orphan")
+    job_experiences = relationship("JobExperience", back_populates="user", cascade="all, delete-orphan")
+
+    @property
+    def full_name(self):
+        return self.profile.full_name if self.profile else None
+
+    @property
+    def avatar_url(self):
+        return self.profile.avatar_url if self.profile else None
 
 class Role(Base):
     __tablename__ = "roles"

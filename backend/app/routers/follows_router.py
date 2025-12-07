@@ -17,7 +17,14 @@ def get_all_follows(db: Session = Depends(get_db)):
 
 @router.get("/follows/me", response_model=List[FollowDetails])
 def get_my_follows(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Who I am following"""
     items = db.query(Follow).filter(Follow.follower_id == current_user.id).all()
+    return items
+
+@router.get("/followers/me", response_model=List[FollowDetails])
+def get_my_followers(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Who follows me"""
+    items = db.query(Follow).filter(Follow.followee_id == current_user.id).all()
     return items
 
 @router.post("/follows", response_model=FollowDetails)

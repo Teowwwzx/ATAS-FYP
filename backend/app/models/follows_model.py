@@ -2,6 +2,7 @@
 
 
 from sqlalchemy import Column, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -14,3 +15,6 @@ class Follow(Base):
     follower_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     followee_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    follower = relationship("User", foreign_keys=[follower_id], backref="following")
+    followee = relationship("User", foreign_keys=[followee_id], backref="followers")

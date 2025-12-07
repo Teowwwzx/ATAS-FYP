@@ -176,6 +176,7 @@ class MyEventItem(BaseModel):
     type: EventType
     status: EventStatus
     my_role: EventParticipantRole | None = None
+    my_status: EventParticipantStatus | None = None
 
 
 # --- Organizer Dashboard Schemas ---

@@ -1,5 +1,6 @@
 # profile_schema.py
 
+from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 import uuid
@@ -30,6 +31,8 @@ class SkillResponse(SkillBase):
 class ProfileBase(BaseModel):
     full_name: str
     bio: Optional[str] = None
+    title: Optional[str] = None # New field
+    availability: Optional[str] = None # New field
     avatar_url: Optional[str] = None
     cover_url: Optional[str] = None
     linkedin_url: Optional[str] = None
@@ -45,6 +48,8 @@ class ProfileCreate(ProfileBase):
 class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     bio: Optional[str] = None
+    title: Optional[str] = None
+    availability: Optional[str] = None
     linkedin_url: Optional[str] = None
     github_url: Optional[str] = None
     instagram_url: Optional[str] = None
@@ -56,6 +61,8 @@ class ProfileResponse(ProfileBase):
     id: uuid.UUID
     user_id: uuid.UUID
     tags: List[TagResponse] = []
+    educations: List[EducationResponse] = []
+    job_experiences: List[JobExperienceResponse] = []
     average_rating: float = 0.0
     reviews_count: int = 0
     model_config = ConfigDict(from_attributes=True)

@@ -55,6 +55,7 @@ def create_review(
     db.add(review)
     db.commit()
     db.refresh(review)
+    _update_profile_rating(db, review.reviewee_id)
     return review
 
 @router.get("/reviews/by-user/{user_id}", response_model=List[ReviewResponse])
@@ -169,4 +170,15 @@ def admin_delete_review(
     db.add(item)
     db.commit()
     log_admin_action(db, current_user.id, "review.delete", "review", review_id, details=(reason or None))
+    _update_profile_rating(db, item.reviewee_id)
     return item
+
+def _update_profile_rating(db: Session, user_id: uuid.UUID):
+    from app.models.profile_model import Profile
+    avg = db.query(func.avg(Review.rating)).filter(Review.reviewee_id == user_id, Review.deleted_at.is_(None)).scalar()
+    avg = float(avg) if avg is not None else 0.0
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if profile:
+        profile.average_rating = avg
+        db.add(profile)
+        db.commit()

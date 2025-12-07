@@ -267,7 +267,7 @@ def get_my_event_history(
     query = db.query(Event)
 
     # Always past events for history
-    query = query.filter(Event.end_datetime < func.now())
+    query = query.filter(Event.end_datetime < func.now(), Event.deleted_at.is_(None))
 
     if role_filter == "organized":
         query = query.filter(Event.organizer_id == current_user.id)
@@ -506,7 +506,7 @@ def list_my_events(
 ):
     """List events for the current user (organizer or participant), with your role."""
     # Events organized by me
-    organized = db.query(Event).filter(Event.organizer_id == current_user.id).all()
+    organized = db.query(Event).filter(Event.organizer_id == current_user.id, Event.deleted_at.is_(None)).all()
 
     # Events I'm participating in (exclude duplicates)
     participation_links = (
@@ -525,13 +525,14 @@ def list_my_events(
             type=e.type,
             status=e.status,
             my_role=EventParticipantRole.organizer,
+            my_status=EventParticipantStatus.accepted,
             cover_url=e.cover_url,
             venue_remark=e.venue_remark,
             format=e.format,
         )
 
     for link in participation_links:
-        e = db.query(Event).filter(Event.id == link.event_id).first()
+        e = db.query(Event).filter(Event.id == link.event_id, Event.deleted_at.is_(None)).first()
         if e is None:
             continue
         existing = event_map.get(e.id)
@@ -545,6 +546,7 @@ def list_my_events(
                 type=e.type,
                 status=e.status,
                 my_role=link.role,
+                my_status=link.status,
                 cover_url=e.cover_url,
                 venue_remark=e.venue_remark,
                 format=e.format,
@@ -801,14 +803,15 @@ def invite_event_participant(
         )
         .first()
     )
-    if existing is not None:
+    if existing:
         if existing.role != role_enum:
             existing.role = role_enum
             if body.description is not None:
                 existing.description = body.description
             db.add(existing)
+
             notif = Notification(
-                recipient_id=body.user_id,
+                recipient_id=existing.user_id,
                 actor_id=current_user.id,
                 type=NotificationType.event,
                 content=f"Your role for '{event.title}' has been updated to {role_enum.value}",
@@ -817,10 +820,10 @@ def invite_event_participant(
             db.add(notif)
             db.commit()
             db.refresh(existing)
+
             recipient = db.query(User).filter(User.id == body.user_id).first()
             if recipient and recipient.email:
                 send_event_role_update_email(email=recipient.email, event=event, new_role=role_enum)
-            return existing
         return existing
     participant = EventParticipant(
         event_id=event.id,
