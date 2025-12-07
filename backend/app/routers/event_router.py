@@ -313,10 +313,22 @@ def create_event(
     """Create a new event and assign the creator as organizer participant.
 
     Validation:
+    - Dashboard Pro required for multiple events
     - title must not be empty
     - end_datetime must be after start_datetime
     - max_participant must be positive when provided
     """
+    # Check Dashboard Pro requirement for multiple events
+    if not current_user.is_dashboard_pro:
+        existing_event_count = db.query(Event).filter(
+            Event.organizer_id == current_user.id
+        ).count()
+        if existing_event_count >= 1:
+            raise HTTPException(
+                status_code=403, 
+                detail="Dashboard Pro required to organize multiple events"
+            )
+    
     # Basic validations
     if not event.title or not event.title.strip():
         raise HTTPException(status_code=400, detail="Title is required")

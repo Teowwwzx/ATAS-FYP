@@ -18,7 +18,7 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
         try {
             const u = new URL(url)
             if (allowedHosts.has(u.hostname)) return url
-        } catch {}
+        } catch { }
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
     }
     const coverUrl = pickCover()
@@ -38,7 +38,6 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
             {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
 
-            {/* Badges - Top Right */}
             {/* Badges - Top Right */}
             <div className="absolute top-8 right-8 z-20 flex gap-3">
                 <span className="px-4 py-1.5 rounded-full bg-zinc-900/40 text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg capitalize">

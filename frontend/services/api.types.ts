@@ -67,6 +67,46 @@ export interface OnboardingData {
 }
 
 // Based on your profile_schema.py -> ProfileResponse
+export interface EducationCreate {
+    org_id?: string
+    qualification?: string
+    field_of_study?: string
+    start_datetime?: string
+    end_datetime?: string
+    resume_url?: string
+    remark?: string
+}
+
+export interface JobExperienceCreate {
+    org_id?: string
+    title: string
+    description?: string
+    start_datetime?: string
+    end_datetime?: string
+}
+
+export interface EducationResponse {
+    id: string
+    user_id: string
+    org_id?: string
+    qualification?: string // Degree
+    field_of_study?: string // Major / School
+    start_datetime?: string
+    end_datetime?: string
+    resume_url?: string
+    remark?: string
+}
+
+export interface JobExperienceResponse {
+    id: string
+    user_id: string
+    org_id?: string
+    title: string
+    description?: string
+    start_datetime?: string
+    end_datetime?: string
+}
+
 export interface ProfileResponse {
     id: string
     user_id: string
@@ -82,8 +122,12 @@ export interface ProfileResponse {
     website_url?: string
     visibility: 'public' | 'private'
     tags?: { id: string; name: string }[]
+    educations?: EducationResponse[]
+    job_experiences?: JobExperienceResponse[]
     average_rating?: number
     reviews_count?: number
+    title?: string // e.g. "Senior Engineer"
+    availability?: string // e.g. "Weekdays after 6pm"
 }
 
 export interface ProfileUpdate {
@@ -95,6 +139,8 @@ export interface ProfileUpdate {
     twitter_url?: string
     website_url?: string
     visibility?: 'public' | 'private'
+    title?: string
+    availability?: string
 }
 
 // --- Event Types ---
@@ -242,12 +288,13 @@ export interface MyEventItem {
     type: EventType
     status: EventStatus
     my_role?: EventParticipantRole | null
+    my_status?: EventParticipantStatus | null
     cover_url?: string | null
     venue_remark?: string | null
     format?: EventFormat | null
+    description?: string | null
+    participant_count?: number | null
 }
-
-// --- Proposal Types ---
 
 export interface EventProposalCreate {
     title?: string | null
@@ -345,6 +392,7 @@ export interface UserMeResponse {
     id: string
     email: string
     roles: string[]
+    is_dashboard_pro: boolean
 }
 
 // --- Organization Types ---
@@ -404,4 +452,17 @@ export interface EmailTemplate {
     variables: string[]
     created_at?: string
     updated_at?: string
+}
+
+// --- AI Service ---
+
+export interface ProposalRequest {
+    topic: string
+    expert_name: string
+    student_name?: string
+}
+
+export interface ProposalResponse {
+    title: string
+    description: string
 }

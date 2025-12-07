@@ -37,6 +37,8 @@ import {
   EventFormat,
   EventRegistrationType,
   EventRegistrationStatus,
+  ProposalRequest,
+  ProposalResponse,
 } from './api.types'
 
 // 1. Create an Axios instance
@@ -290,6 +292,11 @@ export const getMe = async () => {
   return response.data
 }
 
+export const enableDashboardPro = async () => {
+  const response = await api.post<{ dashboard_pro: boolean }>(`/users/me/enable-dashboard-pro`)
+  return response.data
+}
+
 // --- Profiles Search ---
 
 export const findProfiles = async (params: { email?: string; name?: string; skill?: string; role?: string }) => {
@@ -299,6 +306,11 @@ export const findProfiles = async (params: { email?: string; name?: string; skil
 
 export const getPublicProfiles = async () => {
   const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles`)
+  return response.data
+}
+
+export const discoverProfiles = async (params: { name?: string; tag_ids?: string[]; skill_ids?: string[]; page?: number }) => {
+  const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/discover`, { params })
   return response.data
 }
 
@@ -463,6 +475,13 @@ export const deleteEvent = async (eventId: string) => {
   return response.data
 }
 
+// --- AI Service ---
+
+export const generateProposal = async (data: ProposalRequest) => {
+  const response = await api.post<ProposalResponse>('/ai/generate-proposal', data)
+  return response.data
+}
+
 export default api
 
 export const logout = clientLogout
@@ -483,7 +502,7 @@ api.interceptors.response.use(
       try {
         localStorage.removeItem('atas_token')
       } catch { }
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
     }
@@ -559,5 +578,81 @@ export const markAllNotificationsRead = async () => {
 
 export const getUnreadNotificationCount = async () => {
   const response = await api.get<{ unread_count: number }>(`/notifications/me/unread-count`)
+  return response.data
+}
+// --- Taxonomy ---
+export const getTags = async () => {
+  const response = await api.get<{ id: string, name: string }[]>('/tags')
+  return response.data
+}
+
+export const attachMyTag = async (tagId: string) => {
+  const response = await api.post('/profiles/me/tags', null, { params: { tag_id: tagId } })
+  return response.data
+}
+
+export const detachMyTag = async (tagId: string) => {
+  const response = await api.delete(`/profiles/me/tags/${tagId}`)
+  return response.data
+}
+
+// --- Education ---
+export const addMyEducation = async (data: import('./api.types').EducationCreate) => {
+  const response = await api.post<import('./api.types').EducationResponse>('/profiles/me/educations', data)
+  return response.data
+}
+
+export const deleteMyEducation = async (id: string) => {
+  const response = await api.delete<void>(`/profiles/me/educations/${id}`)
+  return response.data
+}
+
+// --- Job Experience ---
+export const addMyJobExperience = async (data: import('./api.types').JobExperienceCreate) => {
+  const response = await api.post<import('./api.types').JobExperienceResponse>('/profiles/me/job_experiences', data)
+  return response.data
+}
+
+export const deleteMyJobExperience = async (id: string) => {
+  const response = await api.delete<void>(`/profiles/me/job_experiences/${id}`)
+  return response.data
+}
+
+// --- Follows ---
+export interface FollowerSummary {
+  id: string
+  full_name?: string
+  avatar_url?: string
+}
+
+export const getMyFollows = async () => {
+  const response = await api.get<{
+    id: string,
+    follower_id: string,
+    followee_id: string,
+    followee?: FollowerSummary,
+    follower?: FollowerSummary
+  }[]>('/follows/me')
+  return response.data
+}
+
+export const getMyFollowers = async () => {
+  const response = await api.get<{
+    id: string,
+    follower_id: string,
+    followee_id: string,
+    follower?: FollowerSummary,
+    followee?: FollowerSummary
+  }[]>('/followers/me')
+  return response.data
+}
+
+export const followUser = async (followeeId: string) => {
+  const response = await api.post('/follows', { followee_id: followeeId })
+  return response.data
+}
+
+export const unfollowUser = async (followeeId: string) => {
+  const response = await api.delete(`/follows/${followeeId}`)
   return response.data
 }

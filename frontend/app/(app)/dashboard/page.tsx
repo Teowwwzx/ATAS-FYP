@@ -56,6 +56,12 @@ export default function DashboardPage() {
             setUser(profileData)
             setMe(meData)
             setOpenChecklistCount((checklistItems || []).length)
+
+            // Auto-select if only 1 organized event
+            const organized = eventsData.filter(e => e.my_role === 'organizer')
+            if (organized.length === 1) {
+                setSelectedEventId(organized[0].event_id)
+            }
         } catch (error) {
             console.error(error)
             toast.error('Failed to load dashboard')
@@ -111,8 +117,10 @@ export default function DashboardPage() {
                     <DashboardEventList
                         events={events}
                         user={user}
+                        me={me}
                         onSelect={(e) => setSelectedEventId(e.event_id)}
                         onCreate={() => router.push('/events/create')}
+                        onProUpgrade={fetchData}
                     />
                 ) : (
                     // DETAIL VIEW
@@ -120,21 +128,18 @@ export default function DashboardPage() {
                         {/* Header Section */}
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 w-full animate-fadeIn">
                             <div>
-                                <button
-                                    onClick={handleBack}
-                                    className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                    </svg>
-                                    Back to Events
-                                </button>
-                                <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-2">
-                                    {nextEvent?.title}
-                                </h1>
-                                <p className="text-zinc-500 font-medium">
-                                    Manage detailed settings and participants.
-                                </p>
+                                {/* Only show back button for Dashboard Pro users */}
+                                {me?.is_dashboard_pro && (
+                                    <button
+                                        onClick={handleBack}
+                                        className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                        Back to Events
+                                    </button>
+                                )}
                             </div>
                             {user?.user_id === nextEvent?.organizer_id && (
                                 <div className="flex items-center gap-3">

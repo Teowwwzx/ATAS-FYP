@@ -1,0 +1,219 @@
+'use client'
+
+import React, { Fragment, useState } from 'react'
+import { Dialog, Transition } from '@headlessui/react'
+import { ProfileResponse, EventParticipantRole } from '@/services/api.types'
+import * as api from '@/services/api'
+import { toast } from 'react-hot-toast'
+
+interface BookExpertModalProps {
+    isOpen: boolean
+    onClose: () => void
+    expert: ProfileResponse
+    onSuccess?: () => void
+}
+
+export function BookExpertModal({
+    isOpen,
+    onClose,
+    expert,
+    onSuccess,
+}: BookExpertModalProps) {
+    const [topic, setTopic] = useState('')
+    const [startDatetime, setStartDatetime] = useState('')
+    const [duration, setDuration] = useState('60') // minutes
+    const [message, setMessage] = useState('')
+    const [isGenerating, setIsGenerating] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const handleGenerate = async () => {
+        if (!topic) {
+            toast.error('Please enter a topic first')
+            return
+        }
+        setIsGenerating(true)
+        try {
+            const res = await api.generateProposal({
+                topic,
+                expert_name: expert.full_name,
+            })
+            setMessage(res.description)
+            toast.success('Proposal generated!')
+        } catch (error) {
+            console.error(error)
+            toast.error('Failed to generate proposal')
+        } finally {
+            setIsGenerating(false)
+        }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!startDatetime || !topic || !message) {
+            toast.error('Please fill in all fields')
+            return
+        }
+        setIsSubmitting(true)
+
+        try {
+            // 1. Calculate end time
+            const start = new Date(startDatetime)
+            const end = new Date(start.getTime() + parseInt(duration) * 60000)
+
+            // 2. Create Event
+            const event = await api.createEvent({
+                title: `Session with ${expert.full_name}: ${topic}`,
+                description: message,
+                format: 'panel_discussion', // Default or allow select? Using panel for now or 'other'
+                type: 'online',
+                start_datetime: start.toISOString(),
+                end_datetime: end.toISOString(),
+                registration_type: 'free',
+                visibility: 'private',
+                venue_remark: 'Online Session'
+            })
+
+            // 3. Invite Expert
+            await api.inviteEventParticipant(event.id, {
+                user_id: expert.user_id,
+                role: 'speaker', // Expert role
+                description: message
+            })
+
+            toast.success('Invitation sent successfully!')
+            onSuccess?.()
+            onClose()
+        } catch (err: any) {
+            console.error(err)
+            const msg = err.response?.data?.detail || 'Failed to book session'
+            toast.error(msg)
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    // Reset form on open? Effect? 
+    // Simplified for now.
+
+    return (
+        <Transition appear show={isOpen} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={onClose}>
+                <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-300"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="ease-in duration-200"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                >
+                    <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+                </Transition.Child>
+
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100 scale-100"
+                            leaveTo="opacity-0 scale-95"
+                        >
+                            <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all border border-zinc-100">
+                                <Dialog.Title
+                                    as="h3"
+                                    className="text-xl font-bold leading-6 text-zinc-900 mb-4"
+                                >
+                                    Book Session with {expert.full_name}
+                                </Dialog.Title>
+
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-zinc-700 mb-1">Topic</label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                            placeholder="e.g. Career Advice, Mock Interview"
+                                            value={topic}
+                                            onChange={(e) => setTopic(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 mb-1">Date & Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                                value={startDatetime}
+                                                onChange={(e) => setStartDatetime(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 mb-1">Duration (mins)</label>
+                                            <select
+                                                className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                                value={duration}
+                                                onChange={(e) => setDuration(e.target.value)}
+                                            >
+                                                <option value="15">15 mins</option>
+                                                <option value="30">30 mins</option>
+                                                <option value="45">45 mins</option>
+                                                <option value="60">60 mins</option>
+                                                <option value="90">90 mins</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <label className="block text-sm font-medium text-zinc-700">Invitation Message</label>
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerate}
+                                                disabled={isGenerating || !topic}
+                                                className="text-xs font-bold text-yellow-600 hover:text-yellow-700 disabled:opacity-50 flex items-center gap-1"
+                                            >
+                                                {isGenerating ? 'Generating...' : '✨ Generate with AI'}
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                            rows={6}
+                                            placeholder="Describe what you want to discuss..."
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            required
+                                        ></textarea>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-end gap-3">
+                                        <button
+                                            type="button"
+                                            className="inline-flex justify-center rounded-xl border border-transparent bg-zinc-100 px-4 py-2 text-sm font-bold text-zinc-900 hover:bg-zinc-200 focus:outline-none transition-colors"
+                                            onClick={onClose}
+                                            disabled={isSubmitting}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="inline-flex justify-center rounded-xl border border-transparent bg-yellow-500 px-4 py-2 text-sm font-bold text-white hover:bg-yellow-600 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={isSubmitting}
+                                        >
+                                            {isSubmitting ? 'Sending...' : 'Send Invitation'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
+                </div>
+            </Dialog>
+        </Transition>
+    )
+}

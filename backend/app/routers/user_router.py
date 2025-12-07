@@ -23,7 +23,19 @@ def users_me(
         "id": str(current_user.id),
         "email": current_user.email,
         "roles": [r.name for r in getattr(current_user, "roles", [])],
+        "is_dashboard_pro": current_user.is_dashboard_pro,
     }
+
+
+@router.post("/me/enable-dashboard-pro")
+def enable_dashboard_pro(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Enable Dashboard Pro for the current user"""
+    current_user.is_dashboard_pro = True
+    db.commit()
+    return {"dashboard_pro": True}
 
 
 @router.get("")

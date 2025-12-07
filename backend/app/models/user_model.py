@@ -34,6 +34,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False, server_default=text("FALSE"))
     verification_token = Column(String, unique=True, nullable=True)
     status = Column(Enum(UserStatus), default=UserStatus.inactive, nullable=False)
+    is_dashboard_pro = Column(Boolean, default=False, server_default=text("FALSE"), nullable=False)
     referral_code = Column(String, unique=True, nullable=False)
     referred_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

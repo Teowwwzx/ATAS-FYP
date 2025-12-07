@@ -3,6 +3,7 @@ import { EventDetails } from '@/services/api.types'
 import { updateEvent, openRegistration, closeRegistration, deleteEvent } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { DeleteEventModal } from '@/components/modals/DeleteEventModal'
 
 interface DashboardTabSettingsProps {
     event: EventDetails
@@ -13,6 +14,8 @@ interface DashboardTabSettingsProps {
 export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTabSettingsProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
 
     // We can remove form state for title/desc if this tab no longer edits them.
@@ -53,16 +56,17 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
     }
 
     const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) return
-        setLoading(true)
+        setIsDeleting(true)
         try {
             await deleteEvent(event.id)
             toast.success('Event deleted')
+            setShowDeleteModal(false)
             onDelete() // Use callback instead of router.push
         } catch (error) {
             console.error(error)
             toast.error('Failed to delete event')
-            setLoading(false)
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -146,7 +150,7 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                             </p>
                         </div>
                         <button
-                            onClick={handleDelete}
+                            onClick={() => setShowDeleteModal(true)}
                             disabled={loading}
                             className="px-6 py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-all shadow-sm"
                         >
@@ -155,6 +159,15 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                     </div>
                 </div>
             </section>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteEventModal
+                isOpen={showDeleteModal}
+                eventTitle={event.title}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                isDeleting={isDeleting}
+            />
         </div>
     )
 }

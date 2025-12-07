@@ -4,6 +4,7 @@ import { getEventProposals, createEventProposalWithFile, deleteEventProposal } f
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 interface DashboardTabProposalsProps {
     event: EventDetails
@@ -150,15 +151,30 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
         }
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Delete this proposal?')) return
+    // Delete Modal State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [proposalToDelete, setProposalToDelete] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+
+    const handleDeleteClick = (id: string) => {
+        setProposalToDelete(id)
+        setIsDeleteModalOpen(true)
+    }
+
+    const confirmDelete = async () => {
+        if (!proposalToDelete) return
+        setIsDeleting(true)
         try {
-            await deleteEventProposal(event.id, id)
-            setProposals(proposals.filter(p => p.id !== id))
+            await deleteEventProposal(event.id, proposalToDelete)
+            setProposals(proposals.filter(p => p.id !== proposalToDelete))
             toast.success('Proposal deleted')
+            setIsDeleteModalOpen(false)
         } catch (error) {
             console.error(error)
             toast.error('Failed to delete proposal')
+        } finally {
+            setIsDeleting(false)
+            setProposalToDelete(null)
         }
     }
 
@@ -277,7 +293,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                                     Download
                                                 </a>
                                                 <button
-                                                    onClick={() => handleDelete(proposal.id)}
+                                                    onClick={() => handleDeleteClick(proposal.id)}
                                                     className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                                     title="Delete"
                                                 >
@@ -408,6 +424,17 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Proposal"
+                message="Are you sure you want to delete this proposal? This action cannot be undone."
+                confirmText="Delete"
+                variant="danger"
+                isLoading={isDeleting}
+            />
         </div>
     )
 }
