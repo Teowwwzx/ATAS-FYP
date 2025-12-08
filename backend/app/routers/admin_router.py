@@ -110,20 +110,33 @@ class RoleApprovalRequest(BaseModel):
 @router.post("/users/{user_id}/roles/approve")
 def approve_user_role(
     user_id: str,
-    body: RoleApprovalRequest,
+    body: RoleApprovalRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"]))
 ):
     u = db.query(User).filter(User.id == user_id).first()
     if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    final_role = body.role_name.strip().lower()
-    pending_role = f"{final_role}_pending"
     from app.services.user_service import assign_role_to_user, remove_role_from_user
-    assign_role_to_user(db, u, final_role)
-    remove_role_from_user(db, u, pending_role)
-    log_admin_action(db, current_user.id, f"role.approve.{final_role}", "user", u.id)
-    return {"user_id": str(u.id), "approved_role": final_role}
+    approved: list[str] = []
+    if body and body.role_name:
+        final_role = body.role_name.strip().lower()
+        pending_role = f"{final_role}_pending"
+        assign_role_to_user(db, u, final_role)
+        remove_role_from_user(db, u, pending_role)
+        approved.append(final_role)
+        log_admin_action(db, current_user.id, f"role.approve.{final_role}", "user", u.id)
+    else:
+        names = [r.name for r in getattr(u, "roles", [])]
+        for name in names:
+            if isinstance(name, str) and name.endswith("_pending"):
+                final_role = name[:-8]
+                assign_role_to_user(db, u, final_role)
+                remove_role_from_user(db, u, name)
+                approved.append(final_role)
+                log_admin_action(db, current_user.id, f"role.approve.{final_role}", "user", u.id)
+    db.commit()
+    return {"user_id": str(u.id), "approved_roles": approved}
 
 
 class RoleRejectionRequest(BaseModel):
@@ -134,19 +147,31 @@ class RoleRejectionRequest(BaseModel):
 @router.post("/users/{user_id}/roles/reject")
 def reject_user_role(
     user_id: str,
-    body: RoleRejectionRequest,
+    body: RoleRejectionRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"]))
 ):
     u = db.query(User).filter(User.id == user_id).first()
     if u is None:
         raise HTTPException(status_code=404, detail="User not found")
-    final_role = body.role_name.strip().lower()
-    pending_role = f"{final_role}_pending"
     from app.services.user_service import remove_role_from_user
-    remove_role_from_user(db, u, pending_role)
-    log_admin_action(db, current_user.id, f"role.reject.{final_role}", "user", u.id)
-    return {"user_id": str(u.id), "rejected_role": final_role, "reason": body.reason}
+    rejected: list[str] = []
+    if body and body.role_name:
+        final_role = body.role_name.strip().lower()
+        pending_role = f"{final_role}_pending"
+        remove_role_from_user(db, u, pending_role)
+        rejected.append(final_role)
+        log_admin_action(db, current_user.id, f"role.reject.{final_role}", "user", u.id)
+    else:
+        names = [r.name for r in getattr(u, "roles", [])]
+        for name in names:
+            if isinstance(name, str) and name.endswith("_pending"):
+                final_role = name[:-8]
+                remove_role_from_user(db, u, name)
+                rejected.append(final_role)
+                log_admin_action(db, current_user.id, f"role.reject.{final_role}", "user", u.id)
+    db.commit()
+    return {"user_id": str(u.id), "rejected_roles": rejected, "reason": (body.reason if body else None)}
 
 
 # --- Email Templates (Admin) ---

@@ -226,7 +226,7 @@ export const adminService = {
     },
 
     broadcastEmailTemplate: async (data: import('./api.types').BroadcastEmailTemplateRequest) => {
-        const response = await api.post<{ count: number }>('/admin/notifications/broadcast-email', data)
+        const response = await api.post<{ count: number }>('/admin/email-templates/broadcast', data)
         return response.data
     },
 
@@ -298,7 +298,7 @@ export const adminService = {
     },
 
     testSendEmailTemplate: async (id: string, email: string, variables: Record<string, string>) => {
-        const response = await api.post<void>(`/admin/email-templates/${id}/test-send`, { email, variables })
+        const response = await api.post<void>(`/admin/email-templates/${id}/test-send`, { to_email: email, variables })
         return response.data
     },
 

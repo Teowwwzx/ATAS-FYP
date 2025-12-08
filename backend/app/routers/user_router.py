@@ -38,6 +38,65 @@ def enable_dashboard_pro(
     return {"dashboard_pro": True}
 
 
+@router.get("/{user_id}")
+def get_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "customer_support"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": str(u.id),
+        "email": u.email,
+        "is_verified": bool(u.is_verified),
+        "status": (u.status.value if isinstance(u.status, UserStatus) else str(u.status)),
+        "roles": [r.name for r in getattr(u, "roles", [])],
+    }
+
+
+@router.put("/{user_id}")
+def update_user(
+    user_id: str,
+    body: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "customer_support"]))
+):
+    try:
+        uid = uuid.UUID(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    u = db.query(User).filter(User.id == uid).first()
+    if u is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    email = body.get("email")
+    if isinstance(email, str) and email:
+        u.email = email
+    is_verified = body.get("is_verified")
+    if isinstance(is_verified, bool):
+        u.is_verified = is_verified
+    status = body.get("status")
+    if isinstance(status, str) and status:
+        try:
+            u.status = UserStatus(status)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid status")
+    db.add(u)
+    db.commit()
+    db.refresh(u)
+    return {
+        "id": str(u.id),
+        "email": u.email,
+        "is_verified": bool(u.is_verified),
+        "status": (u.status.value if isinstance(u.status, UserStatus) else str(u.status)),
+        "roles": [r.name for r in getattr(u, "roles", [])],
+    }
+
 @router.get("")
 def list_users(
     email: str | None = None,
