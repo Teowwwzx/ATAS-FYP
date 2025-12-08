@@ -15,6 +15,7 @@ from app.models.event_model import (
     EventProposalComment,
     EventReminder,
     EventChecklistItem,
+    EventPicture,
 )
 from app.models.user_model import User
 from faker import Faker
@@ -24,6 +25,40 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.sql import func
 
 fake = Faker()
+
+# Real event cover images
+EVENT_COVER_IMAGES = [
+    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1511578314322-379afb476865?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1559223607-96aa90755327?w=1200&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1561489396-888724a1543d?w=1200&h=600&fit=crop",
+]
+
+# Real event logo images
+EVENT_LOGO_IMAGES = [
+    "https://ui-avatars.com/api/?name=Event+Logo&background=4F46E5&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Tech+Talk&background=EF4444&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Workshop&background=10B981&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Hackathon&background=F59E0B&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Seminar&background=8B5CF6&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Meetup&background=EC4899&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Conference&background=06B6D4&color=fff&size=200&bold=true",
+    "https://ui-avatars.com/api/?name=Summit&background=14B8A6&color=fff&size=200&bold=true",
+]
+
+# Real event picture images
+EVENT_PICTURE_IMAGES = [
+    "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=600&fit=crop",
+    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop",
+]
 
 def seed_events(db, num_events=20):
     """Seed events table with fake data"""
@@ -45,7 +80,7 @@ def seed_events(db, num_events=20):
         print("No users found. Please seed users first.")
         return
     
-    for _ in range(num_events):
+    for idx in range(num_events):
         # Random start time between now and 30 days in the future or past
         offset_days = random.randint(-15, 30)
         start_time = datetime.now(timezone.utc) + timedelta(days=offset_days)
@@ -60,13 +95,41 @@ def seed_events(db, num_events=20):
         if random.random() < 0.2:
             status_choice = EventStatus.draft
 
+        # More realistic event titles based on format
+        event_formats_titles = {
+            EventFormat.panel_discussion: [
+                "Industry Leaders Panel on AI Innovation",
+                "Future of Tech: Expert Panel Discussion",
+                "Career in Software Engineering Panel"
+            ],
+            EventFormat.workshop: [
+                "Hands-on Machine Learning Workshop",
+                "Full-Stack Development Bootcamp",
+                "UI/UX Design Workshop"
+            ],
+            EventFormat.webinar: [
+                "Introduction to Cloud Computing",
+                "Data Science Fundamentals",
+                "Cybersecurity Best Practices"
+            ],
+            EventFormat.seminar: [
+                "Research Presentation: Quantum Computing",
+                "Academic Seminar on Blockchain Technology",
+                "Graduate School Information Session"
+            ],
+        }
+        
+        event_format = random.choice(list(EventFormat))
+        event_title = random.choice(event_formats_titles.get(event_format, ["Tech Event", "Community Meetup", "Networking Event"]))
+        event_type = random.choice(list(EventType))
+
         event = Event(
             id=uuid.uuid4(),
             organizer_id=organizer.id,
-            title=fake.sentence(nb_words=6),
-            description=fake.paragraph(nb_sentences=3),
-            format=random.choice(list(EventFormat)),
-            type=random.choice(list(EventType)),
+            title=event_title,
+            description=fake.paragraph(nb_sentences=5),
+            format=event_format,
+            type=event_type,
             start_datetime=start_time,
             end_datetime=end_time,
             registration_type=random.choice(list(EventRegistrationType)),
@@ -75,14 +138,28 @@ def seed_events(db, num_events=20):
             registration_status=EventRegistrationStatus.opened,
             auto_accept_registration=True,
             max_participant=random.randint(10, 100) if random.random() > 0.3 else None,
-            logo_url=fake.image_url(),
-            cover_url=fake.image_url(),
+            logo_url=EVENT_LOGO_IMAGES[idx % len(EVENT_LOGO_IMAGES)],
+            cover_url=EVENT_COVER_IMAGES[idx % len(EVENT_COVER_IMAGES)],
+            venue_place_id=fake.address() if event_type != EventType.online else None,
+            venue_remark=fake.sentence() if random.random() > 0.5 else None,
+            remark=fake.sentence() if random.random() > 0.7 else None,
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
         
         db.add(event)
         db.flush()
+
+        # Add event pictures (1-3 pictures per event)
+        num_pictures = random.randint(1, 3)
+        for pic_idx in range(num_pictures):
+            event_picture = EventPicture(
+                event_id=event.id,
+                url=EVENT_PICTURE_IMAGES[pic_idx % len(EVENT_PICTURE_IMAGES)],
+                caption=fake.sentence(nb_words=6),
+                sort_order=pic_idx,
+            )
+            db.add(event_picture)
 
         # Link organizer as participant (accepted)
         org_link = EventParticipant(
@@ -99,27 +176,63 @@ def seed_events(db, num_events=20):
         for cat in random.sample(choose, k=random.randint(1, min(2, len(choose)))):
             db.add(EventCategory(event_id=event.id, category_id=cat.id))
 
-        # Add participants
+        # Add participants with diverse statuses
         others = [u for u in users if u.id != organizer.id]
         num_participants = random.randint(3, 15)
         picked = random.sample(others, k=min(num_participants, len(others)))
         for item in picked:
             role = random.choices(
-                population=[EventParticipantRole.audience, EventParticipantRole.committee, EventParticipantRole.speaker],
-                weights=[70, 20, 10],
+                population=[EventParticipantRole.audience, EventParticipantRole.committee, EventParticipantRole.speaker, EventParticipantRole.sponsor],
+                weights=[65, 20, 10, 5],
                 k=1,
             )[0]
-            status = random.choices(
-                population=[EventParticipantStatus.accepted, EventParticipantStatus.pending],
-                weights=[80, 20],
-                k=1,
-            )[0]
+            
+            # Status depends on event timing
+            if event.status == EventStatus.ended:
+                # For ended events: mostly attended, some absent, few accepted/rejected
+                status = random.choices(
+                    population=[
+                        EventParticipantStatus.attended,
+                        EventParticipantStatus.absent,
+                        EventParticipantStatus.accepted,
+                        EventParticipantStatus.rejected
+                    ],
+                    weights=[60, 20, 15, 5],
+                    k=1,
+                )[0]
+            elif event.status == EventStatus.draft:
+                # For draft events: mostly pending
+                status = random.choices(
+                    population=[EventParticipantStatus.pending, EventParticipantStatus.rejected],
+                    weights=[90, 10],
+                    k=1,
+                )[0]
+            else:
+                # For upcoming/published events: mix of pending, accepted, rejected
+                status = random.choices(
+                    population=[
+                        EventParticipantStatus.accepted,
+                        EventParticipantStatus.pending,
+                        EventParticipantStatus.rejected
+                    ],
+                    weights=[60, 30, 10],
+                    k=1,
+                )[0]
+            
+            # Add description for speakers and sponsors
+            description = None
+            if role == EventParticipantRole.speaker:
+                description = f"Speaking on: {fake.catch_phrase()}"
+            elif role == EventParticipantRole.sponsor:
+                description = f"Sponsor tier: {random.choice(['Gold', 'Silver', 'Bronze'])}"
+            
             db.add(EventParticipant(
                 event_id=event.id,
                 user_id=item.id,
                 role=role,
                 status=status,
-                join_method="seed",
+                description=description,
+                join_method=random.choice(["invitation", "registration", "seed"]),
             ))
 
         # Add proposals from speakers or organizer
