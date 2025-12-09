@@ -8,9 +8,11 @@ import {
     ChevronUpIcon,
     PersonIcon
 } from '@radix-ui/react-icons'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { format } from 'date-fns'
+import { getProfileByUserId } from '@/services/api'
+import { adminService } from '@/services/admin.service'
 
 interface UsersTableProps {
     users: UserResponse[]
@@ -32,8 +34,49 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
     const [activateUserId, setActivateUserId] = useState<string | null>(null)
     const [removeRoleTarget, setRemoveRoleTarget] = useState<{ userId: string; role: string } | null>(null)
 
+    const [profiles, setProfiles] = useState<Record<string, import('@/services/api.types').ProfileResponse>>({})
+    const [onboardingSettings, setOnboardingSettings] = useState<{ enabled_fields: string[]; required_fields: string[] } | null>(null)
+
+    useEffect(() => {
+        ;(async () => {
+            try {
+                const s = await adminService.getOnboardingSettings()
+                setOnboardingSettings(s)
+            } catch {}
+        })()
+    }, [])
+
+    const fetchProfile = async (userId: string) => {
+        if (profiles[userId]) return
+        try {
+            const p = await getProfileByUserId(userId)
+            setProfiles(prev => ({ ...prev, [userId]: p }))
+        } catch {}
+    }
+
     const toggleExpand = (userId: string) => {
-        setExpandedUserId(expandedUserId === userId ? null : userId)
+        const next = expandedUserId === userId ? null : userId
+        setExpandedUserId(next)
+        if (next) fetchProfile(next)
+    }
+
+    const computeCompleteness = (p?: import('@/services/api.types').ProfileResponse) => {
+        if (!p || !onboardingSettings) return { percent: 0, missing: [] as string[] }
+        const map: Record<string, any> = {
+            full_name: p.full_name,
+            bio: p.bio,
+            linkedin_url: p.linkedin_url,
+            github_url: p.github_url,
+            instagram_url: p.instagram_url,
+            twitter_url: p.twitter_url,
+            website_url: p.website_url,
+        }
+        const enabled = onboardingSettings.enabled_fields || []
+        const required = onboardingSettings.required_fields || []
+        const filledCount = enabled.reduce((acc, key) => acc + (map[key] ? 1 : 0), 0)
+        const percent = enabled.length > 0 ? Math.round((filledCount / enabled.length) * 100) : 0
+        const missing = required.filter((key) => !map[key])
+        return { percent, missing }
     }
 
     return (
@@ -140,7 +183,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                             {expandedUserId === user.id && (
                                 <tr className="bg-gray-50">
                                     <td colSpan={6} className="px-6 py-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                                             <div>
                                                 <h4 className="font-semibold text-gray-900 mb-2">User Details</h4>
                                                 <div className="space-y-2">
@@ -212,6 +255,31 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
                                                         </div>
                                                     </div>
                                                 )}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-gray-900 mb-2">Onboarding Completeness</h4>
+                                                {(() => {
+                                                    const p = profiles[user.id]
+                                                    const { percent, missing } = computeCompleteness(p)
+                                                    return (
+                                                        <div className="space-y-3">
+                                                            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-green-500" style={{ width: `${percent}%` }}></div>
+                                                            </div>
+                                                            <div className="text-gray-700 font-medium">{percent}% complete</div>
+                                                            {missing.length > 0 && (
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Missing Required</div>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {missing.map((m) => (
+                                                                            <span key={m} className="px-2 py-1 bg-orange-50 text-orange-700 rounded text-xs border border-orange-100">{m}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })()}
                                             </div>
                                         </div>
                                     </td>

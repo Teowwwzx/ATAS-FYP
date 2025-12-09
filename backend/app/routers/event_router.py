@@ -65,6 +65,7 @@ from app.schemas.event_schema import (
     EventProposalCommentUpdate,
 )
 from typing import List
+from sqlalchemy import text
 from app.dependencies import get_current_user, get_current_user_optional
 from app.dependencies import require_roles
 from app.models.user_model import User, Role, user_roles
@@ -238,6 +239,39 @@ def get_all_events(
         .all()
     )
     return events
+
+@router.get("/events/semantic-search", response_model=List[EventDetails])
+def semantic_search_events(
+    embedding: str | None = None,
+    q_text: str | None = None,
+    top_k: int = 20,
+    db: Session = Depends(get_db),
+):
+    event_ids: list[uuid.UUID] = []
+    if embedding:
+        try:
+            sql = text("SELECT event_id FROM event_embeddings ORDER BY embedding <-> :emb LIMIT :k")
+            rows = db.execute(sql, {"emb": embedding, "k": top_k}).fetchall()
+            event_ids = [r[0] for r in rows]
+        except Exception:
+            event_ids = []
+
+    q = db.query(Event).filter(Event.deleted_at.is_(None))
+    q = q.filter(Event.visibility == EventVisibility.public)
+    if event_ids:
+        q = q.filter(Event.id.in_(event_ids))
+    elif q_text:
+        q = q.filter(Event.title.ilike(f"%{q_text}%"))
+    return q.order_by(Event.start_datetime.asc()).limit(top_k).all()
+
+@router.get("/semantic/events", response_model=List[EventDetails])
+def semantic_search_events_alias(
+    embedding: str | None = None,
+    q_text: str | None = None,
+    top_k: int = 20,
+    db: Session = Depends(get_db),
+):
+    return semantic_search_events(embedding=embedding, q_text=q_text, top_k=top_k, db=db)
 
 
 
