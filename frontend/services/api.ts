@@ -179,6 +179,11 @@ export const getPublicEvents = async (params?: {
   return response.data
 }
 
+export const semanticSearchEvents = async (params?: { q_text?: string; top_k?: number; embedding?: string }) => {
+  const response = await api.get<EventDetails[]>('/events/semantic-search', { params })
+  return response.data
+}
+
 export const getEventById = async (id: string) => {
   const response = await api.get<EventDetails>(`/events/${id}`)
   return response.data
@@ -311,6 +316,11 @@ export const getPublicProfiles = async () => {
 
 export const discoverProfiles = async (params: { name?: string; tag_ids?: string[]; skill_ids?: string[]; page?: number }) => {
   const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/discover`, { params })
+  return response.data
+}
+
+export const semanticSearchProfiles = async (params?: { q_text?: string; top_k?: number; embedding?: string }) => {
+  const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/semantic-search`, { params })
   return response.data
 }
 

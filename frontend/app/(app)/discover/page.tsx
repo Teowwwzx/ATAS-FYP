@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents } from '@/services/api'
+import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents, semanticSearchEvents, semanticSearchProfiles, getMe } from '@/services/api'
 import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 // @ts-ignore
@@ -45,6 +45,9 @@ export default function DiscoverPage() {
     const [peopleFiltersOpen, setPeopleFiltersOpen] = useState(false)
     const [debouncedPeopleSearch, setDebouncedPeopleSearch] = useState('')
     const [debouncedEventSearch, setDebouncedEventSearch] = useState('')
+    const [useAiEvents, setUseAiEvents] = useState(false)
+    const [useAiPeople, setUseAiPeople] = useState(false)
+    const [currentEmail, setCurrentEmail] = useState<string | null>(null)
 
     const incomingRef = useRef<HTMLDivElement>(null)
 
@@ -52,6 +55,7 @@ export default function DiscoverPage() {
     useEffect(() => {
         loadAllEventSections()
         loadOrgs()
+        getMe().then(me => setCurrentEmail(me.email)).catch(() => {})
     }, [])
 
     // Debounce Search
@@ -114,12 +118,14 @@ export default function DiscoverPage() {
         try {
             setEventsLoading(true)
             setEventError(null)
-            const data = await getPublicEvents({
-                q_text: debouncedEventSearch,
-                registration_type: filterRegType || undefined,
-                registration_status: filterRegStatus || undefined,
-                type: filterEventType || undefined,
-            })
+            const data = useAiEvents
+                ? await semanticSearchEvents({ q_text: debouncedEventSearch || undefined, top_k: 24 })
+                : await getPublicEvents({
+                    q_text: debouncedEventSearch,
+                    registration_type: filterRegType || undefined,
+                    registration_status: filterRegStatus || undefined,
+                    type: filterEventType || undefined,
+                })
             setEvents(data)
         } catch (err) {
             console.error('Failed to load events', err)
@@ -144,8 +150,9 @@ export default function DiscoverPage() {
     const loadPeople = async () => {
         try {
             setPeopleLoading(true)
-            // Just reusing findProfiles logic
-            const profiles = await findProfiles(debouncedPeopleSearch)
+            const profiles = useAiPeople
+                ? await semanticSearchProfiles({ q_text: debouncedPeopleSearch || undefined, top_k: 24 })
+                : await findProfiles({ name: debouncedPeopleSearch || '' })
             // Client side filter for Role/Skill if API doesn't support
             let filtered = profiles
             if (peopleRole) {
@@ -395,8 +402,17 @@ export default function DiscoverPage() {
                     <div>
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-black text-zinc-900">
-                                {eventSearch || filterRegStatus || filterRegType || filterEventType ? 'Search Results' : 'All Events'}
+                                {useAiEvents ? 'AI Match Results' : (eventSearch || filterRegStatus || filterRegType || filterEventType ? 'Search Results' : 'All Events')}
                             </h2>
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-2 text-sm font-bold text-zinc-700">
+                                    <input type="checkbox" checked={useAiEvents} onChange={(e) => setUseAiEvents(e.target.checked)} />
+                                    AI Match
+                                </label>
+                                {useAiEvents && (
+                                    <span className="text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedEventSearch || '—'}` : `You searched: ${debouncedEventSearch || '—'}`}</span>
+                                )}
+                            </div>
                         </div>
 
                         {eventsLoading ? (
@@ -509,10 +525,17 @@ export default function DiscoverPage() {
                                 onClick={() => setPeopleFiltersOpen(!peopleFiltersOpen)}
                                 className={`px-6 py-4 rounded-2xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 ${peopleFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                                 Filters
                             </button>
+                            <label className="ml-auto flex items-center gap-2 text-sm font-bold text-zinc-700">
+                                <input type="checkbox" checked={useAiPeople} onChange={(e) => setUseAiPeople(e.target.checked)} />
+                                AI Match
+                            </label>
                         </div>
+                        {useAiPeople && (
+                            <div className="mt-2 text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedPeopleSearch || '—'}` : `You searched: ${debouncedPeopleSearch || '—'}`}</div>
+                        )}
 
                         {peopleFiltersOpen && (
                             <div className="mt-4 p-6 bg-white rounded-3xl shadow-sm border border-zinc-100 animate-fadeIn">
