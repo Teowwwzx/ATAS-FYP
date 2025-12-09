@@ -1,7 +1,7 @@
 # model/profile_model.py
 
 
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Table, Float
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Table, Float, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -16,16 +16,16 @@ class ProfileVisibility(enum.Enum):
 profile_tags = Table(
     'profile_tags',
     Base.metadata,
-    Column('profile_id', UUID(as_uuid=True), ForeignKey('profiles.id'), primary_key=True),
-    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id'), primary_key=True),
+    Column('profile_id', UUID(as_uuid=True), ForeignKey('profiles.id', ondelete="CASCADE"), primary_key=True),
+    Column('tag_id', UUID(as_uuid=True), ForeignKey('tags.id', ondelete="CASCADE"), primary_key=True),
     Column('created_at', DateTime(timezone=True), server_default=func.now())
 )
 
 profile_skills = Table(
     'profile_skills',
     Base.metadata,
-    Column('profile_id', UUID(as_uuid=True), ForeignKey('profiles.id'), primary_key=True),
-    Column('skill_id', UUID(as_uuid=True), ForeignKey('skills.id'), primary_key=True),
+    Column('profile_id', UUID(as_uuid=True), ForeignKey('profiles.id', ondelete="CASCADE"), primary_key=True),
+    Column('skill_id', UUID(as_uuid=True), ForeignKey('skills.id', ondelete="CASCADE"), primary_key=True),
     Column('level', Integer, nullable=False),
     Column('created_at', DateTime(timezone=True), server_default=func.now())
 )
@@ -48,7 +48,17 @@ class Profile(Base):
     # Efficient Trust Flow fields
     title = Column(String, nullable=True) # e.g. "Senior Engineer @ Grab"
     average_rating = Column(Float, nullable=False, default=0.0)
+    today_status = Column(String, nullable=True) # e.g. "Open to offers"
+    
+    # Onboarding Fields
+    country = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    origin_country = Column(String, nullable=True)
+    can_be_speaker = Column(Boolean, default=False, nullable=False)
+    intents = Column(JSON, nullable=True) # ["looking_for_sponsor", "open_to_hiring"]
+
     availability = Column(String, nullable=True) # e.g. "Weekdays after 8pm"
+    is_onboarded = Column(Boolean, default=False, nullable=False, server_default='false')
 
     visibility = Column(Enum(ProfileVisibility), default=ProfileVisibility.public, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

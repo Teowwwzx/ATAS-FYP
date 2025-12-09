@@ -17,6 +17,7 @@
     "@types/react-datepicker": "^6.2.0",
     "@types/react-places-autocomplete": "^7.2.14",
     "axios": "^1.13.1",
+    "country-list": "^2.4.1",
     "date-fns": "^4.1.0",
     "lodash": "^4.17.21",
     "next": "16.0.1",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4",
+    "@types/country-list": "^2.1.4",
     "@types/google.maps": "^3.58.1",
     "@types/lodash": "^4.17.21",
     "@types/node": "^20",

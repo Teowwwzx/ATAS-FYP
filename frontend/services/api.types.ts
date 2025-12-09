@@ -64,6 +64,28 @@ export interface OnboardingData {
     instagram_url?: string
     twitter_url?: string
     website_url?: string
+
+    // New Fields
+    country?: string
+    city?: string
+    origin_country?: string
+    can_be_speaker?: boolean
+    intents?: string[]
+    specialist?: string // Maps to field_of_study (student) or title (expert)
+
+    // For Student
+    education?: {
+        qualification?: string
+        field_of_study?: string
+        start_datetime?: string
+        end_datetime?: string
+        remark?: string // Used for 'Year'
+    }
+
+    // For Expert Tags
+    tag_ids?: string[]
+    availability?: string
+    same_as_origin?: boolean
 }
 
 // Based on your profile_schema.py -> ProfileResponse
@@ -126,6 +148,7 @@ export interface ProfileResponse {
     job_experiences?: JobExperienceResponse[]
     average_rating?: number
     reviews_count?: number
+    is_onboarded: boolean
     title?: string // e.g. "Senior Engineer"
     availability?: string // e.g. "Weekdays after 6pm"
 }

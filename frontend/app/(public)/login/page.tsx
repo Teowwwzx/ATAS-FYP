@@ -47,9 +47,16 @@ export default function LoginPage() {
             localStorage.setItem('atas_token', access_token)
 
             try {
-                await getMyProfile()
-                toast.success('Welcome back!')
-                router.push('/dashboard')
+                const profile = await getMyProfile()
+
+                // Check is_onboarded status
+                if (!profile.is_onboarded) {
+                    toast('Please complete your onboarding!', { icon: '👋' })
+                    router.push('/onboarding')
+                } else {
+                    toast.success('Welcome back!')
+                    router.push('/dashboard')
+                }
             } catch (profileError) {
                 const err = profileError as AxiosError
                 if (err.response?.status === 404) {
