@@ -11,7 +11,7 @@ from app.services import profile_service, user_service
 from app.dependencies import get_current_user, get_current_user_optional
 from typing import List
 from fastapi import File, UploadFile
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from sqlalchemy.sql import func
 from app.models.profile_model import Profile, ProfileVisibility, Tag, profile_tags, Education, JobExperience
 from app.schemas.profile_schema import (
@@ -130,6 +130,74 @@ def discover_profiles_count(
         q = q.filter(profile_skills.c.skill_id.in_(skill_ids))
     total = q.with_entities(Profile.id).distinct().count()
     return {"total_count": total}
+
+@router.get("/semantic-search", response_model=List[ProfileResponse])
+def semantic_search_profiles(
+    embedding: str | None = None,
+    q_text: str | None = None,
+    top_k: int = 20,
+    db: Session = Depends(get_db),
+):
+    user_ids: list[uuid.UUID] = []
+    if embedding:
+        try:
+            sql = text(
+                "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> :emb LIMIT :k"
+            )
+            rows = db.execute(sql, {"emb": embedding, "k": top_k}).fetchall()
+            user_ids = [r[0] for r in rows]
+        except Exception:
+            user_ids = []
+
+    profiles_q = db.query(Profile)
+    profiles_q = profiles_q.join(User, User.id == Profile.user_id)
+    profiles_q = profiles_q.join(user_roles, user_roles.c.user_id == User.id)
+    profiles_q = profiles_q.join(Role, Role.id == user_roles.c.role_id)
+    profiles_q = profiles_q.filter(Role.name == "expert")
+    profiles_q = profiles_q.filter(Profile.visibility == ProfileVisibility.public)
+    if user_ids:
+        profiles_q = profiles_q.filter(Profile.user_id.in_(user_ids))
+    elif q_text:
+        profiles_q = profiles_q.filter(Profile.full_name.ilike(f"%{q_text}%"))
+    profiles = profiles_q.limit(top_k).all()
+    result: List[ProfileResponse] = []
+    from app.models.review_model import Review
+    for p in profiles:
+        avg = (
+            db.query(func.coalesce(func.avg(Review.rating), 0.0))
+            .filter(Review.reviewee_id == p.user_id, Review.deleted_at.is_(None))
+            .scalar()
+            or 0.0
+        )
+        cnt = (
+            db.query(func.count(Review.id))
+            .filter(Review.reviewee_id == p.user_id, Review.deleted_at.is_(None))
+            .scalar()
+            or 0
+        )
+        pr = ProfileResponse.model_validate({
+            "id": p.id,
+            "user_id": p.user_id,
+            "full_name": p.full_name,
+            "bio": p.bio,
+            "title": p.title,
+            "availability": p.availability,
+            "avatar_url": p.avatar_url,
+            "cover_url": p.cover_url,
+            "linkedin_url": p.linkedin_url,
+            "github_url": p.github_url,
+            "instagram_url": p.instagram_url,
+            "twitter_url": p.twitter_url,
+            "website_url": p.website_url,
+            "visibility": p.visibility,
+            "tags": p.tags,
+            "educations": p.educations,
+            "job_experiences": p.job_experiences,
+            "average_rating": float(avg),
+            "reviews_count": int(cnt),
+        })
+        result.append(pr)
+    return result
     
 @router.get("/find", response_model=List[ProfileResponse])
 def search_profiles(
