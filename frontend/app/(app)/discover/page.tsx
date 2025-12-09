@@ -154,7 +154,7 @@ export default function DiscoverPage() {
                 ? await semanticSearchProfiles({ q_text: debouncedPeopleSearch || undefined, top_k: 24 })
                 : await findProfiles({ name: debouncedPeopleSearch || '' })
             // Client side filter for Role/Skill if API doesn't support
-            let filtered = profiles
+            const filtered = profiles
             if (peopleRole) {
                 // This is approximate as we don't have role field on profile response explicitly mapped sometimes
                 // But let's assume implementation details or skip complex filtering for now
@@ -405,10 +405,20 @@ export default function DiscoverPage() {
                                 {useAiEvents ? 'AI Match Results' : (eventSearch || filterRegStatus || filterRegType || filterEventType ? 'Search Results' : 'All Events')}
                             </h2>
                             <div className="flex items-center gap-3">
-                                <label className="flex items-center gap-2 text-sm font-bold text-zinc-700">
-                                    <input type="checkbox" checked={useAiEvents} onChange={(e) => setUseAiEvents(e.target.checked)} />
-                                    AI Match
-                                </label>
+                                <button
+                                    onClick={() => setUseAiEvents(!useAiEvents)}
+                                    className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${useAiEvents
+                                        ? 'bg-green-500 border-green-500 text-white'
+                                        : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
+                                        }`}
+                                    aria-pressed={useAiEvents}
+                                    aria-label="Toggle AI Match for events"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                                <span className="text-sm font-bold text-zinc-700">AI Match</span>
                                 {useAiEvents && (
                                     <span className="text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedEventSearch || '—'}` : `You searched: ${debouncedEventSearch || '—'}`}</span>
                                 )}
@@ -528,10 +538,22 @@ export default function DiscoverPage() {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                                 Filters
                             </button>
-                            <label className="ml-auto flex items-center gap-2 text-sm font-bold text-zinc-700">
-                                <input type="checkbox" checked={useAiPeople} onChange={(e) => setUseAiPeople(e.target.checked)} />
-                                AI Match
-                            </label>
+                            <div className="ml-auto flex items-center gap-2">
+                                <button
+                                    onClick={() => setUseAiPeople(!useAiPeople)}
+                                    className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${useAiPeople
+                                        ? 'bg-green-500 border-green-500 text-white'
+                                        : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
+                                        }`}
+                                    aria-pressed={useAiPeople}
+                                    aria-label="Toggle AI Match for people"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                                <span className="text-sm font-bold text-zinc-700">AI Match</span>
+                            </div>
                         </div>
                         {useAiPeople && (
                             <div className="mt-2 text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedPeopleSearch || '—'}` : `You searched: ${debouncedPeopleSearch || '—'}`}</div>

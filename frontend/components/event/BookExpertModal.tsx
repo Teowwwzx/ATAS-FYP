@@ -34,10 +34,12 @@ export function BookExpertModal({
         setIsGenerating(true)
         try {
             const res = await api.generateProposal({
-                topic,
-                expert_name: expert.full_name,
+                expert_id: expert.user_id,
+                tone: 'Professional',
+                length_hint: 'short',
+                audience_level: 'general',
             })
-            setMessage(res.description)
+            setMessage(res.raw_text)
             toast.success('Proposal generated!')
         } catch (error) {
             console.error(error)

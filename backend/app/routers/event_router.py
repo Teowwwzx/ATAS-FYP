@@ -66,6 +66,7 @@ from app.schemas.event_schema import (
 )
 from typing import List
 from sqlalchemy import text
+from app.services.ai_service import generate_text_embedding, _vec_to_pg
 from app.dependencies import get_current_user, get_current_user_optional
 from app.dependencies import require_roles
 from app.models.user_model import User, Role, user_roles
@@ -250,16 +251,31 @@ def semantic_search_events(
     event_ids: list[uuid.UUID] = []
     if embedding:
         try:
-            sql = text("SELECT event_id FROM event_embeddings ORDER BY embedding <-> :emb LIMIT :k")
+            sql = text("SELECT event_id FROM event_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k")
             rows = db.execute(sql, {"emb": embedding, "k": top_k}).fetchall()
             event_ids = [r[0] for r in rows]
         except Exception:
+            db.rollback()
+            event_ids = []
+    elif q_text:
+        try:
+            vec = generate_text_embedding(q_text)
+            if vec:
+                emb = _vec_to_pg(vec)
+                sql = text("SELECT event_id FROM event_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k")
+                rows = db.execute(sql, {"emb": emb, "k": top_k}).fetchall()
+                event_ids = [r[0] for r in rows]
+        except Exception:
+            db.rollback()
             event_ids = []
 
     q = db.query(Event).filter(Event.deleted_at.is_(None))
     q = q.filter(Event.visibility == EventVisibility.public)
     if event_ids:
-        q = q.filter(Event.id.in_(event_ids))
+        items = q.filter(Event.id.in_(event_ids)).all()
+        order = {eid: idx for idx, eid in enumerate(event_ids)}
+        items.sort(key=lambda e: order.get(e.id, 10**9))
+        return items[:top_k]
     elif q_text:
         q = q.filter(Event.title.ilike(f"%{q_text}%"))
     return q.order_by(Event.start_datetime.asc()).limit(top_k).all()
@@ -430,7 +446,21 @@ def create_event(
     # Single commit to ensure event and organizer participant are persisted together
     db.commit()
     db.refresh(db_event)
-
+    try:
+        src = f"{db_event.title}\n{db_event.description or ''}\nformat:{db_event.format} type:{db_event.type}"
+        vec = generate_text_embedding(src)
+        if vec:
+            emb = _vec_to_pg(vec)
+            up = text("""
+                INSERT INTO event_embeddings(event_id, embedding, source_text)
+                VALUES (:eid, CAST(:emb AS vector), :src)
+                ON CONFLICT (event_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+            """)
+            db.execute(up, {"eid": db_event.id, "emb": emb, "src": src})
+            db.commit()
+    except Exception:
+        pass
+    
     return db_event
 
 
@@ -454,6 +484,20 @@ def publish_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+    try:
+        src = f"{event.title}\n{event.description or ''}\nformat:{event.format} type:{event.type}"
+        vec = generate_text_embedding(src)
+        if vec:
+            emb = _vec_to_pg(vec)
+            up = text("""
+                INSERT INTO event_embeddings(event_id, embedding, source_text)
+                VALUES (:eid, CAST(:emb AS vector), :src)
+                ON CONFLICT (event_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+            """)
+            db.execute(up, {"eid": event.id, "emb": emb, "src": src})
+            db.commit()
+    except Exception:
+        pass
     log_admin_action(db, current_user.id, "event.publish", "event", event.id)
     return event
 

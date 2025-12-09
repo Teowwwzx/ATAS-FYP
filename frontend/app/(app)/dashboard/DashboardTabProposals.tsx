@@ -3,7 +3,7 @@ import { EventDetails, EventProposalResponse, EventProposalCreate, ProposalSugge
 import { getEventProposals, createEventProposalWithFile, deleteEventProposal, suggestEventProposal, createEventProposal } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
-import { Fragment } from 'react'
+
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 interface DashboardTabProposalsProps {
@@ -206,50 +206,10 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
         if (!aiResult) return
         setAiGenerating(true)
         try {
-            // Save as a text-only proposal initially (or could generate a PDF in real app)
             await createEventProposal(event.id, {
                 title: aiResult.title,
                 description: aiResult.short_intro + '\n\n' + aiResult.raw_text,
-                file_url: '' // No file for now
-            })
-            toast.success('Generated proposal saved to library!')
-            setIsAiOpen(false)
-            setAiResult(null)
-            fetchProposals()
-        } catch (error: any) {
-            toast.error('Failed to save proposal')
-        } finally {
-            setAiGenerating(false)
-        }
-    }
-
-    // AI Logic
-    const handleGenerateAI = async () => {
-        setAiGenerating(true)
-        try {
-            const res = await suggestEventProposal(event.id, {
-                tone: aiTone,
-                length_hint: 'medium',
-                audience_level: 'general',
-            })
-            setAiResult(res)
-        } catch (error) {
-            console.error(error)
-            toast.error('AI generation failed')
-        } finally {
-            setAiGenerating(false)
-        }
-    }
-
-    const handleSaveAIProposal = async () => {
-        if (!aiResult) return
-        setAiGenerating(true)
-        try {
-            // Save as a text-only proposal initially (or could generate a PDF in real app)
-            await createEventProposal(event.id, {
-                title: aiResult.title,
-                description: aiResult.short_intro + '\n\n' + aiResult.raw_text,
-                file_url: '' // No file for now
+                file_url: ''
             })
             toast.success('Generated proposal saved to library!')
             setIsAiOpen(false)

@@ -171,3 +171,61 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
             return _stub_generate(event, expert, options)
 
     return _stub_generate(event, expert, options)
+
+
+def generate_text_embedding(query: str) -> Optional[list[float]]:
+    provider = settings.AI_PROVIDER.lower()
+    if os.getenv("TESTING") == "1":
+        return [0.0] * 768
+    try:
+        if provider == "groq":
+            url = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/embeddings")
+            headers = {
+                "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            }
+            body = {"model": "nomic-embed-text", "input": query}
+            r = requests.post(url, headers=headers, json=body, timeout=10)
+            r.raise_for_status()
+            data = r.json()
+            return data["data"][0]["embedding"]
+        elif provider == "ollama":
+            url = os.getenv("OLLAMA_API_URL", "http://localhost:11434/api/embeddings")
+            body = {"model": settings.AI_MODEL or "nomic-embed-text", "prompt": query}
+            r = requests.post(url, json=body, timeout=10)
+            r.raise_for_status()
+            data = r.json()
+            return data.get("embedding")
+        elif provider == "gemini":
+            import google.generativeai as genai
+            api_key = settings.GEMINI_API_KEY
+            if not api_key:
+                return None
+            genai.configure(api_key=api_key)
+            try:
+                res = genai.embed_content(model="text-embedding-004", content=query)
+                # SDK may return dict-like with 'embedding' or object with .embedding.values
+                if isinstance(res, dict):
+                    emb = res.get("embedding")
+                    if isinstance(emb, dict) and "values" in emb:
+                        return emb["values"]
+                    if isinstance(emb, list):
+                        return emb
+                emb = getattr(res, "embedding", None)
+                if emb is None:
+                    return None
+                vals = getattr(emb, "values", None)
+                if isinstance(vals, list):
+                    return vals
+                return None
+            except Exception as e:
+                print(f"DEBUG: Gemini embedding error: {e}")
+                return None
+    except Exception as e:
+        print(f"DEBUG: Embedding error: {e}")
+        return None
+    return None
+
+
+def _vec_to_pg(v: list[float]) -> str:
+    return "[" + ",".join(f"{x:.6f}" for x in v) + "]"

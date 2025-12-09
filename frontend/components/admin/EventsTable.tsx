@@ -35,7 +35,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
     const [moderationType, setModerationType] = useState<'unpublish' | 'delete' | null>(null)
     const [moderationReason, setModerationReason] = useState<string>('')
     const { data: me } = useSWR('/users/me', () => getMe(), { revalidateOnFocus: false, dedupingInterval: 60000 })
-    const roles = useMemo(() => (me?.roles || []).map(r => typeof r === 'string' ? r : r.name), [me])
+    const roles = useMemo(() => me?.roles || [], [me])
     const isSuperAdmin = useMemo(() => roles.includes('super_admin'), [roles])
 
     const notifyOrganizer = async (event: EventDetails, action: 'unpublish' | 'delete', reason?: string) => {
@@ -45,16 +45,9 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
             : `Your event "${event.title}" has been removed by a super administrator due to policy violations. If you believe this is a mistake, contact support.`
         const content = reason ? `${base}\n\nReason: ${reason}` : base
         try {
-            const res = await adminService.broadcastEmailTemplate({
-                template_name: 'moderation_notice',
-                variables: { event_title: event.title, reason: reason || '' },
-                target_user_id: event.organizer_id,
-            })
-            if (!res || typeof res.count !== 'number' || res.count === 0) {
-                await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id })
-            }
+            await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id })
         } catch {
-            try { await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id }) } catch { }
+            // no-op
         }
     }
 

@@ -5,14 +5,14 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Toaster, toast } from 'react-hot-toast'
 import { getProfileByUserId, getMe, createEvent } from '@/services/api'
-import { UserProfile, UserMeResponse } from '@/services/api.types'
+import { ProfileResponse, UserMeResponse } from '@/services/api.types'
 
 export default function BookingPage() {
     const params = useParams()
     const router = useRouter()
     const expertId = params.expertId as string
 
-    const [expert, setExpert] = useState<UserProfile | null>(null)
+    const [expert, setExpert] = useState<ProfileResponse | null>(null)
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [currentUser, setCurrentUser] = useState<UserMeResponse | null>(null)
@@ -64,17 +64,20 @@ export default function BookingPage() {
             // or create a private event and invite the expert.
             // For now, let's assume we create a proposed event.
             await createEvent({
-                title: eventType, // Using type as title for now
+                title: eventType,
                 description: message,
                 start_datetime: startDateTime.toISOString(),
                 end_datetime: endDateTime.toISOString(),
-                venue_name: venue,
-                venue_remark: 'Pending Confirmation',
-                type: 'offline', // Default
-                format: 'conference', // Default
-                banner: '',
-                max_participants: 50,
-                // In a real app, we would invite the expertId here
+                venue_place_id: null,
+                venue_remark: venue,
+                type: 'offline',
+                format: 'seminar',
+                cover_url: undefined,
+                logo_url: undefined,
+                registration_type: 'free',
+                visibility: 'private',
+                max_participant: 50,
+                remark: 'Pending Confirmation',
             })
 
             toast.success('Booking request sent successfully!')

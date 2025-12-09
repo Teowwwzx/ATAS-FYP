@@ -26,8 +26,6 @@ export function useUser({ redirectTo, redirectIfFound }: UseUserParams = {}) {
 
     // Check if user has a profile by verifying data exists
     const hasProfile = data !== null && data !== undefined
-    // For now, assume all profiles have a role if they exist
-    const hasRole = hasProfile
 
     useEffect(() => {
         if (!redirectTo || isLoading) return

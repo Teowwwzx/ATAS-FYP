@@ -6,10 +6,7 @@ import {
     OrganizationType,
     AuditLog,
     EventDetails,
-    BroadcastNotificationRequest,
-    EmailTemplate,
-    EmailTemplateCreate,
-    EmailTemplateUpdate
+    BroadcastNotificationRequest
 } from './api.types'
 
 export interface AdminStats {
