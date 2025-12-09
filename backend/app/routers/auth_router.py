@@ -1,6 +1,6 @@
 # auth_router.py
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database.database import get_db
@@ -16,11 +16,11 @@ from app.services.user_service import create_user
 
 
 @router.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+def register_user(user: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return create_user(db=db, user=user)
+    return create_user(db=db, user=user, background_tasks=background_tasks)
 
 
 @router.post("/login")

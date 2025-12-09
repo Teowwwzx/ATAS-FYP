@@ -7,7 +7,7 @@ from app.schemas.user_schema import UserCreate
 from app.core.security import get_password_hash
 from app.services.email_service import send_verification_email
 
-def create_user(db: Session, user: UserCreate):
+def create_user(db: Session, user: UserCreate, background_tasks=None):
     hashed_password = get_password_hash(user.password)
     verification_token = secrets.token_urlsafe(32)
     db_user = User(
@@ -25,7 +25,12 @@ def create_user(db: Session, user: UserCreate):
     db.commit()
     db.refresh(db_user)
 
-    send_verification_email(email=user.email, token=verification_token)
+    db.refresh(db_user)
+
+    if background_tasks:
+        background_tasks.add_task(send_verification_email, email=user.email, token=verification_token)
+    else:
+        send_verification_email(email=user.email, token=verification_token)
 
     return db_user
 

@@ -5,6 +5,8 @@ from typing import Optional
 from app.models.event_model import Event, EventParticipantRole
 from datetime import datetime
 from app.models.event_model import EventProposal
+from app.models.communication_log_model import CommunicationLog, CommunicationType, CommunicationStatus
+from app.database.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,42 @@ def _wrap_html(title: str, inner_html: str) -> str:
         "</div>"
     )
 
+def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
+    """
+    Helper to log email attempt to DB and send via Resend.
+    """
+    db = SessionLocal()
+    log = CommunicationLog(
+        type=CommunicationType.EMAIL,
+        recipient=email,
+        subject=subject,
+        content=html, # Or maybe just summary? No, content is fine if not too huge.
+        status=CommunicationStatus.PENDING,
+        metadata_payload=metadata or {}
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+
+    params = {
+        "from": settings.SENDER_EMAIL,
+        "to": [email],
+        "subject": subject,
+        "html": html,
+    }
+
+    try:
+        resend.Emails.send(params)
+        log.status = CommunicationStatus.SENT
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error sending email to {email}: {e}")
+        log.status = CommunicationStatus.FAILED
+        log.error_message = str(e)
+        db.commit()
+    finally:
+        db.close()
+
 def send_verification_email(email: str, token: str):
     verification_link = f"http://localhost:3000/verify-email?token={token}"
     html = _wrap_html(
@@ -47,11 +85,7 @@ def send_verification_email(email: str, token: str):
             f"<p style=\"margin:12px 0 0;color:#6b7280;font-size:12px;\">If the button doesn’t work, copy and paste this link: <br/><span style=\"word-break:break-all;\">{verification_link}</span></p>"
         ),
     )
-    params = {"from": settings.SENDER_EMAIL, "to": [email], "subject": "Verify your email address", "html": html}
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending verification email to {email}: {e}")
+    _log_and_send(email, "Verify your email address", html, {"type": "verification"})
 
 def send_password_reset_email(email: str, token: str):
     reset_link = f"http://localhost:3000/reset-password?token={token}"
@@ -63,12 +97,7 @@ def send_password_reset_email(email: str, token: str):
             f"<p style=\"margin:12px 0 0;color:#6b7280;font-size:12px;\">If the button doesn’t work, copy and paste this link: <br/><span style=\"word-break:break-all;\">{reset_link}</span></p>"
         ),
     )
-    params = {"from": settings.SENDER_EMAIL, "to": [email], "subject": "Reset your password", "html": html}
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending password reset email to {email}: {e}")
-
+    _log_and_send(email, "Reset your password", html, {"type": "password_reset"})
 
 def send_event_joined_email(email: str, event: Event):
     """Send a confirmation email when a user joins a public event."""
@@ -82,16 +111,7 @@ def send_event_joined_email(email: str, event: Event):
             f"<a href=\"{event_link}\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">View Event</a>"
         ),
     )
-    params = {
-        "from": settings.SENDER_EMAIL,
-        "to": [email],
-        "subject": subject,
-        "html": html,
-    }
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending event joined email to {email} for event {event.id}: {e}")
+    _log_and_send(email, subject, html, {"type": "event_joined", "event_id": event.id})
 
 
 def send_event_invitation_email(email: str, event: Event, role: EventParticipantRole, description: Optional[str] = None):
@@ -108,16 +128,7 @@ def send_event_invitation_email(email: str, event: Event, role: EventParticipant
             f"<a href=\"{event_link}\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">View Event</a>"
         ),
     )
-    params = {
-        "from": settings.SENDER_EMAIL,
-        "to": [email],
-        "subject": subject,
-        "html": html,
-    }
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending event invitation email to {email} for event {event.id}: {e}")
+    _log_and_send(email, subject, html, {"type": "event_invitation", "event_id": event.id, "role": role.value})
 
 
 def send_event_role_update_email(email: str, event: Event, new_role: EventParticipantRole, description: Optional[str] = None):
@@ -134,16 +145,7 @@ def send_event_role_update_email(email: str, event: Event, new_role: EventPartic
             f"<a href=\"{event_link}\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">View Event</a>"
         ),
     )
-    params = {
-        "from": settings.SENDER_EMAIL,
-        "to": [email],
-        "subject": subject,
-        "html": html,
-    }
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending event role update email to {email} for event {event.id}: {e}")
+    _log_and_send(email, subject, html, {"type": "event_role_update", "event_id": event.id, "new_role": new_role.value})
 
 
 def send_event_removed_email(email: str, event: Event, description: Optional[str] = None):
@@ -157,16 +159,7 @@ def send_event_removed_email(email: str, event: Event, description: Optional[str
             f"{desc_html}"
         ),
     )
-    params = {
-        "from": settings.SENDER_EMAIL,
-        "to": [email],
-        "subject": subject,
-        "html": html,
-    }
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending event removal email to {email} for event {event.id}: {e}")
+    _log_and_send(email, subject, html, {"type": "event_removed", "event_id": event.id})
 
 
 def send_event_reminder_email(email: str, event: Event, when_label: str):
@@ -188,16 +181,7 @@ def send_event_reminder_email(email: str, event: Event, when_label: str):
             f"<a href=\"{event_link}\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">View Event</a>"
         ),
     )
-    params = {
-        "from": settings.SENDER_EMAIL,
-        "to": [email],
-        "subject": subject,
-        "html": html,
-    }
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending event reminder email to {email} for event {event.id}: {e}")
+    _log_and_send(email, subject, html, {"type": "event_reminder", "event_id": event.id, "when": when_label})
 
 
 def send_event_proposal_comment_email(email: str, event: Event, proposal: EventProposal, comment_content: str):
@@ -212,13 +196,4 @@ def send_event_proposal_comment_email(email: str, event: Event, proposal: EventP
             f"<a href=\"{event_link}\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">View Event</a>"
         ),
     )
-    params = {
-        "from": settings.SENDER_EMAIL,
-        "to": [email],
-        "subject": subject,
-        "html": html,
-    }
-    try:
-        resend.Emails.send(params)
-    except Exception as e:
-        logger.error(f"Error sending proposal comment email to {email} for event {event.id}: {e}")
+    _log_and_send(email, subject, html, {"type": "proposal_comment", "event_id": event.id})
