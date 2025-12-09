@@ -3,7 +3,7 @@
 'use client'
 
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
@@ -19,6 +19,7 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [showVerificationModal, setShowVerificationModal] = useState(false)
     const [isResending, setIsResending] = useState(false)
+    const [countdown, setCountdown] = useState(0)
     const router = useRouter()
 
     React.useEffect(() => {
@@ -27,6 +28,14 @@ export default function LoginPage() {
             router.replace('/dashboard')
         }
     }, [router])
+
+    // Timer effect
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setTimeout(() => setCountdown(c => c - 1), 1000)
+            return () => clearTimeout(timer)
+        }
+    }, [countdown])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -72,11 +81,14 @@ export default function LoginPage() {
             toast.error('Please enter your email first')
             return
         }
+        if (countdown > 0) return
+
         setIsResending(true)
         try {
             await resendVerification(email)
             toast.success('Verification email sent! Please check your inbox.')
-            setShowVerificationModal(false)
+            setCountdown(60) // Start 60s cooldown
+            // setShowVerificationModal(false) 
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to resend email'))
         } finally {
@@ -104,10 +116,10 @@ export default function LoginPage() {
                             <div className="space-y-3">
                                 <button
                                     onClick={handleResendVerification}
-                                    disabled={isResending}
-                                    className="w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-3 bg-yellow-400 text-base font-bold text-zinc-900 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={isResending || countdown > 0}
+                                    className="w-full inline-flex justify-center items-center rounded-xl border border-transparent shadow-sm px-4 py-3 bg-yellow-400 text-base font-bold text-zinc-900 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
-                                    {isResending ? 'Sending...' : 'Resend Verification Email'}
+                                    {isResending ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Resend Verification Email'}
                                 </button>
                                 <button
                                     onClick={() => setShowVerificationModal(false)}
