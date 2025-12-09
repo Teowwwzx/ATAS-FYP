@@ -151,6 +151,7 @@ export type EventFormat =
     | 'webinar'
     | 'seminar'
     | 'club_event'
+    | 'conference'
     | 'other'
 
 export type EventType = 'online' | 'offline' | 'hybrid'
@@ -173,6 +174,8 @@ export interface EventCreate {
     max_participant?: number | null
     venue_place_id?: string | null
     venue_remark?: string | null
+    // ... (skipping unchanged parts)
+    venue_name?: string | null
     remark?: string | null
 }
 
@@ -181,6 +184,7 @@ export interface EventDetails extends EventCreate {
     organizer_id: string
     status: EventStatus
     registration_status?: EventRegistrationStatus
+    category?: { id: string; name: string }
     created_at: string
     updated_at?: string | null
 }
@@ -442,6 +446,7 @@ export interface BroadcastEmailTemplateRequest {
     template_id: string
     variables: Record<string, string>
     target_role?: string
+    target_user_id?: string
 }
 
 export interface EmailTemplate {
@@ -452,6 +457,20 @@ export interface EmailTemplate {
     variables: string[]
     created_at?: string
     updated_at?: string
+}
+
+export interface EmailTemplateCreate {
+    name: string
+    subject: string
+    body_html: string
+    variables: string[]
+}
+
+export interface EmailTemplateUpdate {
+    name?: string
+    subject?: string
+    body_html?: string
+    variables?: string[]
 }
 
 // --- AI Proposal Types ---
@@ -473,4 +492,29 @@ export interface ProposalSuggestResponse {
     closing: string
     email_subjects: string[]
     raw_text: string
+}
+
+export interface ProposalRequest {
+    title?: string
+    description?: string
+    topic?: string
+    expertId?: string
+    expert_name?: string
+}
+
+export interface ProposalResponse {
+    content: string
+    description?: string
+}
+
+// --- Notification Types ---
+
+export interface NotificationItem {
+    id: string
+    user_id: string
+    title: string
+    message: string
+    link?: string | null
+    read: boolean
+    created_at: string
 }

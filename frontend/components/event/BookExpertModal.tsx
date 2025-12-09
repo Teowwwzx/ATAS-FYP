@@ -37,7 +37,7 @@ export function BookExpertModal({
                 topic,
                 expert_name: expert.full_name,
             })
-            setMessage(res.description)
+            setMessage(res.description || '')
             toast.success('Proposal generated!')
         } catch (error) {
             console.error(error)

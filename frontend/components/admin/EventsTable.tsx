@@ -35,7 +35,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
     const [moderationType, setModerationType] = useState<'unpublish' | 'delete' | null>(null)
     const [moderationReason, setModerationReason] = useState<string>('')
     const { data: me } = useSWR('/users/me', () => getMe(), { revalidateOnFocus: false, dedupingInterval: 60000 })
-    const roles = useMemo(() => (me?.roles || []).map(r => typeof r === 'string' ? r : r.name), [me])
+    const roles = useMemo(() => (me?.roles || []), [me])
     const isSuperAdmin = useMemo(() => roles.includes('super_admin'), [roles])
 
     const notifyOrganizer = async (event: EventDetails, action: 'unpublish' | 'delete', reason?: string) => {
@@ -46,7 +46,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
         const content = reason ? `${base}\n\nReason: ${reason}` : base
         try {
             const res = await adminService.broadcastEmailTemplate({
-                template_name: 'moderation_notice',
+                template_id: 'moderation_notice',
                 variables: { event_title: event.title, reason: reason || '' },
                 target_user_id: event.organizer_id,
             })

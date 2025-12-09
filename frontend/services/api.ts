@@ -557,6 +557,7 @@ export interface NotificationItem {
   content?: string // Backend uses 'content', frontend might expect 'message'. Adjusting to backend.
   message?: string // Keeping for compatibility, will map content to message
   link_url?: string
+  link?: string // Added for frontend compatibility
   is_read: boolean
   read?: boolean // Compatibility
   created_at: string
@@ -568,7 +569,8 @@ export const getNotifications = async () => {
   return response.data.map(n => ({
     ...n,
     message: n.content, // Backend uses content, frontend uses message
-    read: n.is_read
+    read: n.is_read,
+    link: n.link_url
   }))
 }
 

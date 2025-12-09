@@ -112,13 +112,14 @@ export function AppNavbar() {
                                     <NotificationBell />
                                 </div>
 
-                                <Button
-                                    href="/events/create"
-                                    variant="primary"
-                                    className="rounded-full"
-                                >
-                                    Create Event
-                                </Button>
+                                <Link href="/events/create">
+                                    <Button
+                                        variant="primary"
+                                        className="rounded-full"
+                                    >
+                                        Create Event
+                                    </Button>
+                                </Link>
 
                                 <div className="relative">
                                     <button

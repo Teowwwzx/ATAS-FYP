@@ -145,7 +145,7 @@ export default function DiscoverPage() {
         try {
             setPeopleLoading(true)
             // Just reusing findProfiles logic
-            const profiles = await findProfiles(debouncedPeopleSearch)
+            const profiles = await findProfiles({ name: debouncedPeopleSearch })
             // Client side filter for Role/Skill if API doesn't support
             let filtered = profiles
             if (peopleRole) {

@@ -310,7 +310,9 @@ export default function PublicProfilePage() {
                                             {myEvents.length === 0 ? (
                                                 <div className="text-center p-4 bg-zinc-50 rounded-xl border border-zinc-100">
                                                     <p className="text-sm text-zinc-500 mb-2">You don't have any organized events.</p>
-                                                    <Button href="/dashboard" variant="primary" size="sm">Create Event</Button>
+                                                    <Link href="/dashboard">
+                                                        <Button variant="primary" size="sm">Create Event</Button>
+                                                    </Link>
                                                 </div>
                                             ) : (
                                                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
