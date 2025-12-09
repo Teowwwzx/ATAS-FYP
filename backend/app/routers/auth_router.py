@@ -77,3 +77,41 @@ def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
 @router.post("/logout")
 def logout(current_user: User = Depends(get_current_user)):
     return {"message": "Logged out"}
+
+from pydantic import BaseModel, EmailStr
+import uuid
+from app.services.email_service import send_verification_email
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+@router.post("/resend-verification")
+def resend_verification_email_endpoint(
+    request: ResendVerificationRequest, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == request.email).first()
+    
+    # Generic message to prevent user enumeration? 
+    # User's requirement implies they know the account exists and is unverified from the login error.
+    # But for security, if user not found, we usually return success too.
+    # However, if user is already verified, we should probably tell them "Already verified".
+    
+    if not user:
+        # Return success to prevent enumeration, or maybe 404? 
+        # Given the UX "Your email is not verified", the user KNOWS the email is in system.
+        # But if a different email is typed in the resend box?
+        return {"message": "If your account exists and is unverified, a new verification email has been sent."}
+        
+    if user.is_verified:
+        return {"message": "Email is already verified. Please login."}
+
+    # Generate new token
+    new_token = str(uuid.uuid4())
+    user.verification_token = new_token
+    db.commit()
+
+    background_tasks.add_task(send_verification_email, user.email, new_token)
+    
+    return {"message": "Verification email resent successfully."}
