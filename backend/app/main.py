@@ -73,6 +73,8 @@ if os.environ.get("PYTEST_CURRENT_TEST"):
 
     app.dependency_overrides[get_db] = override_get_db
 app.include_router(notification_router.router, prefix="/api/v1", tags=["Notifications"])
+from app.routers import communication_log_router
+app.include_router(communication_log_router.router, prefix="/api/v1", tags=["Communications"])
 app.include_router(taxonomy_router.router, prefix="/api/v1", tags=["Taxonomy"])
 
 @app.get("/")

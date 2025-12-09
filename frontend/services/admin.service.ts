@@ -334,5 +334,20 @@ export const adminService = {
     deleteReview: async (reviewId: string, reason?: string) => {
         const response = await api.delete<import('./api.types').ReviewResponse>(`/reviews/${reviewId}`, { data: { reason } })
         return response.data
+    },
+
+    // --- Communications ---
+    getCommunicationLogs: async (params?: {
+        page?: number
+        page_size?: number
+        status?: string
+    }) => {
+        const response = await api.get<import('./api.types').CommunicationLog[]>('/admin/communications', { params })
+        return response.data
+    },
+
+    resendCommunication: async (id: string) => {
+        const response = await api.post<{ message: string; status: string }>(`/admin/communications/${id}/resend`)
+        return response.data
     }
 }

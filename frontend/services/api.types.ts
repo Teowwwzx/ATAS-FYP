@@ -518,3 +518,15 @@ export interface NotificationItem {
     read: boolean
     created_at: string
 }
+
+export interface CommunicationLog {
+    id: string
+    type: 'email' | 'notification'
+    recipient: string
+    subject?: string
+    status: 'pending' | 'sent' | 'failed'
+    created_at: string
+    error_message?: string
+    metadata_payload?: Record<string, any>
+    content?: string
+}
