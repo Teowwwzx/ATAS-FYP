@@ -264,6 +264,15 @@ def semantic_search_events(
         q = q.filter(Event.title.ilike(f"%{q_text}%"))
     return q.order_by(Event.start_datetime.asc()).limit(top_k).all()
 
+@router.get("/semantic/events", response_model=List[EventDetails])
+def semantic_search_events_alias(
+    embedding: str | None = None,
+    q_text: str | None = None,
+    top_k: int = 20,
+    db: Session = Depends(get_db),
+):
+    return semantic_search_events(embedding=embedding, q_text=q_text, top_k=top_k, db=db)
+
 
 
 @router.get("/events/me/history", response_model=List[EventDetails])

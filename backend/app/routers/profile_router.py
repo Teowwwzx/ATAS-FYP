@@ -198,6 +198,15 @@ def semantic_search_profiles(
         })
         result.append(pr)
     return result
+
+@router.get("/semantic/profiles", response_model=List[ProfileResponse])
+def semantic_search_profiles_alias(
+    embedding: str | None = None,
+    q_text: str | None = None,
+    top_k: int = 20,
+    db: Session = Depends(get_db),
+):
+    return semantic_search_profiles(embedding=embedding, q_text=q_text, top_k=top_k, db=db)
     
 @router.get("/find", response_model=List[ProfileResponse])
 def search_profiles(
