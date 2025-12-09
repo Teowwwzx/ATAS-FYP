@@ -44,8 +44,8 @@ def seed_users(db: Session, num_students=10, num_experts=5, num_teachers=3, num_
     total_users = 0
     for role_name, num_users in user_creations.items():
         for i in range(num_users):
-            email = f"{role_name}{i+1}@mail.com"
-            password = Hasher.get_password_hash("123123123")
+            email = f"{role_name}{i+1}@gmail.com"
+            password = Hasher.get_password_hash("123123")
             existing = db.query(User).filter(User.email == email).first()
             if existing:
                 continue

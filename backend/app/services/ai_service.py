@@ -19,7 +19,7 @@ def _normalize_sections(sections: Optional[list[str]]) -> list[str]:
 def _stub_generate(event: Dict[str, Any], expert: Optional[Dict[str, Any]], options: Dict[str, Any]) -> Dict[str, Any]:
     title = f"Proposal: {event.get('title') or 'Untitled Event'}"
     intro = (
-        f"We propose a {event.get('format','session')} aligned with your audience. "
+        f"We propose a {getattr(event.get('format'), 'value', event.get('format','session'))} aligned with your audience. "
         f"Date: {event.get('start_datetime','TBD')} to {event.get('end_datetime','TBD')} ."
     )
     vp = [
@@ -44,13 +44,30 @@ def _stub_generate(event: Dict[str, Any], expert: Optional[Dict[str, Any]], opti
     }
 
 
+from app.core.config import settings
+
 def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], options: Dict[str, Any]) -> Dict[str, Any]:
     # TESTING path or missing provider => stub
     if os.getenv("TESTING") == "1":
         return _stub_generate(event, expert, options)
 
-    provider = os.getenv("AI_PROVIDER", "stub").lower()
-    model = os.getenv("AI_MODEL", "llama-3.1-8b-instant")
+    provider = settings.AI_PROVIDER.lower()
+    
+    # DEBUG LOGGING
+    print(f"DEBUG: AI_PROVIDER={provider}")
+    print(f"DEBUG: GEMINI_KEY={settings.GEMINI_API_KEY[:5]}...")
+    print(f"DEBUG: GROQ_KEY={settings.GROQ_API_KEY[:5]}...")
+
+    model = settings.AI_MODEL
+    
+    # Auto-fix model if user forgot to change it for Groq
+    if provider == "groq":
+        if "gemini" in model.lower() or "llama3-8b-8192" in model:
+            print(f"DEBUG: Auto-switching incompatible model {model} to llama-3.3-70b-versatile for Groq")
+            model = "llama-3.3-70b-versatile"
+
+    print(f"DEBUG: Using Model={model}")
+
     timeout_ms = int(os.getenv("AI_TIMEOUT_MS", "12000"))
     sections = _normalize_sections(options.get("sections")) if isinstance(options, dict) else _normalize_sections(None)
 
@@ -77,7 +94,7 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
     if provider == "groq":
         url = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
         headers = {
-            "Authorization": f"Bearer {os.getenv('GROQ_API_KEY','')}",
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
             "Content-Type": "application/json",
         }
         body = {
@@ -92,7 +109,10 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
             data = r.json()
             text = data["choices"][0]["message"]["content"]
             return json.loads(text)
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: Groq Error: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"DEBUG: Groq Response Body: {e.response.text}")
             return _stub_generate(event, expert, options)
 
     if provider == "ollama":
@@ -111,6 +131,43 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
             text = data.get("response", "")
             return json.loads(text)
         except Exception:
+            return _stub_generate(event, expert, options)
+
+    if provider == "gemini":
+        import google.generativeai as genai
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            return _stub_generate(event, expert, options)
+        
+        genai.configure(api_key=api_key)
+        # using gemini-1.5-flash as requested (fast, small, free-tier eligible)
+        model_name = settings.AI_MODEL or "gemini-1.5-flash"
+        gemini_model = genai.GenerativeModel(model_name)
+
+        prompt_text = (
+            prompt["content"] + "\n" +
+            "USER CONTEXT:\n" + json.dumps(user_content) + "\n" + 
+            "IMPORTANT: JSON ONLY."
+        )
+
+        try:
+            response = gemini_model.generate_content(
+                prompt_text,
+                generation_config=genai.types.GenerationConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            # Clean up potential markdown wrapping just in case
+            text = response.text.strip()
+            if text.startswith("```json"):
+                text = text[7:]
+            if text.startswith("```"):
+                text = text[3:]
+            if text.endswith("```"):
+                text = text[:-3]
+            return json.loads(text)
+        except Exception as e:
+            print(f"Gemini Error: {e}")
             return _stub_generate(event, expert, options)
 
     return _stub_generate(event, expert, options)

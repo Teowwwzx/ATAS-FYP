@@ -454,15 +454,23 @@ export interface EmailTemplate {
     updated_at?: string
 }
 
-// --- AI Service ---
+// --- AI Proposal Types ---
 
-export interface ProposalRequest {
-    topic: string
-    expert_name: string
-    student_name?: string
+export interface ProposalSuggestRequest {
+    tone?: string
+    length_hint?: string
+    audience_level?: string
+    language?: string
+    sections?: string[]
+    expert_id?: string
 }
 
-export interface ProposalResponse {
+export interface ProposalSuggestResponse {
     title: string
-    description: string
+    short_intro: string
+    value_points: string[]
+    logistics: string
+    closing: string
+    email_subjects: string[]
+    raw_text: string
 }

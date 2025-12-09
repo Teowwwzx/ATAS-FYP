@@ -394,8 +394,14 @@ export const updateEventProposalComment = async (eventId: string, proposalId: st
   return response.data
 }
 
+
 export const deleteEventProposalComment = async (eventId: string, proposalId: string, commentId: string) => {
   const response = await api.delete<void>(`/events/${eventId}/proposals/${proposalId}/comments/${commentId}`)
+  return response.data
+}
+
+export const suggestEventProposal = async (eventId: string, body: import('./api.types').ProposalSuggestRequest) => {
+  const response = await api.post<import('./api.types').ProposalSuggestResponse>(`/events/${eventId}/proposals/ai-suggest`, body)
   return response.data
 }
 
