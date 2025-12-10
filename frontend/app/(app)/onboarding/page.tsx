@@ -9,10 +9,7 @@ import { toast } from 'react-hot-toast'
 import { Combobox, Transition, Listbox, Switch } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon, MagnifyingGlassIcon, ClockIcon } from '@radix-ui/react-icons'
 
-import { APU_DEGREES } from '@/lib/constants'
-import { getData } from 'country-list'
-
-const COUNTRIES = getData().map(c => c.name).sort()
+import { APU_DEGREES, COUNTRIES } from '@/lib/constants'
 
 // --- Components ---
 

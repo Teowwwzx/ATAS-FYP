@@ -45,7 +45,7 @@ def backfill(limit_events: int = 10, limit_experts: int = 10):
         # Experts: public profiles with expert role
         rows = db.execute(text(
             """
-            SELECT p.user_id, p.full_name, p.bio
+            SELECT p.user_id, p.full_name, p.bio, p.availability
             FROM profiles p
             JOIN users u ON u.id = p.user_id
             JOIN user_roles ur ON ur.user_id = u.id
@@ -58,7 +58,8 @@ def backfill(limit_events: int = 10, limit_experts: int = 10):
         for r in rows:
             name = r[1] or ""
             bio = r[2] or ""
-            src = f"{name}\n{bio}"
+            availability = r[3] or ""
+            src = f"{name}\n{bio}\navailability:{availability}"
             emb = generate_text_embedding(src)
             if emb:
                 _upsert_expert_embedding(db, r[0], emb, src)

@@ -342,8 +342,8 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
 
     # --- AI Embedding Logic (Merged) ---
     try:
-        from app.utils.ai_utils import generate_text_embedding, _vec_to_pg
-        src = f"{db_profile.full_name}\n{db_profile.bio or ''}"
+        from app.services.ai_service import generate_text_embedding, _vec_to_pg
+        src = f"{db_profile.full_name}\n{db_profile.bio or ''}\navailability:{db_profile.availability or ''}"
         # Only generating if bio is substantial or for experts, but user logic applies generally
         vec = generate_text_embedding(src)
         if vec:
