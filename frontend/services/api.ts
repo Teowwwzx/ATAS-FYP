@@ -157,6 +157,7 @@ api.interceptors.request.use(
   },
 )
 
+
 // --- Events Service ---
 
 export const createEvent = async (data: EventCreate) => {
@@ -210,8 +211,13 @@ export const getProfileByUserId = async (userId: string) => {
   return response.data
 }
 
-export const getEventParticipants = async (id: string) => {
-  const response = await api.get<EventParticipantDetails[]>(`/events/${id}/participants`)
+export const getEventParticipants = async (eventId: string) => {
+  const response = await api.get<EventParticipantDetails[]>(`/events/${eventId}/participants`)
+  return response.data
+}
+
+export const inviteEventParticipants = async (eventId: string, items: EventParticipantCreate[]) => {
+  const response = await api.post<EventParticipantDetails[]>(`/events/${eventId}/participants/bulk`, { items })
   return response.data
 }
 
@@ -297,9 +303,21 @@ export const setEventReminder = async (eventId: string, body: EventReminderCreat
   return response.data
 }
 
+
 export const runMyDueReminders = async (limit?: number) => {
   const url = limit ? `/events/reminders/run?limit=${encodeURIComponent(limit)}` : `/events/reminders/run`
   const response = await api.post<EventReminderResponse[]>(url)
+  return response.data
+}
+
+export const getMyRequests = async () => {
+  const response = await api.get<import('./api.types').EventInvitationResponse[]>(`/events/me/requests`)
+  return response.data
+}
+
+
+export const getRequestDetails = async (participantId: string) => {
+  const response = await api.get<import('./api.types').EventInvitationResponse>(`/events/requests/${participantId}`)
   return response.data
 }
 
@@ -307,6 +325,7 @@ export const getMyEvents = async () => {
   const response = await api.get<MyEventItem[]>(`/events/mine`)
   return response.data
 }
+
 
 export const getMe = async () => {
   const response = await api.get<UserMeResponse>(`/users/me`)
@@ -618,13 +637,25 @@ export interface NotificationItem {
 
 export const getNotifications = async () => {
   const response = await api.get<NotificationItem[]>('/notifications/me')
-  // Map backend response to frontend interface if needed
-  return response.data.map(n => ({
-    ...n,
-    message: n.content, // Backend uses content, frontend uses message
-    read: n.is_read,
-    link: n.link_url
-  }))
+  // Map backend response to frontend interface
+  return response.data.map(n => {
+    let title = 'Notification'
+    switch (n.type) {
+      case 'chat': title = 'New Message'; break;
+      case 'event': title = 'Event Update'; break;
+      case 'review': title = 'New Review'; break;
+      case 'organization': title = 'Organization Update'; break;
+      case 'system': title = 'System Notification'; break;
+    }
+
+    return {
+      ...n,
+      title, // Derived title
+      message: n.content, // Backend uses content, frontend uses message
+      read: n.is_read,
+      link: n.link_url
+    }
+  })
 }
 
 export const markNotificationRead = async (id: string) => {
@@ -744,10 +775,7 @@ export const sendChatMessage = async (conversationId: string, content: string) =
 
 
 
-export const getMyRequests = async () => {
-  const response = await api.get<import('./api.types').EventInvitationResponse[]>('/events/me/requests')
-  return response.data
-}
+
 
 export const getProposalComments = async (proposalId: string) => {
   const response = await api.get<import('./api.types').EventProposalCommentResponse[]>(`/events/proposals/${proposalId}/comments`)
@@ -757,4 +785,27 @@ export const getProposalComments = async (proposalId: string) => {
 export const createProposalComment = async (proposalId: string, content: string) => {
   const response = await api.post<import('./api.types').EventProposalCommentResponse>(`/events/proposals/${proposalId}/comments`, { content })
   return response.data
+}
+
+// --- Chat ---
+export interface MessageResponse {
+  id: string
+  conversation_id: string
+  sender_id: string
+  content: string
+  is_read: boolean
+  created_at: string
+}
+export interface MessageCreate {
+  content: string
+}
+
+export const getConversationMessages = async (conversationId: string): Promise<MessageResponse[]> => {
+  const response = await api.get(`/chat/conversations/${conversationId}/messages`);
+  return response.data;
+}
+
+export const sendDataMessage = async (conversationId: string, content: string): Promise<MessageResponse> => {
+  const response = await api.post(`/chat/conversations/${conversationId}/messages`, { content });
+  return response.data;
 }

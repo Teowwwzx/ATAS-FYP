@@ -101,6 +101,46 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                 </div>
             </section>
 
+            {/* Participant Limit Settings */}
+            <section>
+                <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm flex items-center justify-between">
+                    <div>
+                        <h4 className="text-lg font-bold text-zinc-900 mb-1">
+                            Max Participants
+                        </h4>
+                        <p className="text-zinc-500 text-sm font-medium">
+                            Limit the number of attendees (0 for unlimited).
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="Unlimited"
+                            className="w-32 px-4 py-2 border border-zinc-200 rounded-xl font-bold text-center focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
+                            defaultValue={event.max_participant || ''}
+                            onBlur={async (e) => {
+                                const val = parseInt(e.target.value)
+                                const newMax = isNaN(val) || val <= 0 ? null : val
+                                if (newMax === event.max_participant) return
+
+                                setLoading(true)
+                                try {
+                                    await updateEvent(event.id, { max_participant: newMax })
+                                    toast.success('Limit updated')
+                                    onUpdate()
+                                } catch (error) {
+                                    toast.error('Failed to update limit')
+                                } finally {
+                                    setLoading(false)
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+            </section>
+
             {/* Capacity Settings (Read-only logic for now based on previous impl, or we can move the input here if requested, but user said 'Overview should editing those event information') 
                Wait, "setting is like setting registration, visibility and publishment". Capacity fits in "Event Details" usually, but sometimes limits are settings.
                User said: "Overview should editing those event information" -> Title, Desc, Date, Venue, Capacity. 
@@ -168,6 +208,6 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                 onConfirm={handleDelete}
                 isDeleting={isDeleting}
             />
-        </div>
+        </div >
     )
 }

@@ -13,6 +13,7 @@ class NotificationType(enum.Enum):
     event = "event"
     organization = "organization"
     system = "system"
+    chat = "chat"
 
 class Notification(Base):
     __tablename__ = "notifications"

@@ -1,6 +1,7 @@
 import resend
 from app.core.config import settings
 import logging
+import uuid
 from typing import Optional
 from app.models.event_model import Event, EventParticipantRole
 from datetime import datetime
@@ -43,6 +44,15 @@ def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
     """
     Helper to log email attempt to DB and send via Resend.
     """
+    # Sanitize metadata for JSON serialization (convert UUIDs to strings)
+    sanitized_metadata = {}
+    if metadata:
+        for k, v in metadata.items():
+            if isinstance(v, (uuid.UUID,)):
+                sanitized_metadata[k] = str(v)
+            else:
+                sanitized_metadata[k] = v
+
     db = SessionLocal()
     log = CommunicationLog(
         type=CommunicationType.EMAIL,
@@ -50,7 +60,7 @@ def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
         subject=subject,
         content=html, # Or maybe just summary? No, content is fine if not too huge.
         status=CommunicationStatus.PENDING,
-        metadata_payload=metadata or {}
+        metadata_payload=sanitized_metadata or {}
     )
     db.add(log)
     db.commit()

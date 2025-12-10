@@ -86,6 +86,8 @@ class EventParticipantDetails(BaseModel):
     status: EventParticipantStatus
     created_at: datetime
     updated_at: datetime | None = None
+    conversation_id: uuid.UUID | None = None
+    proposal_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
 
@@ -94,6 +96,7 @@ class EventParticipantCreate(BaseModel):
     user_id: uuid.UUID
     role: str = "audience"
     description: str | None = None
+    proposal_id: uuid.UUID | None = None
 
 
 class EventParticipantResponseUpdate(BaseModel):
@@ -258,6 +261,7 @@ class EventProposalResponse(BaseModel):
     file_url: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
+    conversation_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
 
@@ -285,6 +289,10 @@ class EventInvitationResponse(BaseModel):
     role: EventParticipantRole
     status: EventParticipantStatus
     created_at: datetime
+    conversation_id: uuid.UUID | None = None
+    description: str | None = None
+    proposal_id: uuid.UUID | None = None
+    proposal: EventProposalResponse | None = None
     
     model_config = {"from_attributes": True}
 

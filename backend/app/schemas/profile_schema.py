@@ -84,6 +84,7 @@ class ProfileResponse(ProfileBase):
     can_be_speaker: bool = False
     intents: Optional[List[str]] = None
     today_status: Optional[str] = None
+    email: Optional[str] = None # Added for UI display
 
     model_config = ConfigDict(from_attributes=True)
 

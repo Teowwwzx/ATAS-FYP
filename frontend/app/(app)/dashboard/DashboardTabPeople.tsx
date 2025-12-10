@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Fragment } from 'react'
 import { EventDetails, EventParticipantDetails, ProfileResponse } from '@/services/api.types'
 import { getEventParticipants, getProfileByUserId, removeEventParticipant } from '@/services/api'
 import { toast } from 'react-hot-toast'
-import Image from 'next/image'
+import { Dialog, Transition } from '@headlessui/react'
+import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
 
 interface DashboardTabPeopleProps {
     event: EventDetails
+    user: ProfileResponse | null
     onInvite?: () => void
 }
 
-export function DashboardTabPeople({ event, onInvite }: DashboardTabPeopleProps) {
+export function DashboardTabPeople({ event, user, onInvite }: DashboardTabPeopleProps) {
     const [participants, setParticipants] = useState<(EventParticipantDetails & { profile?: ProfileResponse })[]>([])
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<'all' | 'speaker' | 'audience' | 'staff'>('all')
+    const [chatParticipant, setChatParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
 
     const fetchParticipants = async () => {
         try {
@@ -160,15 +163,30 @@ export function DashboardTabPeople({ event, onInvite }: DashboardTabPeopleProps)
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <button
-                                            onClick={() => handleRemove(item.id)}
-                                            className="text-zinc-300 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
-                                            title="Remove participant"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            {/* Chat Button */}
+                                            {item.conversation_id && (
+                                                <button
+                                                    onClick={() => setChatParticipant(item)}
+                                                    className="text-zinc-400 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-blue-50"
+                                                    title="Chat with participant"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                    </svg>
+                                                </button>
+                                            )}
+
+                                            <button
+                                                onClick={() => handleRemove(item.id)}
+                                                className="text-zinc-300 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+                                                title="Remove participant"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -176,6 +194,57 @@ export function DashboardTabPeople({ event, onInvite }: DashboardTabPeopleProps)
                     </table>
                 </div>
             )}
+
+            {/* Chat Modal */}
+            <Transition appear show={!!chatParticipant} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setChatParticipant(null)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-[2rem] bg-white shadow-xl transition-all border border-zinc-100 flex flex-col h-[70vh]">
+                                <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                                            {chatParticipant?.profile?.full_name?.charAt(0) || '?'}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-zinc-900">{chatParticipant?.profile?.full_name || 'Participant'}</h3>
+                                            <p className="text-zinc-500 text-xs">Chatting regarding {event.title}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setChatParticipant(null)} className="text-zinc-400 hover:text-zinc-600 p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-hidden flex flex-col p-6">
+                                    {chatParticipant?.conversation_id ? (
+                                        <CommunicationLog
+                                            conversationId={chatParticipant.conversation_id}
+                                            organizerName={chatParticipant.profile?.full_name || 'Participant'}
+                                            currentUserId={user?.user_id}
+                                        />
+                                    ) : (
+                                        <div className="flex-1 flex items-center justify-center text-zinc-400">
+                                            Chat unavailable
+                                        </div>
+                                    )}
+                                </div>
+                            </Dialog.Panel>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </div>
     )
 }

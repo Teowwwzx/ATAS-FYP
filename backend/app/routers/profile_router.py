@@ -143,6 +143,7 @@ def discover_profiles(
             "city": p.city,
             "origin_country": p.origin_country,
             "can_be_speaker": p.can_be_speaker,
+            "email": p.user.email if p.user else None,
             "intents": p.intents,
             "today_status": p.today_status,
         })
@@ -552,6 +553,8 @@ def read_my_profile(db: Session = Depends(get_db), current_user: User = Depends(
     db_profile = profile_service.get_profile(db, user_id=current_user.id)
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
+    # Manually attach email since not in Profile model
+    setattr(db_profile, "email", current_user.email)
     return db_profile
 
 @router.get("/{user_id}", response_model=ProfileResponse)
@@ -566,6 +569,11 @@ def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db), current_user
     if db_profile.visibility.value == "private":
         if current_user is None or current_user.id != user_id:
             raise HTTPException(status_code=403, detail="This profile is private")
+            
+    # Manually attach email if user is loaded
+    if db_profile.user:
+        setattr(db_profile, "email", db_profile.user.email)
+        
     return db_profile
 
 @router.post("/backfill")

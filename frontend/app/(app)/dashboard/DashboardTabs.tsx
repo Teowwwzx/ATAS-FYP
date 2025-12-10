@@ -11,6 +11,8 @@ import { DashboardTabProposals } from './DashboardTabProposals'
 import { DashboardTabOverview } from './DashboardTabOverview'
 import { DashboardTabPeople } from './DashboardTabPeople'
 import { DashboardTabSettings } from './DashboardTabSettings'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { getNotifications, NotificationItem } from '@/services/api'
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(' ')
@@ -28,41 +30,90 @@ export function DashboardTabs({ event, user, role, onUpdate, onDelete }: Dashboa
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [refreshPeople, setRefreshPeople] = useState(0)
 
+    // Navigation Logic
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+    const currentTab = searchParams.get('tab') || 'Overview'
+
+    // Notifications Logic (Simple polling or fetch once)
+    const [notifications, setNotifications] = useState<NotificationItem[]>([])
+
+    React.useEffect(() => {
+        getNotifications().then(setNotifications).catch(console.error)
+    }, [])
+
     const isOrganizer = user?.user_id === event.organizer_id
-    // Roles allowing proposal access: Organizer, Committee, Speaker, Sponsor
-    // If exact role strings are needed, update checks. Assuming 'committee', 'speaker', 'sponsor'.
     const canViewProposals = isOrganizer || ['committee', 'speaker', 'sponsor'].includes(role || '')
 
     const allTabs = [
-        { name: 'Overview', current: true },
-        { name: 'People', current: false, hidden: !isOrganizer }, // Organizer only for management
-        { name: 'Proposals', current: false, hidden: !canViewProposals },
-        { name: 'Checklist', current: false, hidden: !isOrganizer },
-        { name: 'Settings', current: false, hidden: !isOrganizer },
+        { name: 'Overview', id: 'overview' },
+        { name: 'People', id: 'people', hidden: !isOrganizer },
+        { name: 'Proposals', id: 'proposals', hidden: !canViewProposals },
+        { name: 'Checklist', id: 'checklist', hidden: !isOrganizer },
+        { name: 'Settings', id: 'settings', hidden: !isOrganizer },
     ]
 
     const tabs = allTabs.filter(t => !t.hidden)
 
+    // Find index of current tab
+    const selectedIndex = tabs.findIndex(t => t.id.toLowerCase() === currentTab.toLowerCase())
+    const safeIndex = selectedIndex >= 0 ? selectedIndex : 0
+
+    const handleTabChange = (index: number) => {
+        const tab = tabs[index]
+        router.push(`${pathname}?tab=${tab.id}`, { scroll: false })
+    }
+
+    // Badge Logic
+    const getBadgeCount = (tabId: string) => {
+        return notifications.filter(n => {
+            if (n.read) return false
+            const link = n.link || ''
+
+            // Check if notification belongs to this event
+            // Link format: /dashboard?eventId={id}&tab={tab}
+            if (link.includes(`eventId=${event.id}`)) {
+                if (tabId === 'proposals' && (n.type === 'chat' || link.includes('tab=proposals'))) return true
+                if (tabId === 'people' && link.includes('tab=people')) return true
+            }
+
+            // Fallback for requests/ links (mostly for experts, not organizers, but safe to keep)
+            // Ideally backend adds eventId to all relevant links
+
+            return false
+        }).length
+    }
+
     return (
         <div className="bg-white rounded-b-[2.5rem] shadow-2xl overflow-hidden min-h-[600px] flex flex-col">
-            <Tab.Group>
+            <Tab.Group selectedIndex={safeIndex} onChange={handleTabChange}>
                 <div className="border-b border-zinc-100 px-8">
                     <Tab.List className="-mb-px flex space-x-8 overflow-x-auto scroller-none">
-                        {tabs.map((tab) => (
-                            <Tab
-                                key={tab.name}
-                                className={({ selected }) =>
-                                    classNames(
-                                        selected
-                                            ? 'border-yellow-400 text-zinc-900'
-                                            : 'border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300',
-                                        'whitespace-nowrap py-6 px-1 border-b-4 font-bold text-sm focus:outline-none transition-colors'
-                                    )
-                                }
-                            >
-                                {tab.name}
-                            </Tab>
-                        ))}
+                        {tabs.map((tab) => {
+                            const count = getBadgeCount(tab.id)
+                            return (
+                                <Tab
+                                    key={tab.name}
+                                    className={({ selected }) =>
+                                        classNames(
+                                            selected
+                                                ? 'border-yellow-400 text-zinc-900'
+                                                : 'border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300',
+                                            'whitespace-nowrap py-6 px-1 border-b-4 font-bold text-sm focus:outline-none transition-colors flex items-center gap-2'
+                                        )
+                                    }
+                                >
+                                    {tab.name}
+                                    {count > 0 && (
+                                        <span className="flex h-2 w-2 relative">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                        </span>
+                                    )}
+                                </Tab>
+                            )
+                        })}
                     </Tab.List>
                 </div>
 
@@ -80,6 +131,7 @@ export function DashboardTabs({ event, user, role, onUpdate, onDelete }: Dashboa
                         <Tab.Panel className="focus:outline-none animate-fadeIn">
                             <DashboardTabPeople
                                 event={event}
+                                user={user}
                                 onInvite={() => setIsInviteOpen(true)}
                                 key={refreshPeople}
                             />
