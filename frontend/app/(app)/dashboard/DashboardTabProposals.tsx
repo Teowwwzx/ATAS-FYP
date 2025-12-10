@@ -215,6 +215,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
             setAiGenerating(false)
         }
     }
+
     return (
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-6">
 
