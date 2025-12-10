@@ -17,14 +17,33 @@ const formatDate = (dateString: string) => {
 interface EventCardProps {
     event: EventDetails
     className?: string
+    compact?: boolean
+    reviewsSummary?: { averageRating?: number; reviewsCount?: number; latestComment?: string }
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) => {
+export const EventCard: React.FC<EventCardProps> = ({ event, className = '', compact = false, reviewsSummary }) => {
     const startDate = new Date(event.start_datetime)
+    const heightClass = compact ? 'h-56' : 'h-[400px]'
+    const avg = reviewsSummary?.averageRating || 0
+    const count = reviewsSummary?.reviewsCount || 0
+    const latest = reviewsSummary?.latestComment || ''
+
+    const renderStars = (rating: number) => {
+        const stars = []
+        for (let i = 1; i <= 5; i++) {
+            const filled = i <= Math.round(rating)
+            stars.push(
+                <svg key={i} className={`w-3.5 h-3.5 ${filled ? 'text-yellow-400' : 'text-zinc-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+            )
+        }
+        return <div className="flex items-center gap-1">{stars}</div>
+    }
 
     return (
         <Link href={`/events/${event.id}`} className={`block h-full ${className}`}>
-            <div className="group relative h-[400px] w-full rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-zinc-100/10">
+            <div className={`group relative ${heightClass} w-full rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-zinc-100/10`}>
                 {/* Background Image */}
                 {event.cover_url ? (
                     <Image
@@ -108,6 +127,19 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '' }) =
                                 </svg>
                             </div>
                         </div>
+
+                        {count > 0 && (
+                            <div className="mt-3 flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                    {renderStars(avg)}
+                                    <span className="text-zinc-200 font-bold">{avg.toFixed(1)}</span>
+                                    <span className="text-zinc-400">({count})</span>
+                                </div>
+                                {latest && (
+                                    <span className="text-zinc-300 truncate max-w-[50%] italic">“{latest}”</span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

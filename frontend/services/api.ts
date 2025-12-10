@@ -385,6 +385,11 @@ export const createReview = async (data: import('./api.types').ReviewCreate) => 
   return response.data
 }
 
+export const getReviewsByEvent = async (eventId: string) => {
+  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews`, { params: { event_id: eventId } })
+  return response.data
+}
+
 // --- My Checklist Items ---
 
 export const getMyChecklistItems = async (onlyOpen: boolean = true) => {
@@ -406,6 +411,36 @@ export const getOrganizationsCount = async (params?: { q?: string; type?: string
 
 export const getOrganizationById = async (id: string) => {
   const response = await api.get<import('./api.types').OrganizationResponse>(`/organizations/${id}`)
+  return response.data
+}
+
+export const createOrganization = async (data: import('./api.types').OrganizationCreate) => {
+  const response = await api.post<import('./api.types').OrganizationResponse>(`/organizations`, data)
+  return response.data
+}
+
+export const updateOrganization = async (id: string, data: import('./api.types').OrganizationUpdate) => {
+  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${id}`, data)
+  return response.data
+}
+
+export const getOrganizationMembers = async (id: string) => {
+  const response = await api.get<{ user_id: string; role: string }[]>(`/organizations/${id}/members`)
+  return response.data
+}
+
+export const getMyOrganizationMembership = async (id: string) => {
+  const response = await api.get<{ is_member: boolean; role?: string | null }>(`/organizations/${id}/members/me`)
+  return response.data
+}
+
+export const joinOrganization = async (id: string) => {
+  const response = await api.post<{ joined: boolean; role: string }>(`/organizations/${id}/members/me/join`)
+  return response.data
+}
+
+export const leaveOrganization = async (id: string) => {
+  const response = await api.delete<void>(`/organizations/${id}/members/me`)
   return response.data
 }
 

@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventParticipants, getEventAttendanceStats, setEventReminder } from '@/services/api'
-import { EventDetails, UserMeResponse, EventAttendanceStats } from '@/services/api.types'
+import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventParticipants, getEventAttendanceStats, setEventReminder, getPublicOrganizations, getReviewsByEvent } from '@/services/api'
+import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/Skeleton'
 import Link from 'next/link'
@@ -23,6 +23,11 @@ export default function EventDetailsPage() {
     const [isJoinedAccepted, setIsJoinedAccepted] = useState(false)
     const [reminding, setReminding] = useState(false)
     const [stats, setStats] = useState<EventAttendanceStats | null>(null)
+    const [hostOrg, setHostOrg] = useState<OrganizationResponse | null>(null)
+    const [reviews, setReviews] = useState<ReviewResponse[]>([])
+    const [reviewsLoading, setReviewsLoading] = useState(false)
+    const [reviewsAvg, setReviewsAvg] = useState<number>(0)
+    const [reviewsCount, setReviewsCount] = useState<number>(0)
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -50,6 +55,42 @@ export default function EventDetailsPage() {
             fetchData()
         }
     }, [id])
+
+    useEffect(() => {
+        const loadHostOrg = async () => {
+            if (!event?.organizer_id) return
+            try {
+                const orgs = await getPublicOrganizations()
+                const match = orgs.find(o => o.owner_id === event.organizer_id) || null
+                setHostOrg(match)
+            } catch {
+                setHostOrg(null)
+            }
+        }
+        loadHostOrg()
+    }, [event?.organizer_id])
+
+    useEffect(() => {
+        const loadReviews = async () => {
+            if (!event?.id) return
+            try {
+                setReviewsLoading(true)
+                const data = await getReviewsByEvent(event.id)
+                setReviews(data)
+                const count = data.length
+                const avg = count > 0 ? data.reduce((s, r) => s + (r.rating || 0), 0) / count : 0
+                setReviewsCount(count)
+                setReviewsAvg(Number(avg.toFixed(1)))
+            } catch {
+                setReviews([])
+                setReviewsAvg(0)
+                setReviewsCount(0)
+            } finally {
+                setReviewsLoading(false)
+            }
+        }
+        loadReviews()
+    }, [event?.id])
 
     const fetchData = async () => {
         try {
@@ -241,6 +282,50 @@ export default function EventDetailsPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Reviews */}
+                        <div>
+                            <h3 className="text-xl font-black text-zinc-900 mb-6 uppercase tracking-wider flex items-center gap-3">
+                                <span className="w-8 h-1 bg-yellow-400 rounded-full"></span>
+                                Reviews
+                            </h3>
+                            {reviewsLoading ? (
+                                <div className="text-sm text-zinc-500">Loading reviews…</div>
+                            ) : reviewsCount === 0 ? (
+                                <div className="text-sm text-zinc-500">No reviews yet.</div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-3">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <svg key={i} className={`w-5 h-5 ${i < Math.round(reviewsAvg) ? 'text-yellow-400' : 'text-zinc-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                            </svg>
+                                        ))}
+                                        <span className="text-zinc-900 font-bold">{reviewsAvg.toFixed(1)}</span>
+                                        <span className="text-zinc-500">({reviewsCount})</span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {reviews.slice(0, 3).map((r) => (
+                                            <div key={r.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    {Array.from({ length: 5 }).map((_, i) => (
+                                                        <svg key={i} className={`w-4 h-4 ${i < Math.round(r.rating || 0) ? 'text-yellow-400' : 'text-zinc-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                    ))}
+                                                    <span className="text-xs text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                                {r.comment ? (
+                                                    <p className="text-sm text-zinc-700">{r.comment}</p>
+                                                ) : (
+                                                    <p className="text-sm text-zinc-500 italic">No comment provided.</p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Right Column: Sticky Action Sidebar (Span 4) */}
@@ -342,17 +427,36 @@ export default function EventDetailsPage() {
                                     <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-lg shrink-0 border border-zinc-100">
                                         {event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="font-bold text-zinc-900 text-base truncate">Event Host</div>
-                                        <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
-                                    </div>
-                                    <button className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                    </button>
-                                </div>
+                            <div className="min-w-0">
+                                <div className="font-bold text-zinc-900 text-base truncate">Event Host</div>
+                                <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
                             </div>
+                            <button className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                            </button>
+                        </div>
+
+                        {hostOrg && (
+                            <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center overflow-hidden">
+                                    {hostOrg.logo_url ? (
+                                        <img src={hostOrg.logo_url} alt={hostOrg.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="text-zinc-900 font-bold">{hostOrg.name.charAt(0)}</div>
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="font-bold text-zinc-900 text-base truncate">{hostOrg.name}</div>
+                                    {hostOrg.type && (
+                                        <div className="text-xs text-zinc-500 font-medium uppercase tracking-wider truncate">{hostOrg.type}</div>
+                                    )}
+                                </div>
+                                <Link href={`/organizations/${hostOrg.id}`} className="ml-auto px-3 py-1 rounded-full bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800">
+                                    View Organization
+                                </Link>
+                            </div>
+                        )}
+                    </div>
 
                         </div>
                     </div>

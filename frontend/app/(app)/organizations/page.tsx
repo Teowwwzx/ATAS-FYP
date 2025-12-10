@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { getPublicOrganizations } from '@/services/api'
 import { OrganizationResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
-import { AppNavbar } from '@/components/ui/AppNavbar'
 
 export default function OrganizationsPage() {
   const [items, setItems] = useState<OrganizationResponse[]>([])
@@ -30,10 +29,14 @@ export default function OrganizationsPage() {
   const filtered = items.filter(o => o.name.toLowerCase().includes(query.toLowerCase()))
 
   return (
-    <div className="min-h-screen bg-amber-50">
-      <AppNavbar />
+    <div className="bg-transparent">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <h1 className="text-2xl font-black text-zinc-900 mb-6">Organizations</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-black text-zinc-900">Organizations</h1>
+          <Link href="/organizations/create" className="px-5 py-2 bg-zinc-900 text-white rounded-full font-bold text-sm hover:bg-zinc-800">
+            Create Organization
+          </Link>
+        </div>
 
         <div className="mb-6">
           <div className="relative max-w-xl">

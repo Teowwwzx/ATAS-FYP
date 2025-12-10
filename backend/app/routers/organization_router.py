@@ -115,16 +115,24 @@ def update_organization(
     return org
 
 
+def _is_admin(db: Session, user: User) -> bool:
+    from app.models.user_model import Role, user_roles
+    roles = db.query(Role).join(user_roles, Role.id == user_roles.c.role_id).filter(user_roles.c.user_id == user.id).all()
+    return any(r.name == "admin" for r in roles)
+
 @router.post("/organizations/{org_id}/members")
 def add_member(
     org_id: uuid.UUID,
     payload: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(get_current_user)
 ):
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+    # Allow owner or admin to manage members
+    if org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Not allowed")
     try:
         uid = uuid.UUID(payload.get("user_id"))
     except Exception:
@@ -152,11 +160,13 @@ def add_member(
 def list_members(
     org_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(get_current_user)
 ):
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+    if org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Not allowed")
     rows = db.execute(select(
         organization_members.c.user_id,
         organization_members.c.role
@@ -170,11 +180,13 @@ def update_member(
     user_id: uuid.UUID,
     payload: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(get_current_user)
 ):
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+    if org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Not allowed")
     role_name = (payload.get("role") or OrganizationRole.member.value).strip().lower()
     if role_name not in {r.value for r in OrganizationRole}:
         raise HTTPException(status_code=400, detail="Invalid role")
@@ -192,14 +204,72 @@ def remove_member(
     org_id: uuid.UUID,
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"]))
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    db.execute(delete(organization_members).where(
+        organization_members.c.org_id == org_id,
+        organization_members.c.user_id == user_id
+    ))
+    db.commit()
+    return
+
+# --- Self membership operations ---
+
+@router.get("/organizations/{org_id}/members/me")
+def get_my_membership(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    row = db.execute(select(organization_members.c.role).where(
+        organization_members.c.org_id == org_id,
+        organization_members.c.user_id == current_user.id
+    )).first()
+    if not row:
+        return {"is_member": False, "role": None}
+    role_val = row.role.value if hasattr(row.role, "value") else str(row.role)
+    return {"is_member": True, "role": role_val}
+
+@router.post("/organizations/{org_id}/members/me/join")
+def join_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if org.visibility == OrganizationVisibility.private and org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Organization is private")
+    existing = db.execute(select(organization_members).where(
+        organization_members.c.org_id == org_id,
+        organization_members.c.user_id == current_user.id
+    )).first()
+    if existing is None:
+        db.execute(insert(organization_members).values(org_id=org_id, user_id=current_user.id, role=OrganizationRole.member))
+        db.commit()
+    return {"joined": True, "role": OrganizationRole.member.value}
+
+@router.delete("/organizations/{org_id}/members/me", status_code=status.HTTP_204_NO_CONTENT)
+def leave_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     db.execute(delete(organization_members).where(
         organization_members.c.org_id == org_id,
-        organization_members.c.user_id == user_id
+        organization_members.c.user_id == current_user.id
     ))
     db.commit()
     return

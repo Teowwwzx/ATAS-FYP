@@ -445,6 +445,28 @@ export interface UserMeResponse {
 export type OrganizationVisibility = 'public' | 'private'
 export type OrganizationType = 'company' | 'university' | 'community' | 'nonprofit' | 'government'
 
+export interface OrganizationCreate {
+    name: string
+    description?: string
+    type: OrganizationType
+    website_url?: string
+    location?: string
+    visibility: OrganizationVisibility
+    logo_url?: string
+    cover_url?: string
+}
+
+export interface OrganizationUpdate {
+    name?: string
+    description?: string
+    type?: OrganizationType
+    website_url?: string
+    location?: string
+    visibility?: OrganizationVisibility
+    logo_url?: string
+    cover_url?: string
+}
+
 export interface OrganizationResponse {
     id: string
     owner_id: string
