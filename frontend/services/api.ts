@@ -182,6 +182,19 @@ export const getPublicEvents = async (params?: {
   return response.data
 }
 
+export const getEventsCount = async (params?: {
+  upcoming?: boolean
+  q_text?: string
+  type?: EventType
+  format?: EventFormat
+  registration_type?: EventRegistrationType
+  registration_status?: EventRegistrationStatus
+  category_name?: string
+}) => {
+  const response = await api.get<{ total_count: number }>('/events/count', { params })
+  return response.data
+}
+
 export const semanticSearchEvents = async (params?: { q_text?: string; top_k?: number; embedding?: string }) => {
   const response = await api.get<EventDetails[]>('/events/semantic-search', { params })
   return response.data
@@ -334,8 +347,13 @@ export const getPublicProfiles = async () => {
   return response.data
 }
 
-export const discoverProfiles = async (params: { name?: string; tag_ids?: string[]; skill_ids?: string[]; page?: number }) => {
+export const discoverProfiles = async (params: { name?: string; role?: string; skill?: string; tag_ids?: string[]; skill_ids?: string[]; page?: number }) => {
   const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/discover`, { params })
+  return response.data
+}
+
+export const discoverProfilesCount = async (params: { name?: string; role?: string; skill?: string; tag_ids?: string[]; skill_ids?: string[] }) => {
+  const response = await api.get<{ total_count: number }>(`/profiles/discover/count`, { params })
   return response.data
 }
 
@@ -367,6 +385,11 @@ export const getMyChecklistItems = async (onlyOpen: boolean = true) => {
 
 export const getPublicOrganizations = async (params?: { q?: string; type?: string; page?: number; page_size?: number }) => {
   const response = await api.get<import('./api.types').OrganizationResponse[]>(`/organizations`, { params })
+  return response.data
+}
+
+export const getOrganizationsCount = async (params?: { q?: string; type?: string }) => {
+  const response = await api.get<{ total_count: number }>('/organizations/count', { params })
   return response.data
 }
 

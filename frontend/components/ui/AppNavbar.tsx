@@ -109,13 +109,8 @@ export function AppNavbar() {
                     <div className="hidden sm:ml-6 sm:flex sm:items-center">
                         <div className="ml-3 relative">
                             <div className="flex items-center gap-4">
-                                <button
-                                    onClick={() => setSearchOpen(true)}
-                                    className="p-2 rounded-full text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-all"
-                                >
-                                    <span className="sr-only">Search</span>
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                </button>
+                                { /* Removed redundant search icon */}
+
 
                                 <div className="hidden md:block">
                                     <NotificationBell />

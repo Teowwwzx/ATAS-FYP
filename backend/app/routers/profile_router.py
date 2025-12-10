@@ -1,7 +1,7 @@
 # profile_router.py
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 import uuid
@@ -28,6 +28,7 @@ from app.dependencies import require_roles
 from app.models.notification_model import Notification, NotificationType
 from app.models.user_model import Role, user_roles
 from app.models.onboarding_model import UserOnboarding, OnboardingStatus
+from app.models.review_model import Review
 
 router = APIRouter()
 
@@ -40,8 +41,10 @@ ONBOARDING_SETTINGS: dict = {
 @router.get("/discover", response_model=List[ProfileResponse])
 def discover_profiles(
     name: str | None = "",
-    tag_ids: List[uuid.UUID] | None = None,
-    skill_ids: List[uuid.UUID] | None = None,
+    role: str | None = None,
+    skill: str | None = None,
+    tag_ids: List[uuid.UUID] | None = Query(None),
+    skill_ids: List[uuid.UUID] | None = Query(None),
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
@@ -49,26 +52,44 @@ def discover_profiles(
     q = db.query(Profile)
     if name:
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
-    from app.models.review_model import Review
+    
     q = q.join(User, User.id == Profile.user_id)
-    q = q.join(user_roles, user_roles.c.user_id == User.id)
-    q = q.join(Role, Role.id == user_roles.c.role_id)
-    q = q.filter(Role.name == "expert")
+    # q = q.join(user_roles, user_roles.c.user_id == User.id)
+    # q = q.join(Role, Role.id == user_roles.c.role_id)
+    
+    if role:
+        q = q.join(user_roles, user_roles.c.user_id == User.id)\
+             .join(Role, Role.id == user_roles.c.role_id)\
+             .filter(Role.name.ilike(f"%{role}%"))
+    else:
+        # Default to showing all public profiles? Or keep legacy behavior?
+        # User requested "All Members" option, so we shouldn't filter by role if not specified.
+        # But we must ensure specific roles are joined if we filter.
+        pass
+
     q = q.filter(Profile.visibility == ProfileVisibility.public)
+    
     if tag_ids:
         q = q.join(profile_tags, profile_tags.c.profile_id == Profile.id)
         q = q.filter(profile_tags.c.tag_id.in_(tag_ids))
+        
     if skill_ids:
         q = q.join(profile_skills, profile_skills.c.profile_id == Profile.id)
         q = q.filter(profile_skills.c.skill_id.in_(skill_ids))
+
+    if skill:
+         q = q.outerjoin(profile_skills, profile_skills.c.profile_id == Profile.id)\
+             .outerjoin(Skill, Skill.id == profile_skills.c.skill_id)\
+             .outerjoin(profile_tags, profile_tags.c.profile_id == Profile.id)\
+             .outerjoin(Tag, Tag.id == profile_tags.c.tag_id)\
+             .filter(or_(Skill.name.ilike(f"%{skill}%"), Tag.name.ilike(f"%{skill}%")))
+    
     if page < 1:
         page = 1
     if page_size < 1:
         page_size = 20
     
     # Use subquery to get distinct profile IDs with ordering, then fetch full profiles
-    # NOTE: PostgreSQL requires ORDER BY columns to be in the SELECT list if DISTINCT is used.
-    # So we must select id, average_rating, and full_name in the subquery.
     subq = q.with_entities(Profile.id, Profile.average_rating, Profile.full_name).distinct()
     subq = subq.order_by(Profile.average_rating.desc(), Profile.full_name.asc())
     subq = subq.offset((page - 1) * page_size).limit(page_size).subquery()
@@ -122,24 +143,38 @@ def discover_profiles(
 @router.get("/discover/count")
 def discover_profiles_count(
     name: str | None = "",
-    tag_ids: List[uuid.UUID] | None = None,
-    skill_ids: List[uuid.UUID] | None = None,
+    role: str | None = None,
+    skill: str | None = None,
+    tag_ids: List[uuid.UUID] | None = Query(None),
+    skill_ids: List[uuid.UUID] | None = Query(None),
     db: Session = Depends(get_db),
 ):
     q = db.query(Profile)
     if name:
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
+        
     q = q.join(User, User.id == Profile.user_id)
-    q = q.join(user_roles, user_roles.c.user_id == User.id)
-    q = q.join(Role, Role.id == user_roles.c.role_id)
-    q = q.filter(Role.name == "expert")
+    if role:
+        q = q.join(user_roles, user_roles.c.user_id == User.id)\
+             .join(Role, Role.id == user_roles.c.role_id)\
+             .filter(Role.name.ilike(f"%{role}%"))
+             
     q = q.filter(Profile.visibility == ProfileVisibility.public)
+    
     if tag_ids:
         q = q.join(profile_tags, profile_tags.c.profile_id == Profile.id)
         q = q.filter(profile_tags.c.tag_id.in_(tag_ids))
     if skill_ids:
         q = q.join(profile_skills, profile_skills.c.profile_id == Profile.id)
         q = q.filter(profile_skills.c.skill_id.in_(skill_ids))
+        
+    if skill:
+         q = q.outerjoin(profile_skills, profile_skills.c.profile_id == Profile.id)\
+             .outerjoin(Skill, Skill.id == profile_skills.c.skill_id)\
+             .outerjoin(profile_tags, profile_tags.c.profile_id == Profile.id)\
+             .outerjoin(Tag, Tag.id == profile_tags.c.tag_id)\
+             .filter(or_(Skill.name.ilike(f"%{skill}%"), Tag.name.ilike(f"%{skill}%")))
+
     # Use subquery to avoid JSON column issues with DISTINCT
     subq = q.with_entities(Profile.id).distinct().subquery()
     total = db.query(subq.c.id).count()
@@ -316,9 +351,11 @@ def search_profiles(
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
 
     if skill:
-        q = q.join(profile_skills, profile_skills.c.profile_id == Profile.id)\
-             .join(Skill, Skill.id == profile_skills.c.skill_id)\
-             .filter(Skill.name.ilike(f"%{skill}%"))
+        q = q.outerjoin(profile_skills, profile_skills.c.profile_id == Profile.id)\
+             .outerjoin(Skill, Skill.id == profile_skills.c.skill_id)\
+             .outerjoin(profile_tags, profile_tags.c.profile_id == Profile.id)\
+             .outerjoin(Tag, Tag.id == profile_tags.c.tag_id)\
+             .filter(or_(Skill.name.ilike(f"%{skill}%"), Tag.name.ilike(f"%{skill}%")))
 
     if role:
         # Avoid double join if email already joined User

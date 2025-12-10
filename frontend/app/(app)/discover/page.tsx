@@ -2,12 +2,39 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents, semanticSearchEvents, semanticSearchProfiles, getMe } from '@/services/api'
+import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents, semanticSearchEvents, semanticSearchProfiles, getMe, getEventsCount, getOrganizationsCount, discoverProfiles, discoverProfilesCount } from '@/services/api'
 import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 // @ts-ignore
 import { debounce } from 'lodash'
 import { EventCard } from '@/components/ui/EventCard'
+
+const Pagination = ({ page, total, pageSize = 20, onChange }: { page: number, total: number, pageSize?: number, onChange: (p: number) => void }) => {
+    const totalPages = Math.ceil(total / pageSize)
+    if (totalPages <= 1) return null
+    return (
+        <div className="flex justify-center items-center gap-4 mt-8 mb-4">
+            <button
+                disabled={page === 1}
+                onClick={() => onChange(page - 1)}
+                className="px-4 py-2 bg-white border border-zinc-200 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-zinc-50 transition-colors"
+            >
+                Previous
+            </button>
+            <span className="text-sm text-zinc-500">
+                Page <span className="font-semibold text-zinc-900">{page}</span> of <span className="font-semibold text-zinc-900">{totalPages}</span>
+            </span>
+            <button
+                disabled={page >= totalPages}
+                onClick={() => onChange(page + 1)}
+                className="px-4 py-2 bg-white border border-zinc-200 rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-zinc-50 transition-colors"
+            >
+                Next
+            </button>
+        </div>
+    )
+}
+
 
 export default function DiscoverPage() {
     const [activeTab, setActiveTab] = useState<'events' | 'organizations' | 'people'>('events')
@@ -30,11 +57,17 @@ export default function DiscoverPage() {
     const [filterRegType, setFilterRegType] = useState<EventRegistrationType | ''>('')
     const [filterRegStatus, setFilterRegStatus] = useState<EventRegistrationStatus | ''>('')
     const [filterEventType, setFilterEventType] = useState<EventType | ''>('')
+    const [eventPage, setEventPage] = useState(1)
+    const [eventTotal, setEventTotal] = useState(0)
 
     // Organizations State
     const [orgs, setOrgs] = useState<OrganizationResponse[]>([])
     const [orgsLoading, setOrgsLoading] = useState(true)
     const [orgSearch, setOrgSearch] = useState('')
+    const [filterOrgType, setFilterOrgType] = useState('')
+    const [orgFiltersOpen, setOrgFiltersOpen] = useState(false)
+    const [orgPage, setOrgPage] = useState(1)
+    const [orgTotal, setOrgTotal] = useState(0)
 
     // People State
     const [people, setPeople] = useState<ProfileResponse[]>([])
@@ -43,6 +76,8 @@ export default function DiscoverPage() {
     const [peopleRole, setPeopleRole] = useState('')
     const [peopleSkill, setPeopleSkill] = useState('')
     const [peopleFiltersOpen, setPeopleFiltersOpen] = useState(false)
+    const [peoplePage, setPeoplePage] = useState(1)
+    const [peopleTotal, setPeopleTotal] = useState(0)
     const [debouncedPeopleSearch, setDebouncedPeopleSearch] = useState('')
     const [debouncedEventSearch, setDebouncedEventSearch] = useState('')
     const [useAiEvents, setUseAiEvents] = useState(false)
@@ -73,17 +108,30 @@ export default function DiscoverPage() {
         return () => clearTimeout(handler)
     }, [peopleSearch])
 
+
+    // Reset pages when filters change
+    useEffect(() => { setEventPage(1) }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType])
+    useEffect(() => { setOrgPage(1) }, [orgSearch, filterOrgType])
+    useEffect(() => { setPeoplePage(1) }, [debouncedPeopleSearch, peopleRole, peopleSkill])
+
+
     useEffect(() => {
-        if (activeTab === 'events' && (debouncedEventSearch || filterRegType || filterRegStatus || filterEventType)) {
+        if (activeTab === 'events') {
             loadFilteredEvents()
         }
-    }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType, activeTab])
+    }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType, activeTab, eventPage])
 
     useEffect(() => {
         if (activeTab === 'people') {
             loadPeople()
         }
-    }, [activeTab, debouncedPeopleSearch, peopleRole, peopleSkill])
+    }, [activeTab, debouncedPeopleSearch, peopleRole, peopleSkill, peoplePage])
+
+    useEffect(() => {
+        if (activeTab === 'organizations') {
+            loadOrgs()
+        }
+    }, [activeTab, orgSearch, filterOrgType, orgPage])
 
 
     const loadAllEventSections = async () => {
@@ -118,15 +166,27 @@ export default function DiscoverPage() {
         try {
             setEventsLoading(true)
             setEventError(null)
-            const data = useAiEvents
-                ? await semanticSearchEvents({ q_text: debouncedEventSearch || undefined, top_k: 24 })
-                : await getPublicEvents({
-                    q_text: debouncedEventSearch,
-                    registration_type: filterRegType || undefined,
-                    registration_status: filterRegStatus || undefined,
-                    type: filterEventType || undefined,
-                })
-            setEvents(data)
+
+            const params = {
+                q_text: debouncedEventSearch,
+                registration_type: filterRegType || undefined,
+                registration_status: filterRegStatus || undefined,
+                type: filterEventType || undefined,
+            }
+
+            if (useAiEvents) {
+                const data = await semanticSearchEvents({ q_text: debouncedEventSearch || undefined, top_k: 24 })
+                setEvents(data)
+                setEventTotal(data.length)
+            } else {
+                const [data, countRes] = await Promise.all([
+                    // @ts-ignore
+                    getPublicEvents({ ...params, page: eventPage }),
+                    getEventsCount(params)
+                ])
+                setEvents(data)
+                setEventTotal(countRes.total_count)
+            }
         } catch (err) {
             console.error('Failed to load events', err)
             setEventError('Failed to load events')
@@ -137,8 +197,17 @@ export default function DiscoverPage() {
 
     const loadOrgs = async () => {
         try {
-            const data = await getPublicOrganizations()
+            setOrgsLoading(true)
+            const params = {
+                q: orgSearch,
+                type: filterOrgType || undefined
+            }
+            const [data, countRes] = await Promise.all([
+                getPublicOrganizations({ ...params, page: orgPage }),
+                getOrganizationsCount(params)
+            ])
             setOrgs(data)
+            setOrgTotal(countRes.total_count)
         } catch (err: any) {
             console.error(err)
             toast.error(err?.response?.data?.detail || 'Failed to load organizations')
@@ -150,25 +219,19 @@ export default function DiscoverPage() {
     const loadPeople = async () => {
         try {
             setPeopleLoading(true)
-            const profiles = useAiPeople
-                ? await semanticSearchProfiles({
-                    q_text: debouncedPeopleSearch || undefined,
-                    role: peopleRole || undefined,
-                    top_k: 24
-                })
-                : await findProfiles({
-                    name: debouncedPeopleSearch || '',
-                    role: peopleRole || undefined,
-                    skill: peopleSkill || undefined
-                })
+            const params = {
+                name: debouncedPeopleSearch || undefined,
+                role: peopleRole || undefined,
+                skill: peopleSkill || undefined,
+            }
 
-            // Backend now handles filtering including Roles (and Skills for findProfiles)
-            // Semantic search currently searches text embedding so 'skill' might be part of q_text if we wanted, 
-            // but for now let's keep it simple. If usage of AI is on, we might not strictly filter by skill column 
-            // unless we update backend to helper. 
-            // However, the user issue was mainly about Role filtering.
+            const [profiles, countRes] = await Promise.all([
+                discoverProfiles({ ...params, page: peoplePage }),
+                discoverProfilesCount(params)
+            ])
 
             setPeople(profiles)
+            setPeopleTotal(countRes.total_count)
         } catch (err) {
             console.error(err)
         } finally {
@@ -176,130 +239,224 @@ export default function DiscoverPage() {
         }
     }
 
-    const filteredOrgs = orgs.filter(o => o.name.toLowerCase().includes(orgSearch.toLowerCase()))
-
+    const filteredOrgs = orgs
 
     return (
-        <div>
-            <div className="mb-10 text-center sm:text-left">
-                <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-3">Discover</h1>
-            </div>
+        <div className="min-h-screen">
+            {/* Top Bar: Tabs + Search/Filter */}
+            <div className="mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Tabs (Left) */}
+                    <div className="flex gap-1 bg-zinc-100/50 p-1 rounded-xl w-fit">
+                        <button
+                            onClick={() => setActiveTab('events')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'events' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+                        >
+                            Events
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('organizations')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'organizations' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+                        >
+                            Organizations
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('people')}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'people' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
+                        >
+                            People
+                        </button>
+                    </div>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-6 mb-8 border-b border-zinc-100 overflow-x-auto">
-                <button
-                    onClick={() => setActiveTab('events')}
-                    className={`pb-4 text-lg font-bold transition-colors relative whitespace-nowrap ${activeTab === 'events' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
-                        }`}
-                >
-                    Events
-                    {activeTab === 'events' && (
-                        <span className="absolute bottom-0 left-0 w-full h-1 bg-yellow-400 rounded-t-full"></span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab('organizations')}
-                    className={`pb-4 text-lg font-bold transition-colors relative whitespace-nowrap ${activeTab === 'organizations' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
-                        }`}
-                >
-                    Organizations
-                    {activeTab === 'organizations' && (
-                        <span className="absolute bottom-0 left-0 w-full h-1 bg-yellow-400 rounded-t-full"></span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab('people')}
-                    className={`pb-4 text-lg font-bold transition-colors relative whitespace-nowrap ${activeTab === 'people' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
-                        }`}
-                >
-                    People
-                    {activeTab === 'people' && (
-                        <span className="absolute bottom-0 left-0 w-full h-1 bg-yellow-400 rounded-t-full"></span>
-                    )}
-                </button>
+                    {/* Controls (Right) */}
+                    <div className="flex items-center gap-3 flex-1 md:flex-none md:min-w-[400px]">
+                        {/* Search Input */}
+                        <div className="relative flex-1 group">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg className="h-4 w-4 text-zinc-400 group-focus-within:text-yellow-500 transition-colors" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <input
+                                type="text"
+                                className="block w-full pl-10 pr-4 py-2.5 bg-zinc-50 border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all duration-200 text-sm font-medium"
+                                placeholder={
+                                    activeTab === 'events' ? "Search events..." :
+                                        activeTab === 'organizations' ? "Search organizations..." :
+                                            "Search people..."
+                                }
+                                value={
+                                    activeTab === 'events' ? eventSearch :
+                                        activeTab === 'organizations' ? orgSearch :
+                                            peopleSearch
+                                }
+                                onChange={(e) => {
+                                    if (activeTab === 'events') setEventSearch(e.target.value)
+                                    else if (activeTab === 'organizations') setOrgSearch(e.target.value)
+                                    else setPeopleSearch(e.target.value)
+                                }}
+                            />
+                        </div>
+
+                        {/* Filters Button & Dropdown */}
+                        <div className="relative z-50">
+                            <button
+                                onClick={() => {
+                                    if (activeTab === 'events') setEventFiltersOpen(!eventFiltersOpen)
+                                    else if (activeTab === 'organizations') setOrgFiltersOpen(!orgFiltersOpen)
+                                    else setPeopleFiltersOpen(!peopleFiltersOpen)
+                                }}
+                                className={`p-2.5 rounded-xl font-bold border transition-all duration-200 flex items-center gap-2 text-sm ${(activeTab === 'events' && eventFiltersOpen) || (activeTab === 'organizations' && orgFiltersOpen) || (activeTab === 'people' && peopleFiltersOpen)
+                                    ? 'bg-yellow-400 border-yellow-400 text-zinc-900 shadow-sm'
+                                    : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                                    }`}
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {((activeTab === 'events' && eventFiltersOpen) || (activeTab === 'organizations' && orgFiltersOpen) || (activeTab === 'people' && peopleFiltersOpen)) && (
+                                <>
+                                    {/* Backdrop to close */}
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => {
+                                            if (activeTab === 'events') setEventFiltersOpen(false)
+                                            else if (activeTab === 'organizations') setOrgFiltersOpen(false)
+                                            else setPeopleFiltersOpen(false)
+                                        }}
+                                    />
+
+                                    {/* Dropdown Content */}
+                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-zinc-100 p-5 z-50 animate-fadeIn origin-top-right">
+                                        {activeTab === 'events' ? (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Status</label>
+                                                    <select
+                                                        value={filterRegStatus}
+                                                        onChange={(e) => setFilterRegStatus(e.target.value as EventRegistrationStatus)}
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    >
+                                                        <option value="">All Status</option>
+                                                        <option value="opened">Open</option>
+                                                        <option value="closed">Closed</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Cost</label>
+                                                    <select
+                                                        value={filterRegType}
+                                                        onChange={(e) => setFilterRegType(e.target.value as EventRegistrationType)}
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    >
+                                                        <option value="">Any Cost</option>
+                                                        <option value="free">Free</option>
+                                                        <option value="paid">Paid</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Venue</label>
+                                                    <select
+                                                        value={filterEventType}
+                                                        onChange={(e) => setFilterEventType(e.target.value as EventType)}
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    >
+                                                        <option value="">All Types</option>
+                                                        <option value="online">Online</option>
+                                                        <option value="offline">Physical</option>
+                                                        <option value="hybrid">Hybrid</option>
+                                                    </select>
+                                                </div>
+                                                <button
+                                                    onClick={() => { setFilterRegStatus(''); setFilterRegType(''); setFilterEventType('') }}
+                                                    className="w-full text-center text-xs font-bold text-zinc-400 hover:text-zinc-900 py-1"
+                                                >
+                                                    Reset Filters
+                                                </button>
+                                            </div>
+                                        ) : activeTab === 'organizations' ? (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Org Type</label>
+                                                    <select
+                                                        value={filterOrgType}
+                                                        onChange={(e) => setFilterOrgType(e.target.value)}
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    >
+                                                        <option value="">All Types</option>
+                                                        <option value="Bank">Bank</option>
+                                                        <option value="Investment">Investment</option>
+                                                        <option value="Fintech">Fintech</option>
+                                                        <option value="University">University</option>
+                                                    </select>
+                                                </div>
+                                                <button
+                                                    onClick={() => { setFilterOrgType('') }}
+                                                    className="w-full text-center text-xs font-bold text-zinc-400 hover:text-zinc-900 py-1"
+                                                >
+                                                    Reset Filters
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <select
+                                                        value={peopleRole}
+                                                        onChange={(e) => setPeopleRole(e.target.value)}
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    >
+                                                        <option value="">All Members</option>
+                                                        <option value="expert">Expert</option>
+                                                        <option value="sponsor">Sponsor</option>
+                                                        <option value="student">Student</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Skill</label>
+                                                    <input
+                                                        type="text"
+                                                        value={peopleSkill}
+                                                        onChange={(e) => setPeopleSkill(e.target.value)}
+                                                        placeholder="e.g. Python"
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => { setPeopleRole(''); setPeopleSkill('') }}
+                                                    className="w-full text-center text-xs font-bold text-zinc-400 hover:text-zinc-900 py-1"
+                                                >
+                                                    Reset Filters
+                                                </button>
+                                            </div>
+                                        )}
+
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* AI Match Toggle */}
+                        {(activeTab === 'events' || activeTab === 'people') && (
+                            <button
+                                onClick={() => activeTab === 'events' ? setUseAiEvents(!useAiEvents) : setUseAiPeople(!useAiPeople)}
+                                className={`p-2.5 rounded-xl border transition-all ${(activeTab === 'events' ? useAiEvents : useAiPeople)
+                                    ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                                    : 'bg-white border-zinc-200 text-zinc-400 hover:border-yellow-400 hover:text-yellow-500'
+                                    }`}
+                                title="AI Smart Match"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {activeTab === 'events' && (
                 <div className="animate-fadeIn space-y-12">
-                    {/* Search & Filter */}
-                    <div>
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-zinc-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    className="block w-full pl-11 pr-4 py-3 bg-white border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 text-sm font-medium"
-                                    placeholder="Search events..."
-                                    value={eventSearch}
-                                    onChange={(e) => setEventSearch(e.target.value)}
-                                />
-                            </div>
-                            <button
-                                onClick={() => setEventFiltersOpen(!eventFiltersOpen)}
-                                className={`px-5 py-3 rounded-xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 text-sm ${eventFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                                Filters
-                            </button>
-                        </div>
-
-                        {eventFiltersOpen && (
-                            <div className="mt-4 p-6 bg-white rounded-3xl shadow-sm border border-zinc-100 animate-fadeIn">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Registration Status</label>
-                                        <select
-                                            value={filterRegStatus}
-                                            onChange={(e) => setFilterRegStatus(e.target.value as EventRegistrationStatus)}
-                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-                                        >
-                                            <option value="">All Status</option>
-                                            <option value="opened">Open to Register</option>
-                                            <option value="closed">Closed</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Cost</label>
-                                        <select
-                                            value={filterRegType}
-                                            onChange={(e) => setFilterRegType(e.target.value as EventRegistrationType)}
-                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-                                        >
-                                            <option value="">Any Cost</option>
-                                            <option value="free">Free</option>
-                                            <option value="paid">Paid</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Venue Type</label>
-                                        <select
-                                            value={filterEventType}
-                                            onChange={(e) => setFilterEventType(e.target.value as EventType)}
-                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-                                        >
-                                            <option value="">All Types</option>
-                                            <option value="online">Online</option>
-                                            <option value="offline">Physical</option>
-                                            <option value="hybrid">Hybrid</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="mt-6 flex justify-end">
-                                    <button
-                                        onClick={() => { setFilterRegStatus(''); setFilterRegType(''); setFilterEventType('') }}
-                                        className="text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
-                                    >
-                                        Reset Filters
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
                     {/* Only show categories if NOT searching/filtering */}
                     {!eventSearch && !filterRegStatus && !filterRegType && !filterEventType && (
                         <>
@@ -397,8 +554,8 @@ export default function DiscoverPage() {
                                             See More
                                         </button>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                        {cat.data.slice(0, 4).map((event) => (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                        {cat.data.slice(0, 3).map((event) => (
                                             <EventCard key={event.id} event={event} />
                                         ))}
                                     </div>
@@ -413,25 +570,9 @@ export default function DiscoverPage() {
                             <h2 className="text-2xl font-black text-zinc-900">
                                 {useAiEvents ? 'AI Match Results' : (eventSearch || filterRegStatus || filterRegType || filterEventType ? 'Search Results' : 'All Events')}
                             </h2>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => setUseAiEvents(!useAiEvents)}
-                                    className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${useAiEvents
-                                        ? 'bg-green-500 border-green-500 text-white'
-                                        : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
-                                        }`}
-                                    aria-pressed={useAiEvents}
-                                    aria-label="Toggle AI Match for events"
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </button>
-                                <span className="text-sm font-bold text-zinc-700">AI Match</span>
-                                {useAiEvents && (
-                                    <span className="text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedEventSearch || '—'}` : `You searched: ${debouncedEventSearch || '—'}`}</span>
-                                )}
-                            </div>
+                            {useAiEvents && (
+                                <span className="text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedEventSearch || '—'}` : `You searched: ${debouncedEventSearch || '—'}`}</span>
+                            )}
                         </div>
 
                         {eventsLoading ? (
@@ -454,29 +595,16 @@ export default function DiscoverPage() {
                                 ))}
                             </div>
                         )}
+
+                        {!useAiEvents && (
+                            <Pagination page={eventPage} total={eventTotal} onChange={setEventPage} />
+                        )}
                     </div>
                 </div>
             )}
 
             {activeTab === 'organizations' && (
                 <div className="animate-fadeIn">
-                    <div className="mb-10">
-                        <div className="relative max-w-xl">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg className="h-5 w-5 text-zinc-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <input
-                                type="text"
-                                className="block w-full pl-11 pr-4 py-3 bg-white border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 text-sm font-medium"
-                                placeholder="Search organizations..."
-                                value={orgSearch}
-                                onChange={(e) => setOrgSearch(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
                     {orgsLoading ? (
                         <div className="flex justify-center items-center h-64">
                             <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-yellow-400"></div>
@@ -519,93 +647,16 @@ export default function DiscoverPage() {
                             ))}
                         </div>
                     )}
+                    <Pagination page={orgPage} total={orgTotal} onChange={setOrgPage} />
+
                 </div>
             )}
 
             {activeTab === 'people' && (
                 <div className="animate-fadeIn">
-                    <div className="mb-10">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-zinc-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    className="block w-full pl-11 pr-4 py-3 bg-white border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 text-sm font-medium"
-                                    placeholder="Search people by name..."
-                                    value={peopleSearch}
-                                    onChange={(e) => setPeopleSearch(e.target.value)}
-                                />
-                            </div>
-                            <button
-                                onClick={() => setPeopleFiltersOpen(!peopleFiltersOpen)}
-                                className={`px-5 py-3 rounded-xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 text-sm ${peopleFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                                Filters
-                            </button>
-                            <div className="ml-auto flex items-center gap-2">
-                                <button
-                                    onClick={() => setUseAiPeople(!useAiPeople)}
-                                    className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${useAiPeople
-                                        ? 'bg-green-500 border-green-500 text-white'
-                                        : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
-                                        }`}
-                                    aria-pressed={useAiPeople}
-                                    aria-label="Toggle AI Match for people"
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </button>
-                                <span className="text-sm font-bold text-zinc-700">AI Match</span>
-                            </div>
-                        </div>
-                        {useAiPeople && (
-                            <div className="mt-2 text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedPeopleSearch || '—'}` : `You searched: ${debouncedPeopleSearch || '—'}`}</div>
-                        )}
-
-                        {peopleFiltersOpen && (
-                            <div className="mt-4 p-6 bg-white rounded-3xl shadow-sm border border-zinc-100 animate-fadeIn">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Role</label>
-                                        <select
-                                            value={peopleRole}
-                                            onChange={(e) => setPeopleRole(e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-                                        >
-                                            <option value="">All Roles</option>
-                                            <option value="expert">Expert</option>
-                                            <option value="student">Student</option>
-                                            <option value="admin">Admin</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-zinc-900 uppercase mb-2 block">Skill / Specialism</label>
-                                        <input
-                                            type="text"
-                                            value={peopleSkill}
-                                            onChange={(e) => setPeopleSkill(e.target.value)}
-                                            placeholder="e.g. Python, Design, Marketing"
-                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="mt-6 flex justify-end">
-                                    <button
-                                        onClick={() => { setPeopleRole(''); setPeopleSkill('') }}
-                                        className="text-sm font-bold text-zinc-400 hover:text-zinc-900 transition-colors"
-                                    >
-                                        Reset Filters
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    {useAiPeople && (
+                        <div className="mb-4 text-xs text-zinc-500">{currentEmail ? `You (${currentEmail}) searched: ${debouncedPeopleSearch || '—'}` : `You searched: ${debouncedPeopleSearch || '—'}`}</div>
+                    )}
 
                     {peopleLoading ? (
                         <div className="flex justify-center items-center h-64">
@@ -624,25 +675,77 @@ export default function DiscoverPage() {
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {people.map((profile) => (
                                 <Link key={profile.id} href={`/profile/${profile.user_id}`} className="block group">
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 flex items-center gap-4">
-                                        {profile.avatar_url ? (
-                                            <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
-                                        ) : (
-                                            <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-xl ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all">
-                                                {profile.full_name?.charAt(0) || 'U'}
+                                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 h-full flex flex-col">
+                                        <div className="flex items-center gap-4 mb-4">
+                                            {profile.avatar_url ? (
+                                                <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-xl ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all">
+                                                    {profile.full_name?.charAt(0) || 'U'}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
+                                                {profile.title && (
+                                                    <p className="text-sm font-bold text-zinc-500 truncate">{profile.title}</p>
+                                                )}
+                                                {/* Rating */}
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                    </svg>
+                                                    <span className="text-xs font-bold text-zinc-900">{profile.average_rating ? profile.average_rating.toFixed(1) : 'New'}</span>
+                                                    {profile.reviews_count ? (
+                                                        <span className="text-xs text-zinc-400">({profile.reviews_count})</span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Tags */}
+                                        {profile.tags && profile.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mb-4">
+                                                {profile.tags.slice(0, 3).map(tag => (
+                                                    <span key={tag.id} className="px-2.5 py-1 bg-yellow-50 text-yellow-700 text-xs rounded-full font-bold border border-yellow-100">
+                                                        {tag.name}
+                                                    </span>
+                                                ))}
+                                                {profile.tags.length > 3 && (
+                                                    <span className="px-2 py-1 bg-zinc-50 text-zinc-400 text-xs rounded-full font-medium">+{profile.tags.length - 3}</span>
+                                                )}
                                             </div>
                                         )}
-                                        <div className="min-w-0">
-                                            <h3 className="text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
-                                            {profile.bio && (
-                                                <p className="text-sm text-zinc-500 truncate">{profile.bio}</p>
-                                            )}
-                                        </div>
+
+                                        {/* Availability / Intents */}
+                                        {(profile.availability || (profile.intents && profile.intents.length > 0)) && (
+                                            <div className="mb-3 pt-3 border-t border-zinc-100">
+                                                {profile.availability && (
+                                                    <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
+                                                        <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        <span>{profile.availability}</span>
+                                                    </div>
+                                                )}
+                                                {profile.intents && profile.intents.length > 0 && (
+                                                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                                        <span className="truncate">{profile.intents.join(', ')}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {profile.bio && (
+                                            <p className="text-sm text-zinc-400 line-clamp-2">{profile.bio}</p>
+                                        )}
                                     </div>
                                 </Link>
                             ))}
                         </div>
                     )}
+                    <Pagination page={peoplePage} total={peopleTotal} onChange={setPeoplePage} />
+
                 </div>
             )}
         </div>
