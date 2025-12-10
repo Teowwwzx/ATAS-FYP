@@ -102,10 +102,19 @@ def discover_profiles(
             "website_url": p.website_url,
             "visibility": p.visibility,
             "tags": p.tags,
+            "skills": p.skills,
             "educations": p.educations,
             "job_experiences": p.job_experiences,
             "average_rating": float(avg),
             "reviews_count": int(cnt),
+            
+            # Missing fields
+            "country": p.country,
+            "city": p.city,
+            "origin_country": p.origin_country,
+            "can_be_speaker": p.can_be_speaker,
+            "intents": p.intents,
+            "today_status": p.today_status,
         })
         result.append(pr)
     return result
@@ -207,10 +216,19 @@ def semantic_search_profiles(
                 "website_url": p.website_url,
                 "visibility": p.visibility,
                 "tags": p.tags,
+                "skills": p.skills,
                 "educations": p.educations,
                 "job_experiences": p.job_experiences,
                 "average_rating": float(avg),
                 "reviews_count": int(cnt),
+                
+                # Missing fields
+                "country": p.country,
+                "city": p.city,
+                "origin_country": p.origin_country,
+                "can_be_speaker": p.can_be_speaker,
+                "intents": p.intents,
+                "today_status": p.today_status,
             })
             result.append(pr)
         return result
@@ -248,10 +266,19 @@ def semantic_search_profiles(
             "website_url": p.website_url,
             "visibility": p.visibility,
             "tags": p.tags,
+            "skills": p.skills,
             "educations": p.educations,
             "job_experiences": p.job_experiences,
             "average_rating": float(avg),
             "reviews_count": int(cnt),
+            
+            # Missing fields
+            "country": p.country,
+            "city": p.city,
+            "origin_country": p.origin_country,
+            "can_be_speaker": p.can_be_speaker,
+            "intents": p.intents,
+            "today_status": p.today_status,
         })
         result.append(pr)
     return result
