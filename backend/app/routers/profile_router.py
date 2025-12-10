@@ -65,13 +65,22 @@ def discover_profiles(
         page = 1
     if page_size < 1:
         page_size = 20
+    
+    # Use subquery to get distinct profile IDs with ordering, then fetch full profiles
+    # NOTE: PostgreSQL requires ORDER BY columns to be in the SELECT list if DISTINCT is used.
+    # So we must select id, average_rating, and full_name in the subquery.
+    subq = q.with_entities(Profile.id, Profile.average_rating, Profile.full_name).distinct()
+    subq = subq.order_by(Profile.average_rating.desc(), Profile.full_name.asc())
+    subq = subq.offset((page - 1) * page_size).limit(page_size).subquery()
+    
+    # Fetch full profiles based on the IDs from subquery
     items = (
-        q.distinct()
+        db.query(Profile)
+        .filter(Profile.id.in_(db.query(subq.c.id)))
         .order_by(Profile.average_rating.desc(), Profile.full_name.asc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
         .all()
     )
+    
     result: List[ProfileResponse] = []
     for p in items:
         avg = (
@@ -131,13 +140,16 @@ def discover_profiles_count(
     if skill_ids:
         q = q.join(profile_skills, profile_skills.c.profile_id == Profile.id)
         q = q.filter(profile_skills.c.skill_id.in_(skill_ids))
-    total = q.with_entities(Profile.id).distinct().count()
+    # Use subquery to avoid JSON column issues with DISTINCT
+    subq = q.with_entities(Profile.id).distinct().subquery()
+    total = db.query(subq.c.id).count()
     return {"total_count": total}
 
 @router.get("/semantic-search", response_model=List[ProfileResponse])
 def semantic_search_profiles(
     embedding: str | None = None,
     q_text: str | None = None,
+    role: str | None = None,
     top_k: int = 20,
     db: Session = Depends(get_db),
 ):
@@ -170,12 +182,27 @@ def semantic_search_profiles(
     profiles_q = profiles_q.join(User, User.id == Profile.user_id)
     profiles_q = profiles_q.join(user_roles, user_roles.c.user_id == User.id)
     profiles_q = profiles_q.join(Role, Role.id == user_roles.c.role_id)
-    profiles_q = profiles_q.filter(Role.name == "expert")
+    
+    # Dynamic Role Filter
+    if role:
+        profiles_q = profiles_q.filter(Role.name.ilike(f"%{role}%"))
+    else:
+        # If no role specified, maybe we should NOT restrict to expert only? 
+        # But semantic search relies on 'expert_embeddings' table?
+        # Actually 'expert_embeddings' might create issue if we want to search students who don't have embeddings.
+        # For now, let's just remove the hardcoded restriction so students CAN be found if they are in the embeddings table (or if we fallback to text search).
+        pass
+
     profiles_q = profiles_q.filter(Profile.visibility == ProfileVisibility.public)
+    
     if user_ids:
+        # If we have vector matches, filter by them
         items = profiles_q.filter(Profile.user_id.in_(user_ids)).all()
+        
+        # Sort by vector similarity order
         order = {uid: idx for idx, uid in enumerate(user_ids)}
         items.sort(key=lambda p: order.get(p.user_id, 10**9))
+        
         result: List[ProfileResponse] = []
         from app.models.review_model import Review
         for p in items[:top_k]:
@@ -206,6 +233,7 @@ def semantic_search_profiles(
                 "twitter_url": p.twitter_url,
                 "website_url": p.website_url,
                 "visibility": p.visibility,
+                "can_be_speaker": p.can_be_speaker,
                 "tags": p.tags,
                 "educations": p.educations,
                 "job_experiences": p.job_experiences,
@@ -214,8 +242,11 @@ def semantic_search_profiles(
             })
             result.append(pr)
         return result
+    
     elif q_text:
+        # Fallback to ILIKE if no embeddings found or not using embeddings
         profiles_q = profiles_q.filter(Profile.full_name.ilike(f"%{q_text}%"))
+    
     profiles = profiles_q.limit(top_k).all()
     result: List[ProfileResponse] = []
     from app.models.review_model import Review
@@ -247,6 +278,7 @@ def semantic_search_profiles(
             "twitter_url": p.twitter_url,
             "website_url": p.website_url,
             "visibility": p.visibility,
+            "can_be_speaker": p.can_be_speaker,
             "tags": p.tags,
             "educations": p.educations,
             "job_experiences": p.job_experiences,
@@ -260,10 +292,11 @@ def semantic_search_profiles(
 def semantic_search_profiles_alias(
     embedding: str | None = None,
     q_text: str | None = None,
+    role: str | None = None,
     top_k: int = 20,
     db: Session = Depends(get_db),
 ):
-    return semantic_search_profiles(embedding=embedding, q_text=q_text, top_k=top_k, db=db)
+    return semantic_search_profiles(embedding=embedding, q_text=q_text, role=role, top_k=top_k, db=db)
     
 @router.get("/find", response_model=List[ProfileResponse])
 def search_profiles(
@@ -296,7 +329,17 @@ def search_profiles(
              .join(Role, Role.id == user_roles.c.role_id)\
              .filter(Role.name.ilike(f"%{role}%"))
 
-    results = q.distinct().limit(50).all()
+    # Use distinct to avoid duplicates if multiple roles match
+    # Fetch IDs first to avoid complex subquery SQL generation issues
+    q_ids = q.with_entities(Profile.id).distinct().limit(50)
+    profile_ids = [r[0] for r in q_ids.all()]
+    
+    if not profile_ids:
+        return []
+
+    # Fetch full profiles
+    results = db.query(Profile).filter(Profile.id.in_(profile_ids)).all()
+    
     return results
 
 @router.put("/me/onboarding", response_model=ProfileResponse)

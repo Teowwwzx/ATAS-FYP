@@ -339,7 +339,7 @@ export const discoverProfiles = async (params: { name?: string; tag_ids?: string
   return response.data
 }
 
-export const semanticSearchProfiles = async (params?: { q_text?: string; top_k?: number; embedding?: string }) => {
+export const semanticSearchProfiles = async (params?: { q_text?: string; top_k?: number; embedding?: string; role?: string }) => {
   const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/semantic-search`, { params })
   return response.data
 }
@@ -684,6 +684,7 @@ export const getMyFollowers = async () => {
   return response.data
 }
 
+
 export const followUser = async (followeeId: string) => {
   const response = await api.post('/follows', { followee_id: followeeId })
   return response.data
@@ -691,5 +692,46 @@ export const followUser = async (followeeId: string) => {
 
 export const unfollowUser = async (followeeId: string) => {
   const response = await api.delete(`/follows/${followeeId}`)
+  return response.data
+}
+
+
+// --- Chat ---
+
+export const getConversations = async () => {
+  const response = await api.get<import('./api.types').ChatConversation[]>('/chat/conversations')
+  return response.data
+}
+
+export const createConversation = async (participantIds: string[]) => {
+  const response = await api.post<import('./api.types').ChatConversation>('/chat/conversations', { participant_ids: participantIds })
+  return response.data
+}
+
+export const getChatMessages = async (conversationId: string) => {
+  const response = await api.get<import('./api.types').ChatMessage[]>(`/chat/conversations/${conversationId}/messages`)
+  return response.data
+}
+
+
+export const sendChatMessage = async (conversationId: string, content: string) => {
+  const response = await api.post<import('./api.types').ChatMessage>(`/chat/conversations/${conversationId}/messages`, { content })
+  return response.data
+}
+
+
+
+export const getMyRequests = async () => {
+  const response = await api.get<import('./api.types').EventInvitationResponse[]>('/events/me/requests')
+  return response.data
+}
+
+export const getProposalComments = async (proposalId: string) => {
+  const response = await api.get<import('./api.types').EventProposalCommentResponse[]>(`/events/proposals/${proposalId}/comments`)
+  return response.data
+}
+
+export const createProposalComment = async (proposalId: string, content: string) => {
+  const response = await api.post<import('./api.types').EventProposalCommentResponse>(`/events/proposals/${proposalId}/comments`, { content })
   return response.data
 }

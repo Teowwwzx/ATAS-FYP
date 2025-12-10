@@ -277,3 +277,14 @@ class EventProposalCommentResponse(BaseModel):
     updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class EventInvitationResponse(BaseModel):
+    id: uuid.UUID
+    event: EventDetails
+    role: EventParticipantRole
+    status: EventParticipantStatus
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
+

@@ -8,6 +8,7 @@ import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem, Organizatio
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@/components/ui/Button'
+import { BookExpertModal } from '@/components/modals/BookExpertModal'
 
 export default function PublicProfilePage() {
     const params = useParams()
@@ -198,13 +199,13 @@ export default function PublicProfilePage() {
                                     </button>
                                 ) : (
                                     <>
-                                        <Link
-                                            href={`/book/${userId}`}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
-                                >
+                                        <button
+                                            onClick={() => setShowInviteModal(true)}
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
+                                        >
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                             Book Expert
-                                        </Link>
+                                        </button>
                                         <button
                                             onClick={() => setShowInviteModal(true)}
                                             className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
@@ -250,15 +251,15 @@ export default function PublicProfilePage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {organizedEvents.map(event => {
                                     const eventReviews = reviews.filter(r => r.event_id === event.id)
-                                    const rating = eventReviews.length > 0 
-                                        ? eventReviews.reduce((sum, r) => sum + r.rating, 0) / eventReviews.length 
+                                    const rating = eventReviews.length > 0
+                                        ? eventReviews.reduce((sum, r) => sum + r.rating, 0) / eventReviews.length
                                         : undefined
 
                                     return (
                                         <div key={event.id} className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col">
                                             {/* Cover */}
                                             <div className="relative h-32 w-full overflow-hidden">
-                                                 {event.cover_url ? (
+                                                {event.cover_url ? (
                                                     <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                                 ) : (
                                                     <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
@@ -269,14 +270,14 @@ export default function PublicProfilePage() {
                                                     {event.registration_type === 'free' ? 'FREE' : 'PAID'}
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Content */}
                                             <div className="p-4 flex flex-col flex-1">
                                                 <h3 className="font-bold text-zinc-900 line-clamp-1 mb-1 group-hover:text-yellow-600 transition-colors">{event.title}</h3>
                                                 <p className="text-xs text-zinc-500 font-medium mb-3">
                                                     {new Date(event.start_datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                 </p>
-                                                
+
                                                 <div className="mt-auto flex items-center justify-between">
                                                     {/* Rating / Review */}
                                                     <div className="flex items-center gap-1">
@@ -286,7 +287,7 @@ export default function PublicProfilePage() {
                                                         <span className="text-sm font-bold text-zinc-700">{rating ? rating.toFixed(1) : 'New'}</span>
                                                         {eventReviews.length > 0 && <span className="text-xs text-zinc-400">({eventReviews.length})</span>}
                                                     </div>
-                                                    
+
                                                     <Link href={`/events/${event.id}`} className="text-xs font-bold text-yellow-600 hover:text-yellow-700">
                                                         View Details
                                                     </Link>
@@ -452,93 +453,13 @@ export default function PublicProfilePage() {
                 )}
             </div>
 
-            {/* Invitation Modal */}
-            <Transition appear show={showInviteModal} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => setShowInviteModal(false)}>
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                    >
-                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-                    </Transition.Child>
-
-                    <div className="fixed inset-0 overflow-y-auto">
-                        <div className="flex min-h-full items-center justify-center p-4">
-                            <Transition.Child
-                                as={Fragment}
-                                enter="ease-out duration-300"
-                                enterFrom="opacity-0 scale-95"
-                                enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
-                                leaveFrom="opacity-100 scale-100"
-                                leaveTo="opacity-0 scale-95"
-                            >
-                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-[2rem] bg-white p-6 shadow-xl transition-all border border-zinc-100">
-                                    <Dialog.Title as="h3" className="text-xl font-black text-zinc-900 mb-4">
-                                        Invite {profile.full_name} to Speak
-                                    </Dialog.Title>
-
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
-                                                Select Event
-                                            </label>
-                                            {myEvents.length === 0 ? (
-                                                <div className="text-center p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                                                    <p className="text-sm text-zinc-500 mb-2">You don&apos;t have any organized events.</p>
-                                                    <Link href="/dashboard">
-                                                        <Button variant="primary" size="sm">Create Event</Button>
-                                                    </Link>
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                                    {myEvents.map(event => (
-                                                        <div
-                                                            key={event.event_id}
-                                                            onClick={() => setSelectedEventId(event.event_id)}
-                                                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${selectedEventId === event.event_id
-                                                                ? 'border-yellow-400 bg-yellow-50 shadow-sm'
-                                                                : 'border-zinc-100 hover:border-zinc-300 hover:bg-zinc-50'
-                                                                }`}
-                                                        >
-                                                            <div className={`w-3 h-3 rounded-full ${selectedEventId === event.event_id ? 'bg-yellow-500' : 'bg-zinc-200'}`} />
-                                                            <div>
-                                                                <p className="font-bold text-zinc-900 text-sm">{event.title}</p>
-                                                                <p className="text-xs text-zinc-500">{new Date(event.start_datetime).toLocaleDateString()}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-3 justify-end pt-4">
-                                            <button
-                                                onClick={() => setShowInviteModal(false)}
-                                                className="px-4 py-2 text-zinc-500 font-bold hover:bg-zinc-100 rounded-xl transition-colors"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                onClick={handleInvite}
-                                                disabled={!selectedEventId || inviting}
-                                                className="px-6 py-2 bg-zinc-900 text-yellow-400 font-bold rounded-xl shadow-md hover:bg-zinc-800 disabled:opacity-50 transition-all"
-                                            >
-                                                {inviting ? 'Sending...' : 'Send Invitation'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </Dialog.Panel>
-                            </Transition.Child>
-                        </div>
-                    </div>
-                </Dialog>
-            </Transition>
+            {/* Book Expert Modal */}
+            <BookExpertModal
+                isOpen={showInviteModal}
+                onClose={() => setShowInviteModal(false)}
+                expertId={profile.user_id}
+                expertName={profile.full_name}
+            />
         </div>
     )
 }

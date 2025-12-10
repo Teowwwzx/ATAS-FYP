@@ -40,6 +40,7 @@ class ProfileBase(BaseModel):
     instagram_url: Optional[str] = None
     twitter_url: Optional[str] = None
     website_url: Optional[str] = None
+    can_be_speaker: bool = False
     visibility: ProfileVisibility = ProfileVisibility.public
 
 class ProfileCreate(ProfileBase):
