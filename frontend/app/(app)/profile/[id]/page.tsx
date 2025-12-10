@@ -3,22 +3,21 @@
 import React, { useState, useEffect, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getProfileByUserId, getReviewsByUser, getPublicEvents, getMyEvents, inviteEventParticipant } from '@/services/api'
-import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem } from '@/services/api.types'
+import { getProfileByUserId, getReviewsByUser, getPublicEvents, getMyEvents, inviteEventParticipant, getOrganizationById } from '@/services/api'
+import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem, OrganizationResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
-import { EventCard } from '@/components/ui/EventCard'
 import { Button } from '@/components/ui/Button'
 
 export default function PublicProfilePage() {
     const params = useParams()
-    const router = useRouter()
     const userId = params.id as string
 
     const [profile, setProfile] = useState<ProfileResponse | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [reviews, setReviews] = useState<ReviewResponse[]>([])
+    const [orgsById, setOrgsById] = useState<Record<string, OrganizationResponse>>({})
 
     // Event State
     const [organizedEvents, setOrganizedEvents] = useState<EventDetails[]>([])
@@ -46,6 +45,20 @@ export default function PublicProfilePage() {
                     try {
                         const revs = await getReviewsByUser(userId)
                         setReviews(revs)
+                    } catch { }
+
+                    try {
+                        const expOrgIds = Array.from(new Set([
+                            ...(profileData.job_experiences?.map(j => j.org_id).filter(Boolean) as string[]),
+                            ...(profileData.educations?.map(e => e.org_id).filter(Boolean) as string[])
+                        ]))
+                        if (expOrgIds.length > 0) {
+                            const results = await Promise.all(expOrgIds.map(async (oid) => {
+                                const org = await getOrganizationById(oid)
+                                return [oid, org] as const
+                            }))
+                            setOrgsById(Object.fromEntries(results))
+                        }
                     } catch { }
                 } catch (error: unknown) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,6 +129,9 @@ export default function PublicProfilePage() {
         )
     }
 
+    // Determine if user is a student (not a speaker/expert)
+    const isStudent = !profile.can_be_speaker
+
     return (
         <div className="min-h-screen bg-amber-50 pb-20">
             <div className="max-w-4xl mx-auto pt-6 px-4 sm:px-6 lg:px-8">
@@ -158,31 +174,65 @@ export default function PublicProfilePage() {
                         <div className="flex-1 pb-4 text-center sm:text-left space-y-4">
                             <div>
                                 <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-1">{profile.full_name}</h1>
-                                {/* We don't have email/role in public profile response currently, so skipping */}
                                 <p className="text-lg text-zinc-600 font-medium max-w-2xl">{profile.bio || 'No bio provided.'}</p>
+                                <div className="mt-3 flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                                    {profile.title && (
+                                        <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-700 text-sm font-bold">{profile.title}</span>
+                                    )}
+                                    {profile.availability && (
+                                        <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-sm font-bold">{profile.availability}</span>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                                <Link
-                                    href={`/main/book/${userId}`}
+                                {isStudent ? (
+                                    <button
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
+                                        onClick={() => toast.success('Friend request sent!')}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                        </svg>
+                                        Add Friend
+                                    </button>
+                                ) : (
+                                    <>
+                                        <Link
+                                            href={`/book/${userId}`}
                                     className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
                                 >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    Book Expert
-                                </Link>
-                                <button
-                                    onClick={() => setShowInviteModal(true)}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
-                                >
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                    </svg>
-                                    Invite to Speak
-                                </button>
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            Book Expert
+                                        </Link>
+                                        <button
+                                            onClick={() => setShowInviteModal(true)}
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                            </svg>
+                                            Invite to Speak
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* Tags */}
+                {profile.tags && profile.tags.length > 0 && (
+                    <div className="mt-6 px-6 sm:px-10">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                            <div className="flex flex-wrap gap-2">
+                                {profile.tags.map(tag => (
+                                    <span key={tag.id} className="px-3 py-1 rounded-full bg-amber-50 text-zinc-900 border border-yellow-200 text-sm font-bold">{tag.name}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Event Highlights Section */}
                 <div className="mt-12 space-y-8">
@@ -198,10 +248,137 @@ export default function PublicProfilePage() {
                                 <h2 className="text-2xl font-black text-zinc-900">Events Organized</h2>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                {organizedEvents.map(event => (
-                                    <EventCard key={event.id} event={event} />
-                                ))}
+                                {organizedEvents.map(event => {
+                                    const eventReviews = reviews.filter(r => r.event_id === event.id)
+                                    const rating = eventReviews.length > 0 
+                                        ? eventReviews.reduce((sum, r) => sum + r.rating, 0) / eventReviews.length 
+                                        : undefined
+
+                                    return (
+                                        <div key={event.id} className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col">
+                                            {/* Cover */}
+                                            <div className="relative h-32 w-full overflow-hidden">
+                                                 {event.cover_url ? (
+                                                    <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                                        <span className="text-zinc-700 text-4xl font-black opacity-20 uppercase">{event.title.charAt(0)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold text-zinc-900 shadow-sm">
+                                                    {event.registration_type === 'free' ? 'FREE' : 'PAID'}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Content */}
+                                            <div className="p-4 flex flex-col flex-1">
+                                                <h3 className="font-bold text-zinc-900 line-clamp-1 mb-1 group-hover:text-yellow-600 transition-colors">{event.title}</h3>
+                                                <p className="text-xs text-zinc-500 font-medium mb-3">
+                                                    {new Date(event.start_datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                                
+                                                <div className="mt-auto flex items-center justify-between">
+                                                    {/* Rating / Review */}
+                                                    <div className="flex items-center gap-1">
+                                                        <svg className={`w-4 h-4 ${rating ? 'text-yellow-400' : 'text-zinc-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                        <span className="text-sm font-bold text-zinc-700">{rating ? rating.toFixed(1) : 'New'}</span>
+                                                        {eventReviews.length > 0 && <span className="text-xs text-zinc-400">({eventReviews.length})</span>}
+                                                    </div>
+                                                    
+                                                    <Link href={`/events/${event.id}`} className="text-xs font-bold text-yellow-600 hover:text-yellow-700">
+                                                        View Details
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Experience */}
+                    {profile.job_experiences && profile.job_experiences.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-8 8h10a2 2 0 002-2V8a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-black text-zinc-900">Experience</h2>
+                            </div>
+                            <ul className="space-y-4">
+                                {profile.job_experiences.map(exp => {
+                                    const org = exp.org_id ? orgsById[exp.org_id] : undefined
+                                    return (
+                                        <li key={exp.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                                            <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center overflow-hidden">
+                                                {org?.logo_url ? (
+                                                    <img src={org.logo_url} alt={org.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="text-zinc-900 font-bold">{org?.name?.charAt(0) || '•'}</div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-zinc-900">{exp.title}</p>
+                                                <p className="text-xs text-zinc-500">
+                                                    {org?.name ? `${org.name}` : ''}
+                                                    {exp.start_datetime ? ` • ${new Date(exp.start_datetime).toLocaleDateString()}` : ''}
+                                                    {exp.end_datetime ? ` - ${new Date(exp.end_datetime).toLocaleDateString()}` : ''}
+                                                </p>
+                                                {exp.description && (
+                                                    <p className="text-sm text-zinc-700 mt-1">{exp.description}</p>
+                                                )}
+                                            </div>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+                        </div>
+                    )}
+
+                    {/* Education */}
+                    {profile.educations && profile.educations.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600">
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.5c-2.177 0-4.316-.559-6.16-1.922L12 14z" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-2xl font-black text-zinc-900">Education</h2>
+                            </div>
+                            <ul className="space-y-4">
+                                {profile.educations.map(edu => {
+                                    const org = edu.org_id ? orgsById[edu.org_id] : undefined
+                                    return (
+                                        <li key={edu.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                                            <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center overflow-hidden">
+                                                {org?.logo_url ? (
+                                                    <img src={org.logo_url} alt={org.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="text-zinc-900 font-bold">{org?.name?.charAt(0) || '•'}</div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-zinc-900">{edu.qualification || 'Education'}</p>
+                                                <p className="text-xs text-zinc-500">
+                                                    {edu.field_of_study || ''}
+                                                    {org?.name ? ` • ${org.name}` : ''}
+                                                    {edu.start_datetime ? ` • ${new Date(edu.start_datetime).toLocaleDateString()}` : ''}
+                                                    {edu.end_datetime ? ` - ${new Date(edu.end_datetime).toLocaleDateString()}` : ''}
+                                                </p>
+                                                {edu.remark && (
+                                                    <p className="text-sm text-zinc-700 mt-1">{edu.remark}</p>
+                                                )}
+                                            </div>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
                         </div>
                     )}
                 </div>
@@ -236,41 +413,43 @@ export default function PublicProfilePage() {
                 </div>
 
                 {/* Reviews */}
-                <div className="mt-12">
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-bold text-zinc-900">Reviews</h3>
-                                <p className="text-sm text-zinc-500">Ratings and comments from events</p>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-2xl font-black text-yellow-500">
-                                    {reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '—'}
+                {!isStudent && (
+                    <div className="mt-12">
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900">Reviews</h3>
+                                    <p className="text-sm text-zinc-500">Ratings and comments from events</p>
                                 </div>
-                                <div className="text-xs text-zinc-500">{reviews.length} review(s)</div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-black text-yellow-500">
+                                        {reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '—'}
+                                    </div>
+                                    <div className="text-xs text-zinc-500">{reviews.length} review(s)</div>
+                                </div>
                             </div>
+                            {reviews.length === 0 ? (
+                                <div className="p-6 text-zinc-500">No reviews yet.</div>
+                            ) : (
+                                <ul className="divide-y divide-gray-100">
+                                    {reviews.map(r => (
+                                        <li key={r.id} className="px-6 py-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="h-10 w-10 rounded-full bg-yellow-50 flex items-center justify-center text-zinc-900 font-bold">
+                                                    {r.rating}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm text-zinc-700">{r.comment || 'No comment provided.'}</p>
+                                                    <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0, 8)}… • By: {r.reviewer_id.slice(0, 8)}… • {new Date(r.created_at).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
-                        {reviews.length === 0 ? (
-                            <div className="p-6 text-zinc-500">No reviews yet.</div>
-                        ) : (
-                            <ul className="divide-y divide-gray-100">
-                                {reviews.map(r => (
-                                    <li key={r.id} className="px-6 py-4">
-                                        <div className="flex items-start gap-4">
-                                            <div className="h-10 w-10 rounded-full bg-yellow-50 flex items-center justify-center text-zinc-900 font-bold">
-                                                {r.rating}
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm text-zinc-700">{r.comment || 'No comment provided.'}</p>
-                                                <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0, 8)}… • By: {r.reviewer_id.slice(0, 8)}… • {new Date(r.created_at).toLocaleString()}</p>
-                                            </div>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Invitation Modal */}
@@ -311,7 +490,7 @@ export default function PublicProfilePage() {
                                             </label>
                                             {myEvents.length === 0 ? (
                                                 <div className="text-center p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                                                    <p className="text-sm text-zinc-500 mb-2">You don't have any organized events.</p>
+                                                    <p className="text-sm text-zinc-500 mb-2">You don&apos;t have any organized events.</p>
                                                     <Link href="/dashboard">
                                                         <Button variant="primary" size="sm">Create Event</Button>
                                                     </Link>

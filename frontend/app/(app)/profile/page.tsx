@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import {
     getMyProfile, updateProfile, updateAvatar, updateCoverPicture, getMe, getMyEvents,
     getTags, attachMyTag, detachMyTag, addMyEducation, deleteMyEducation, getMyFollows, getMyFollowers, unfollowUser,
@@ -677,7 +678,7 @@ export default function ProfilePage() {
                             <h2 className="text-2xl font-black text-zinc-900 mb-6 text-center">Current Events</h2>
                             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                                 {events.map((evt) => (
-                                    <a key={evt.event_id} href={`/main/events/${evt.event_id}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-md transition-all block group">
+                                    <Link key={evt.event_id} href={`/events/${evt.event_id}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-md transition-all block group">
                                         <div className="flex justify-between items-start mb-4">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${evt.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                                                 {evt.status}
@@ -690,7 +691,7 @@ export default function ProfilePage() {
                                                 <span className="capitalize">Role: {evt.my_role}</span>
                                             ) : 'Participant'}
                                         </div>
-                                    </a>
+                                    </Link>
                                 ))}
                             </div>
                         </div>

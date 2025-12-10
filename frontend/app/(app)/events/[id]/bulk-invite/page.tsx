@@ -75,7 +75,7 @@ export default function BulkInvitePage() {
     try {
       await bulkInviteEventParticipants(eventId as string, { items: cleaned })
       alert('Invitations sent')
-      router.push(`/main/events/${eventId}`)
+      router.push(`/events/${eventId}`)
     } catch (err: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       alert((err as any)?.response?.data?.detail || 'Failed to send invitations')
