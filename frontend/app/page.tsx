@@ -11,12 +11,20 @@ export default function HomePage() {
 
     useEffect(() => {
         try {
-            const token = localStorage.getItem('atas_token')
-            if (token) {
-                router.replace('/dashboard')
-                setHasToken(true)
-            } else {
-                setHasToken(false)
+            // Check for token only on client side
+            if (typeof window !== 'undefined') {
+                const token = localStorage.getItem('atas_token')
+                if (token) {
+                    router.replace('/dashboard')
+                    // Avoid setting state synchronously if redirecting, but needed to hide content?
+                    // The linter warning "Calling setState synchronously within an effect" refers to causing a re-render immediately.
+                    // Since we are redirecting, we can probably skip the state update if the redirect is fast, 
+                    // OR we can wrap strictly in a condition that doesn't trigger immediately on mount if possible, 
+                    // but here it IS on mount.
+                    setHasToken(true)
+                } else {
+                    setHasToken(false)
+                }
             }
         } catch {
             setHasToken(false)
@@ -62,7 +70,7 @@ export default function HomePage() {
                                         </div>
                                     </div>
                                     <p className="text-zinc-900/80 text-sm font-medium">
-                                        "ATAS made finding a speaker for our tech week incredibly easy. Highly recommend!"
+                                        &quot;ATAS made finding a speaker for our tech week incredibly easy. Highly recommend!&quot;
                                     </p>
                                 </div>
                             </div>

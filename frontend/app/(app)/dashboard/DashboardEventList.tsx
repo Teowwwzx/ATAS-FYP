@@ -33,8 +33,14 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
         setPreviewImage(url)
     }
 
-    // Compact card for grid view (2+ events)
-    const CompactEventCard = ({ event }: { event: MyEventItem }) => (
+    // Helper components defined outside to avoid re-creation on render
+    interface CardProps {
+        event: MyEventItem
+        onSelect: (event: MyEventItem) => void
+        handleImageClick: (e: React.MouseEvent, url: string) => void
+    }
+
+    const CompactEventCard = ({ event, onSelect, handleImageClick }: CardProps) => (
         <div
             onClick={() => onSelect(event)}
             className="group bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md hover:border-zinc-300 transition-all cursor-pointer relative overflow-hidden flex flex-col h-full"
@@ -82,10 +88,9 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
         </div>
     )
 
-    // Dotted "Create More" hint card
-    const CreateMoreCard = () => (
+    const CreateMoreCard = ({ onClick }: { onClick: () => void }) => (
         <div
-            onClick={handleCreateClick}
+            onClick={onClick}
             className="group bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-300 p-4 hover:border-yellow-400 hover:bg-yellow-50 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[300px]"
         >
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
@@ -98,8 +103,7 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
         </div>
     )
 
-    // Full-width detailed card for single event view
-    const DetailedEventCard = ({ event }: { event: MyEventItem }) => (
+    const DetailedEventCard = ({ event, onSelect, handleImageClick }: CardProps) => (
         <div
             onClick={() => onSelect(event)}
             className="group bg-white rounded-2xl border border-zinc-200 p-0 shadow-lg hover:shadow-xl hover:border-yellow-400 transition-all cursor-pointer relative overflow-hidden flex flex-col md:flex-row h-72"
@@ -202,15 +206,24 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
                 {organizedEvents.length > 0 ? (
                     organizedEvents.length === 1 ? (
                         // Single event: show detailed card
-                        <DetailedEventCard event={organizedEvents[0]} />
+                        <DetailedEventCard
+                            event={organizedEvents[0]}
+                            onSelect={onSelect}
+                            handleImageClick={handleImageClick}
+                        />
                     ) : (
                         // Multiple events: show grid layout
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {organizedEvents.map(event => (
-                                <CompactEventCard key={event.event_id} event={event} />
+                                <CompactEventCard
+                                    key={event.event_id}
+                                    event={event}
+                                    onSelect={onSelect}
+                                    handleImageClick={handleImageClick}
+                                />
                             ))}
                             {/* Dotted create more card */}
-                            <CreateMoreCard />
+                            <CreateMoreCard onClick={handleCreateClick} />
                         </div>
                     )
                 ) : (

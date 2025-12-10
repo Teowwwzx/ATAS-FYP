@@ -18,8 +18,9 @@ export default function AttendanceScanPage() {
     try {
       await scanAttendance({ token: token.trim(), email: email.trim() || undefined })
       toast.success('Attendance recorded')
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Failed to scan attendance')
+    } catch (e: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((e as any)?.response?.data?.detail || 'Failed to scan attendance')
     } finally {
       setLoading(false)
     }

@@ -69,7 +69,7 @@ export default function ReviewsPage() {
             await adminService.deleteReview(id, deleteReason.trim())
             toast.success('Review removed')
             mutate()
-        } catch (err) {
+        } catch {
             toast.error('Failed to remove review')
         }
     }

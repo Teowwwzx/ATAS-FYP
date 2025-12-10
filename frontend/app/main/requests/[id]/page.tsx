@@ -183,7 +183,7 @@ export default function RequestDetailsPage() {
                             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-4">Invitation Message</p>
                                 <div className="text-slate-600 leading-relaxed whitespace-pre-wrap font-serif text-lg italic">
-                                    "{myParticipant.description || event.description}"
+                                    &quot;{myParticipant.description || event.description}&quot;
                                 </div>
                             </div>
 

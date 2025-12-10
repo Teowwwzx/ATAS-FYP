@@ -1,7 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import Link from 'next/link'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getNotifications, NotificationItem, markNotificationRead, markAllNotificationsRead } from '@/services/api'
 import { Popover, Transition } from '@headlessui/react'
@@ -14,22 +13,23 @@ export function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0)
     const router = useRouter()
 
-    useEffect(() => {
-        loadNotifications()
-        // Poll every minute
-        const interval = setInterval(loadNotifications, 60000)
-        return () => clearInterval(interval)
-    }, [])
-
-    const loadNotifications = async () => {
+    const loadNotifications = useCallback(async () => {
         try {
             const data = await getNotifications()
             setNotifications(data)
             setUnreadCount(data.filter(n => !n.read).length)
-        } catch (error) {
+        } catch {
             console.error('Failed to load notifications')
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadNotifications()
+        // Poll every minute
+        const interval = setInterval(loadNotifications, 60000)
+        return () => clearInterval(interval)
+    }, [loadNotifications])
 
     const handleNotificationClick = async (notification: NotificationItem, close: () => void) => {
         close()
@@ -37,7 +37,7 @@ export function NotificationBell() {
             try {
                 await markNotificationRead(notification.id)
                 loadNotifications()
-            } catch (ignore) { }
+            } catch { }
         }
         router.push('/notifications')
     }
@@ -52,7 +52,7 @@ export function NotificationBell() {
             toast.success('All marked as read')
             // Don't reload immediately to preserve the optimistic state since API is mock
             // loadNotifications() 
-        } catch (error) {
+        } catch {
             toast.error('Failed to mark all as read')
             loadNotifications() // Revert on error
         }

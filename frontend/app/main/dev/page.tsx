@@ -5,6 +5,7 @@ import api from "@/services/api"
 export default function DevPage() {
   const [email, setEmail] = useState("")
   const [name, setName] = useState("")
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const [profiles, setProfiles] = useState<any[]>([])
   const [eventId, setEventId] = useState("")
   const [fileUrl, setFileUrl] = useState("")
@@ -13,7 +14,7 @@ export default function DevPage() {
   const [comment, setComment] = useState("")
 
   const searchProfiles = async () => {
-    const params: any = {}
+    const params: Record<string, string> = {}
     if (email) params.email = email
     else if (name) params.name = name
     const res = await api.get("/profiles/find", { params })
@@ -44,8 +45,8 @@ export default function DevPage() {
       <div className="space-y-2">
         <div className="font-medium">Search Profiles</div>
         <div className="flex gap-2">
-          <input className="border px-2 py-1" placeholder="email" value={email} onChange={e=>setEmail(e.target.value)} />
-          <input className="border px-2 py-1" placeholder="name" value={name} onChange={e=>setName(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="name" value={name} onChange={e => setName(e.target.value)} />
           <button className="border px-3 py-1" onClick={searchProfiles}>Search</button>
         </div>
         <table className="w-full border">
@@ -56,7 +57,7 @@ export default function DevPage() {
             </tr>
           </thead>
           <tbody>
-            {profiles.map(p=> (
+            {profiles.map(p => (
               <tr key={p.id}>
                 <td className="border px-2">{p.id}</td>
                 <td className="border px-2">{p.full_name}</td>
@@ -69,8 +70,8 @@ export default function DevPage() {
       <div className="space-y-2">
         <div className="font-medium">Proposals</div>
         <div className="flex gap-2">
-          <input className="border px-2 py-1" placeholder="event_id" value={eventId} onChange={e=>setEventId(e.target.value)} />
-          <input className="border px-2 py-1" placeholder="file_url" value={fileUrl} onChange={e=>setFileUrl(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="event_id" value={eventId} onChange={e => setEventId(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="file_url" value={fileUrl} onChange={e => setFileUrl(e.target.value)} />
           <button className="border px-3 py-1" onClick={createProposal}>Create</button>
           <button className="border px-3 py-1" onClick={listProposals}>List</button>
         </div>
@@ -83,7 +84,7 @@ export default function DevPage() {
             </tr>
           </thead>
           <tbody>
-            {proposals.map(pr=> (
+            {proposals.map(pr => (
               <tr key={pr.id}>
                 <td className="border px-2">{pr.id}</td>
                 <td className="border px-2">{pr.title}</td>
@@ -93,8 +94,8 @@ export default function DevPage() {
           </tbody>
         </table>
         <div className="flex gap-2">
-          <input className="border px-2 py-1" placeholder="proposal_id" value={proposalId} onChange={e=>setProposalId(e.target.value)} />
-          <input className="border px-2 py-1" placeholder="comment" value={comment} onChange={e=>setComment(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="proposal_id" value={proposalId} onChange={e => setProposalId(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="comment" value={comment} onChange={e => setComment(e.target.value)} />
           <button className="border px-3 py-1" onClick={addComment}>Comment</button>
         </div>
       </div>
@@ -102,7 +103,7 @@ export default function DevPage() {
       <div className="space-y-2">
         <div className="font-medium">Interviewing</div>
         <div className="flex gap-2">
-          <input className="border px-2 py-1" placeholder="event_id" value={eventId} onChange={e=>setEventId(e.target.value)} />
+          <input className="border px-2 py-1" placeholder="event_id" value={eventId} onChange={e => setEventId(e.target.value)} />
           <button className="border px-3 py-1" onClick={markInterviewing}>Set Interviewing</button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Fragment } from 'react'
 import { EventDetails, EventProposalResponse, EventProposalCreate } from '@/services/api.types'
 import { getEventProposals, createEventProposalWithFile, deleteEventProposal } from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -179,42 +179,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
     }
 
     // AI Logic
-    const handleGenerateAI = async () => {
-        setAiGenerating(true)
-        try {
-            const res = await suggestEventProposal(event.id, {
-                tone: aiTone,
-                length_hint: 'medium',
-                audience_level: 'general',
-            })
-            setAiResult(res)
-        } catch (error) {
-            console.error(error)
-            toast.error('AI generation failed')
-        } finally {
-            setAiGenerating(false)
-        }
-    }
 
-    const handleSaveAIProposal = async () => {
-        if (!aiResult) return
-        setAiGenerating(true)
-        try {
-            await createEventProposal(event.id, {
-                title: aiResult.title,
-                description: aiResult.short_intro + '\n\n' + aiResult.raw_text,
-                file_url: ''
-            })
-            toast.success('Generated proposal saved to library!')
-            setIsAiOpen(false)
-            setAiResult(null)
-            fetchProposals()
-        } catch (error: any) {
-            toast.error('Failed to save proposal')
-        } finally {
-            setAiGenerating(false)
-        }
-    }
 
     return (
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-6">

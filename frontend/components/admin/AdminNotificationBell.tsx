@@ -27,13 +27,13 @@ export function AdminNotificationBell() {
     return () => document.removeEventListener('click', onDocClick)
   }, [])
 
-  const items = (data || [])
+  const items = useMemo(() => data || [], [data])
   const unreadCount = useMemo(() => items.filter(it => new Date(it.created_at).getTime() > lastView).length, [items, lastView])
 
   const markAllRead = () => {
     const ts = Date.now()
     setLastView(ts)
-    try { localStorage.setItem('atas_admin_notifications_last_view', String(ts)) } catch {}
+    try { localStorage.setItem('atas_admin_notifications_last_view', String(ts)) } catch { }
   }
 
   return (
@@ -59,7 +59,7 @@ export function AdminNotificationBell() {
           <ul className="max-h-80 overflow-y-auto">
             {items.map(it => (
               <li key={it.id} className="px-4 py-3 border-b border-gray-100 last:border-b-0">
-                <div className="text-sm font-medium text-gray-900">{it.action.replace(/_/g,' ')}</div>
+                <div className="text-sm font-medium text-gray-900">{it.action.replace(/_/g, ' ')}</div>
                 <div className="text-xs text-gray-600 truncate">{it.details || 'Broadcast sent'}</div>
                 <div className="text-[10px] text-gray-500 mt-1">{new Date(it.created_at).toLocaleString()}</div>
               </li>

@@ -8,7 +8,7 @@ import {
     ChevronUpIcon,
     PersonIcon
 } from '@radix-ui/react-icons'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { format } from 'date-fns'
 import { getProfileByUserId } from '@/services/api'
@@ -26,7 +26,7 @@ interface UsersTableProps {
     onRemoveRole?: (userId: string, roleName: string) => void
 }
 
-export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRevokeExpert, onApprovePending, onRejectPending, onAssignRole, onRemoveRole }: UsersTableProps) {
+export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVerifyExpert, onRevokeExpert: _onRevokeExpert, onApprovePending, onRejectPending, onAssignRole, onRemoveRole }: UsersTableProps) {
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
     const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({})
     const [suspendUserId, setSuspendUserId] = useState<string | null>(null)
@@ -38,11 +38,11 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
     const [onboardingSettings, setOnboardingSettings] = useState<{ enabled_fields: string[]; required_fields: string[] } | null>(null)
 
     useEffect(() => {
-        ;(async () => {
+        ; (async () => {
             try {
                 const s = await adminService.getOnboardingSettings()
                 setOnboardingSettings(s)
-            } catch {}
+            } catch { }
         })()
     }, [])
 
@@ -51,7 +51,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
         try {
             const p = await getProfileByUserId(userId)
             setProfiles(prev => ({ ...prev, [userId]: p }))
-        } catch {}
+        } catch { }
     }
 
     const toggleExpand = (userId: string) => {
@@ -62,7 +62,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert, onRev
 
     const computeCompleteness = (p?: import('@/services/api.types').ProfileResponse) => {
         if (!p || !onboardingSettings) return { percent: 0, missing: [] as string[] }
-        const map: Record<string, any> = {
+        const map: Record<string, unknown> = {
             full_name: p.full_name,
             bio: p.bio,
             linkedin_url: p.linkedin_url,

@@ -8,9 +8,16 @@ interface DashboardStatsProps {
 }
 
 export function DashboardStats({ events }: DashboardStatsProps) {
+    const [now, setNow] = React.useState(Date.now())
+
+    React.useEffect(() => {
+        // Update time on mount to avoid hydration mismatch
+        setNow(Date.now())
+    }, [])
+
     const total = events.length
-    const upcoming = events.filter(e => new Date(e.end_datetime).getTime() > Date.now() && e.status !== 'ended').length
-    const completed = events.filter(e => e.status === 'ended' || new Date(e.end_datetime).getTime() < Date.now()).length
+    const upcoming = events.filter(e => new Date(e.end_datetime).getTime() > now && e.status !== 'ended').length
+    const completed = events.filter(e => e.status === 'ended' || new Date(e.end_datetime).getTime() < now).length
     const organized = events.filter(e => e.my_role === 'organizer').length
 
     const stats = [

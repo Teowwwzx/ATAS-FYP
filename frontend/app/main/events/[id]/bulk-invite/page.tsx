@@ -29,8 +29,9 @@ export default function BulkInvitePage() {
         } catch {
           setParticipants(null)
         }
-      } catch (err: any) {
-        setError(err?.response?.data?.detail || 'Failed to load event')
+      } catch (err: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setError((err as any)?.response?.data?.detail || 'Failed to load event')
       } finally {
         setLoading(false)
       }
@@ -75,8 +76,9 @@ export default function BulkInvitePage() {
       await bulkInviteEventParticipants(eventId as string, { items: cleaned })
       alert('Invitations sent')
       router.push(`/main/events/${eventId}`)
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || 'Failed to send invitations')
+    } catch (err: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      alert((err as any)?.response?.data?.detail || 'Failed to send invitations')
     } finally {
       setInviting(false)
     }

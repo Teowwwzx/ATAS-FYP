@@ -25,7 +25,7 @@ export default function TermsPage() {
                     </section>
                     <section>
                         <h2 className="text-lg font-bold text-zinc-900 mb-2">Liability</h2>
-                        <p className="text-zinc-700 text-sm">ATAS is provided "as is". We are not liable for indirect damages.</p>
+                        <p className="text-zinc-700 text-sm">ATAS is provided &quot;as is&quot;. We are not liable for indirect damages.</p>
                     </section>
                     <section>
                         <h2 className="text-lg font-bold text-zinc-900 mb-2">Changes</h2>

@@ -31,10 +31,11 @@ export default function DashboardPage() {
 
   // Auto-switch to Expert tab if likely primary role
   useEffect(() => {
+    if (loading) return
     if (isExpert && !roles?.includes('student') && activeTab !== 'expert') {
       setActiveTab('expert')
     }
-  }, [isExpert, roles])
+  }, [isExpert, roles, activeTab, loading])
 
   if (loading) return <div className="p-6">Loading dashboard...</div>
 
@@ -272,7 +273,7 @@ function OrganizerDashboard() {
 
       {myEvents.length === 0 && (
         <div className="text-center py-10 bg-gray-50 rounded-xl">
-          <p className="text-gray-500 mb-4">You haven't organized any events yet.</p>
+          <p className="text-gray-500 mb-4">You haven&apos;t organized any events yet.</p>
           <Link href="/main/events/create" className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-bold">
             Create Event
           </Link>

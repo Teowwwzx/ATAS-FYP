@@ -47,8 +47,9 @@ export default function PublicProfilePage() {
                         const revs = await getReviewsByUser(userId)
                         setReviews(revs)
                     } catch { }
-                } catch (error: any) {
-                    setError(error.response?.data?.detail || 'Failed to load profile.')
+                } catch (error: unknown) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    setError((error as any).response?.data?.detail || 'Failed to load profile.')
                 } finally {
                     setIsLoading(false)
                 }
@@ -80,9 +81,10 @@ export default function PublicProfilePage() {
             })
             toast.success('Invitation sent successfully!')
             setShowInviteModal(false)
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error)
-            toast.error(error.response?.data?.detail || 'Failed to send invitation')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toast.error((error as any).response?.data?.detail || 'Failed to send invitation')
         } finally {
             setInviting(false)
         }

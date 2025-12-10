@@ -40,7 +40,7 @@ export function DeleteEventModal({ isOpen, eventTitle, onClose, onConfirm, isDel
                             Delete Event?
                         </h2>
                         <p className="text-zinc-600 font-medium">
-                            Are you sure you want to delete <span className="font-bold text-zinc-900">"{eventTitle}"</span>?
+                            Are you sure you want to delete <span className="font-bold text-zinc-900">&quot;{eventTitle}&quot;</span>?
                         </p>
                     </div>
 

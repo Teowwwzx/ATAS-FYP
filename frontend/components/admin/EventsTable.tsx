@@ -18,7 +18,6 @@ import {
 import { format } from 'date-fns'
 import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { getMe } from '@/services/api'
 
 interface EventsTableProps {

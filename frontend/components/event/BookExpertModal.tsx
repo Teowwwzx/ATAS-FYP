@@ -2,7 +2,7 @@
 
 import React, { Fragment, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
-import { ProfileResponse, EventParticipantRole } from '@/services/api.types'
+import { ProfileResponse } from '@/services/api.types'
 import * as api from '@/services/api'
 import { toast } from 'react-hot-toast'
 
@@ -85,9 +85,10 @@ export function BookExpertModal({
             toast.success('Invitation sent successfully!')
             onSuccess?.()
             onClose()
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err)
-            const msg = err.response?.data?.detail || 'Failed to book session'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const msg = (err as any).response?.data?.detail || 'Failed to book session'
             toast.error(msg)
         } finally {
             setIsSubmitting(false)

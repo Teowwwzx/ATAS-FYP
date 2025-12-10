@@ -265,7 +265,7 @@ export default function OnboardingPage() {
     setLoading(true)
     try {
       // Logic for Specialist mapping
-      let payload = { ...form }
+      const payload = { ...form }
 
       if (form.role === 'student' && form.education?.field_of_study) {
         payload.specialist = form.education.field_of_study

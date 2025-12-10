@@ -550,6 +550,6 @@ export interface CommunicationLog {
     status: 'pending' | 'sent' | 'failed'
     created_at: string
     error_message?: string
-    metadata_payload?: Record<string, any>
+    metadata_payload?: Record<string, unknown>
     content?: string
 }

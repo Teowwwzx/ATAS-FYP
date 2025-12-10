@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { OrganizationResponse } from '@/services/api.types'
 import {
-    EyeOpenIcon,
     TrashIcon,
     ChevronDownIcon,
     ChevronUpIcon,

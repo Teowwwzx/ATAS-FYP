@@ -29,8 +29,9 @@ export default function CategoriesPage() {
       setName('')
       toast.success('Category created')
       await load()
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Failed to create category')
+    } catch (e: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((e as any)?.response?.data?.detail || 'Failed to create category')
     }
   }
 

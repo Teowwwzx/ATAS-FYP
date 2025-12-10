@@ -8,15 +8,11 @@ import { verifyEmail } from '@/services/api'
 export default function VerifyEmailPage() {
     const params = useParams()
     const token = params.token as string
-    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
-    const [message, setMessage] = useState('')
+    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>(token ? 'verifying' : 'error')
+    const [message, setMessage] = useState(token ? '' : 'Invalid verification link.')
 
     useEffect(() => {
-        if (!token) {
-            setStatus('error')
-            setMessage('Invalid verification link.')
-            return
-        }
+        if (!token) return
 
         const verify = async () => {
             try {
