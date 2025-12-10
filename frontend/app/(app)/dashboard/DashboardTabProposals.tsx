@@ -178,8 +178,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
         }
     }
 
-    // AI Logic
-
+    
 
     return (
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-6">
