@@ -39,6 +39,7 @@ class EventUpdate(BaseModel):
     description: str | None = None
     logo_url: str | None = None
     cover_url: str | None = None
+    payment_qr_url: str | None = None
     format: EventFormat | None = None
     type: EventType | None = None
     start_datetime: datetime | None = None
@@ -57,6 +58,7 @@ class EventDetails(BaseModel):
     description: str | None = None
     logo_url: str | None = None
     cover_url: str | None = None
+    payment_qr_url: str | None = None
     format: EventFormat
     type: EventType
     start_datetime: datetime

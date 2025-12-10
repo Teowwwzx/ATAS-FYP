@@ -285,6 +285,17 @@ export const getAttendanceQRPNG = async (eventId: string, minutesValid?: number)
   return response.data
 }
 
+export const uploadEventPaymentQR = async (eventId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.put<EventDetails>(`/events/${eventId}/payment_qr`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  return response.data
+}
+
 export const getEventAttendanceStats = async (eventId: string) => {
   const response = await api.get<EventAttendanceStats>(`/events/${eventId}/attendance/stats`)
   return response.data

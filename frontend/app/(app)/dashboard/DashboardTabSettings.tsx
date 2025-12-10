@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { EventDetails } from '@/services/api.types'
-import { updateEvent, openRegistration, closeRegistration, deleteEvent } from '@/services/api'
+import { updateEvent, openRegistration, closeRegistration, deleteEvent, uploadEventPaymentQR } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { DeleteEventModal } from '@/components/modals/DeleteEventModal'
@@ -16,6 +16,8 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
     const [loading, setLoading] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [qrFile, setQrFile] = useState<File | null>(null)
+    const [isUploadingQR, setIsUploadingQR] = useState(false)
 
 
     // We can remove form state for title/desc if this tab no longer edits them.
@@ -33,6 +35,22 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
             toast.error('Failed to change visibility')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleUploadQR = async () => {
+        if (!qrFile) return
+        setIsUploadingQR(true)
+        try {
+            await uploadEventPaymentQR(event.id, qrFile)
+            toast.success('Payment QR uploaded')
+            setQrFile(null)
+            onUpdate()
+        } catch (error) {
+            console.error(error)
+            toast.error('Failed to upload payment QR')
+        } finally {
+            setIsUploadingQR(false)
         }
     }
 
@@ -136,6 +154,37 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                                 }`}
                         />
                     </button>
+                </div>
+            </section>
+
+            <section>
+                <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm">
+                    <div className="flex items-start justify-between gap-6">
+                        <div>
+                            <h4 className="text-lg font-bold text-zinc-900 mb-1">Payment QR</h4>
+                            <p className="text-zinc-500 text-sm font-medium">Upload a bank transfer/DuitNow QR for paid events. Visible only to joined participants.</p>
+                            {event.payment_qr_url && (
+                                <div className="mt-4">
+                                    <img src={event.payment_qr_url} alt="Payment QR" className="w-48 h-48 object-contain rounded-xl border border-zinc-200" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="w-full max-w-sm">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => setQrFile(e.target.files?.[0] || null)}
+                                className="block w-full text-sm text-zinc-900 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-yellow-400 file:text-zinc-900 hover:file:bg-yellow-300"
+                            />
+                            <button
+                                onClick={handleUploadQR}
+                                disabled={!qrFile || isUploadingQR}
+                                className="mt-3 px-6 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 disabled:opacity-50"
+                            >
+                                {isUploadingQR ? 'Uploading...' : 'Upload QR'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 

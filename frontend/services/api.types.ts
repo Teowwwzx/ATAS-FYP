@@ -205,6 +205,7 @@ export interface EventCreate {
     description?: string
     logo_url?: string
     cover_url?: string
+    payment_qr_url?: string | null
     format: EventFormat
     type: EventType
     start_datetime: string // ISO string
