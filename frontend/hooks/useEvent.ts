@@ -4,9 +4,6 @@
 import useSWR from 'swr'
 import api, {
   createEvent,
-  getPublicEvents,
-  getEventById,
-  getMyEvents,
   joinPublicEvent,
   leaveEvent,
   bulkInviteEventParticipants,
@@ -21,16 +18,12 @@ import api, {
 import {
   EventCreate,
   EventDetails,
-  EventParticipantDetails,
   EventParticipantBulkCreate,
-  AttendanceQRResponse,
   AttendanceScanRequest,
   EventReminderCreate,
-  EventReminderResponse,
   MyEventItem,
   EventChecklistItemCreate,
   EventChecklistItemUpdate,
-  EventChecklistItemResponse,
 } from '@/services/api.types'
 
 const fetcher = (url: string) => api.get(url).then(res => res.data)

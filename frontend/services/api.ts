@@ -37,8 +37,6 @@ import {
   EventFormat,
   EventRegistrationType,
   EventRegistrationStatus,
-  ProposalRequest,
-  ProposalResponse,
 } from './api.types'
 
 // 1. Create an Axios instance
@@ -310,8 +308,25 @@ export const enableDashboardPro = async () => {
 // --- Profiles Search ---
 
 export const findProfiles = async (params: { email?: string; name?: string; skill?: string; role?: string }) => {
-  const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/find`, { params })
-  return response.data
+  try {
+    const cleanParams: { email?: string; name?: string; skill?: string; role?: string } = {}
+    if (params.email) cleanParams.email = params.email
+    if (typeof params.name === 'string') cleanParams.name = params.name.trim()
+    if (params.skill) cleanParams.skill = params.skill
+    if (params.role) cleanParams.role = params.role
+    const response = await api.get<import('./api.types').ProfileResponse[]>(`/profiles/find`, { params: cleanParams })
+    return response.data
+  } catch (error: unknown) {
+    const isNetworkError = typeof error === 'object' && error !== null && (error as { message?: string }).message === 'Network Error'
+    if (!isNetworkError) throw error
+    const fallbackName = (typeof params.name === 'string' ? params.name.trim() : '') || undefined
+    try {
+      const fallback = await discoverProfiles({ name: fallbackName, page: 1 })
+      return fallback
+    } catch {
+      return []
+    }
+  }
 }
 
 export const getPublicProfiles = async () => {
@@ -350,8 +365,8 @@ export const getMyChecklistItems = async (onlyOpen: boolean = true) => {
 
 // --- Organizations ---
 
-export const getPublicOrganizations = async () => {
-  const response = await api.get<import('./api.types').OrganizationResponse[]>(`/organizations`)
+export const getPublicOrganizations = async (params?: { q?: string; type?: string; page?: number; page_size?: number }) => {
+  const response = await api.get<import('./api.types').OrganizationResponse[]>(`/organizations`, { params })
   return response.data
 }
 
@@ -498,8 +513,8 @@ export const deleteEvent = async (eventId: string) => {
 
 // --- AI Service ---
 
-export const generateProposal = async (data: ProposalRequest) => {
-  const response = await api.post<ProposalResponse>('/ai/generate-proposal', data)
+export const generateProposal = async (data: import('./api.types').ProposalSuggestRequest) => {
+  const response = await api.post<import('./api.types').ProposalSuggestResponse>('/ai/generate-proposal', data)
   return response.data
 }
 
@@ -595,8 +610,7 @@ export const markNotificationRead = async (id: string) => {
 }
 
 export const markAllNotificationsRead = async () => {
-  const response = await api.put<{ updated_count: number }>(`/notifications/read-all`)
-  return
+  await api.put<{ updated_count: number }>(`/notifications/read-all`)
 }
 
 export const getUnreadNotificationCount = async () => {

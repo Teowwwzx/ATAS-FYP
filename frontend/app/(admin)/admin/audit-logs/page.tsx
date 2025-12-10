@@ -36,11 +36,22 @@ export default function AuditLogsPage() {
     )
 
     const { data: totalCount } = useSWR(
-        ['/admin/audit-logs/count', { ...queryParams, page: undefined }],
-        () => {
-            const { page, page_size, ...countParams } = queryParams
-            return adminService.getAuditLogsCount(countParams)
-        }
+        ['/admin/audit-logs/count', {
+            action: queryParams.action,
+            actor_user_id: queryParams.actor_user_id,
+            target_type: queryParams.target_type,
+            target_id: queryParams.target_id,
+            start_after: queryParams.start_after,
+            end_before: queryParams.end_before,
+        }],
+        () => adminService.getAuditLogsCount({
+            action: queryParams.action,
+            actor_user_id: queryParams.actor_user_id,
+            target_type: queryParams.target_type,
+            target_id: queryParams.target_id,
+            start_after: queryParams.start_after,
+            end_before: queryParams.end_before,
+        })
     )
 
     const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0

@@ -1,51 +1,48 @@
+"use client"
+
+import React, { useState } from 'react'
 import { EventDetails } from '@/services/api.types'
 import { format } from 'date-fns'
-import { useState } from 'react'
-import { ImagePreviewModal } from './ImagePreviewModal'
+import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal'
 
 interface EventHeroCardProps {
     event: EventDetails
     enableImagePreview?: boolean
 }
 
-export function EventHeroCard({ event, enableImagePreview = false }: EventHeroCardProps) {
-    const [previewImage, setPreviewImage] = useState<string | null>(null)
+export function EventHeroCard({ event, enableImagePreview }: EventHeroCardProps) {
     const startDate = new Date(event.start_datetime)
+    const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
+    const pickCover = () => {
+        const url = event.cover_url || ''
+        try {
+            const u = new URL(url)
+            if (allowedHosts.has(u.hostname)) return url
+        } catch { }
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=1200`
+    }
+    const coverUrl = pickCover()
+    const [previewImage, setPreviewImage] = useState<string | null>(null)
+
+    const handlePreview = () => {
+        if (enableImagePreview && coverUrl) setPreviewImage(coverUrl)
+    }
 
     return (
-        <>
-            <div
-                className={`relative w-full h-[300px] md:h-[400px] rounded-3xl overflow-hidden shadow-2xl group ${enableImagePreview ? 'cursor-pointer' : ''}`}
-                onClick={() => enableImagePreview && event.cover_url && setPreviewImage(event.cover_url)}
-            >
-                {/* Background Image */}
-                <img
-                    src={event.cover_url || '/placeholder-event.jpg'}
-                    alt={event.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+        <div className="w-full relative h-[420px] rounded-[2.5rem] overflow-hidden">
+            <img
+                src={coverUrl}
+                alt={event.title}
+                className="absolute inset-0 w-full h-full object-cover"
+                onClick={handlePreview}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
 
-                {/* Content */}
-                <div className="absolute bottom-0 left-0 w-full p-6 md:p-10 space-y-4">
-                    {/* Badge */}
-                    <div className="flex gap-2">
-                        <span className="px-3 py-1 bg-yellow-400 text-black text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg shadow-yellow-400/20">
-                            {event.format}
-                        </span>
-                        {event.category && (
-                            <span className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider rounded-lg border border-white/30">
-                                {event.category.name}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Title */}
+            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
+                <div className="space-y-4 max-w-4xl">
                     <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight truncate">
                         {event.title}
                     </h2>
-
-                    {/* Meta Info */}
                     <div className="flex flex-wrap items-center gap-6 text-zinc-200 font-medium text-lg pt-2">
                         <div className="flex items-center gap-2">
                             <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -66,13 +63,11 @@ export function EventHeroCard({ event, enableImagePreview = false }: EventHeroCa
                 </div>
             </div>
 
-            {enableImagePreview && (
-                <ImagePreviewModal
-                    isOpen={!!previewImage}
-                    imageUrl={previewImage}
-                    onClose={() => setPreviewImage(null)}
-                />
-            )}
-        </>
+            <ImagePreviewModal
+                isOpen={!!previewImage}
+                imageUrl={previewImage}
+                onClose={() => setPreviewImage(null)}
+            />
+        </div>
     )
 }

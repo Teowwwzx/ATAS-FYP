@@ -16,15 +16,7 @@ export default function ReviewsPage() {
     const [maxRating, setMaxRating] = useState<number | ''>('')
     const [startAfter, setStartAfter] = useState('')
     const [endBefore, setEndBefore] = useState('')
-    const [debounced, setDebounced] = useState<{
-        reviewerEmail: string;
-        revieweeEmail: string;
-        eventId: string;
-        minRating: number | '';
-        maxRating: number | '';
-        startAfter: string;
-        endBefore: string;
-    }>({ reviewerEmail: '', revieweeEmail: '', eventId: '', minRating: '', maxRating: '', startAfter: '', endBefore: '' })
+    const [debounced, setDebounced] = useState<{ reviewerEmail: string; revieweeEmail: string; eventId: string; minRating: number | ''; maxRating: number | ''; startAfter: string; endBefore: string }>({ reviewerEmail: '', revieweeEmail: '', eventId: '', minRating: '', maxRating: '', startAfter: '', endBefore: '' })
     const [deleteReason, setDeleteReason] = useState('')
 
     useEffect(() => {
@@ -38,17 +30,33 @@ export default function ReviewsPage() {
         reviewer_email: debounced.reviewerEmail || undefined,
         reviewee_email: debounced.revieweeEmail || undefined,
         event_id: debounced.eventId || undefined,
-        min_rating: (debounced.minRating as number) || undefined,
-        max_rating: (debounced.maxRating as number) || undefined,
+        min_rating: typeof debounced.minRating === 'number' ? debounced.minRating : undefined,
+        max_rating: typeof debounced.maxRating === 'number' ? debounced.maxRating : undefined,
         start_after: debounced.startAfter || undefined,
         end_before: debounced.endBefore || undefined,
     }), [page, debounced])
 
     const { data: items, mutate } = useSWR(['/reviews', params], () => adminService.getReviews(params))
-    const { data: totalCount } = useSWR(['/reviews/count', { ...params, page: undefined, page_size: undefined }], () => {
-        const { page, page_size, ...countParams } = params
-        return adminService.getReviewsCount(countParams)
-    })
+    const { data: totalCount } = useSWR(
+        ['/reviews/count', {
+            reviewer_email: params.reviewer_email,
+            reviewee_email: params.reviewee_email,
+            event_id: params.event_id,
+            min_rating: params.min_rating,
+            max_rating: params.max_rating,
+            start_after: params.start_after,
+            end_before: params.end_before,
+        }],
+        () => adminService.getReviewsCount({
+            reviewer_email: params.reviewer_email,
+            reviewee_email: params.reviewee_email,
+            event_id: params.event_id,
+            min_rating: params.min_rating,
+            max_rating: params.max_rating,
+            start_after: params.start_after,
+            end_before: params.end_before,
+        })
+    )
 
     const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0
 

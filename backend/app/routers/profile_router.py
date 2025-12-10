@@ -13,6 +13,7 @@ from app.dependencies import get_current_user, get_current_user_optional
 from typing import List
 from fastapi import File, UploadFile
 from sqlalchemy import or_, text
+from app.services.ai_service import generate_text_embedding, _vec_to_pg
 from sqlalchemy.sql import func
 from app.models.profile_model import Profile, ProfileVisibility, Tag, profile_tags, Education, JobExperience
 from app.schemas.profile_schema import (
@@ -144,11 +145,25 @@ def semantic_search_profiles(
     if embedding:
         try:
             sql = text(
-                "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> :emb LIMIT :k"
+                "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k"
             )
             rows = db.execute(sql, {"emb": embedding, "k": top_k}).fetchall()
             user_ids = [r[0] for r in rows]
         except Exception:
+            db.rollback()
+            user_ids = []
+    elif q_text:
+        try:
+            vec = generate_text_embedding(q_text)
+            if vec:
+                emb = _vec_to_pg(vec)
+                sql = text(
+                    "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k"
+                )
+                rows = db.execute(sql, {"emb": emb, "k": top_k}).fetchall()
+                user_ids = [r[0] for r in rows]
+        except Exception:
+            db.rollback()
             user_ids = []
 
     profiles_q = db.query(Profile)
@@ -158,7 +173,47 @@ def semantic_search_profiles(
     profiles_q = profiles_q.filter(Role.name == "expert")
     profiles_q = profiles_q.filter(Profile.visibility == ProfileVisibility.public)
     if user_ids:
-        profiles_q = profiles_q.filter(Profile.user_id.in_(user_ids))
+        items = profiles_q.filter(Profile.user_id.in_(user_ids)).all()
+        order = {uid: idx for idx, uid in enumerate(user_ids)}
+        items.sort(key=lambda p: order.get(p.user_id, 10**9))
+        result: List[ProfileResponse] = []
+        from app.models.review_model import Review
+        for p in items[:top_k]:
+            avg = (
+                db.query(func.coalesce(func.avg(Review.rating), 0.0))
+                .filter(Review.reviewee_id == p.user_id, Review.deleted_at.is_(None))
+                .scalar()
+                or 0.0
+            )
+            cnt = (
+                db.query(func.count(Review.id))
+                .filter(Review.reviewee_id == p.user_id, Review.deleted_at.is_(None))
+                .scalar()
+                or 0
+            )
+            pr = ProfileResponse.model_validate({
+                "id": p.id,
+                "user_id": p.user_id,
+                "full_name": p.full_name,
+                "bio": p.bio,
+                "title": p.title,
+                "availability": p.availability,
+                "avatar_url": p.avatar_url,
+                "cover_url": p.cover_url,
+                "linkedin_url": p.linkedin_url,
+                "github_url": p.github_url,
+                "instagram_url": p.instagram_url,
+                "twitter_url": p.twitter_url,
+                "website_url": p.website_url,
+                "visibility": p.visibility,
+                "tags": p.tags,
+                "educations": p.educations,
+                "job_experiences": p.job_experiences,
+                "average_rating": float(avg),
+                "reviews_count": int(cnt),
+            })
+            result.append(pr)
+        return result
     elif q_text:
         profiles_q = profiles_q.filter(Profile.full_name.ilike(f"%{q_text}%"))
     profiles = profiles_q.limit(top_k).all()

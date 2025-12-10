@@ -54,7 +54,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                 await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id })
             }
         } catch {
-            try { await adminService.broadcastNotification({ title, content, target_user_id: event.organizer_id }) } catch { }
+            // no-op
         }
     }
 

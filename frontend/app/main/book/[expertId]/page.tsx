@@ -64,19 +64,20 @@ export default function BookingPage() {
             // or create a private event and invite the expert.
             // For now, let's assume we create a proposed event.
             await createEvent({
-                title: eventType, // Using type as title for now
+                title: eventType,
                 description: message,
                 start_datetime: startDateTime.toISOString(),
                 end_datetime: endDateTime.toISOString(),
-                venue_name: venue,
-                venue_remark: 'Pending Confirmation',
-                type: 'offline', // Default
-                format: 'seminar', // Default
-                cover_url: '',
-                max_participant: 50,
+                venue_place_id: null,
+                venue_remark: venue,
+                type: 'offline',
+                format: 'seminar',
+                cover_url: undefined,
+                logo_url: undefined,
                 registration_type: 'free',
                 visibility: 'private',
-                // In a real app, we would invite the expertId here
+                max_participant: 50,
+                remark: 'Pending Confirmation',
             })
 
             toast.success('Booking request sent successfully!')
