@@ -570,3 +570,45 @@ export interface CommunicationLog {
     metadata_payload?: Record<string, unknown>
     content?: string
 }
+
+// --- Chat Types ---
+
+export interface ChatParticipant {
+    user_id: string
+    full_name?: string
+    avatar_url?: string
+    last_read_at?: string
+}
+
+export interface ChatMessage {
+    id: string
+    conversation_id: string
+    sender_id: string
+    content: string
+    is_read: boolean
+    created_at: string
+    sender_name?: string
+    sender_avatar?: string
+}
+
+export interface ChatConversation {
+    id: string
+    created_at: string
+    updated_at: string
+    participants: ChatParticipant[]
+    last_message?: ChatMessage | null
+    unread_count: number
+}
+
+export interface ChatConversationCreate {
+    participant_ids: string[]
+}
+
+
+export interface EventInvitationResponse {
+    id: string
+    event: EventDetails
+    role: EventParticipantRole
+    status: EventParticipantStatus
+    created_at: string
+}

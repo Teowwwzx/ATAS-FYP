@@ -63,6 +63,7 @@ from app.schemas.event_schema import (
     EventProposalCommentResponse,
     EventProposalUpdate,
     EventProposalCommentUpdate,
+    EventInvitationResponse,
 )
 from typing import List
 from sqlalchemy import text
@@ -352,6 +353,23 @@ def get_my_event_history(
         query.order_by(Event.end_datetime.desc()).distinct().all()
     )
     return events
+
+
+
+@router.get("/events/me/requests", response_model=List[EventInvitationResponse])
+def get_my_requests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List pending invitations (bookings) for the current user.
+    """
+    participants = db.query(EventParticipant).filter(
+        EventParticipant.user_id == current_user.id,
+        EventParticipant.status == EventParticipantStatus.pending
+    ).order_by(EventParticipant.created_at.desc()).all()
+    
+    return participants
 
 
 @router.post("/events", response_model=EventDetails)
@@ -2809,3 +2827,114 @@ def suggest_event_proposal(
     }
     result = generate_proposal(event_payload, expert_profile, options)
     return result
+
+
+# --- Proposal Comments ---
+
+@router.get("/events/proposals/{proposal_id}/comments", response_model=List[EventProposalCommentResponse])
+def get_proposal_comments(
+    proposal_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    proposal = db.query(EventProposal).filter(EventProposal.id == proposal_id).first()
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    
+    event = db.query(Event).filter(Event.id == proposal.event_id).first()
+    if event is None:
+         # Should not happen if integrity is maintained
+         raise HTTPException(status_code=404, detail="Event not found")
+
+    # Access control: Organizer, Admin, or the Creator of the proposal
+    is_organizer = event.organizer_id == current_user.id
+    is_creator = proposal.created_by_user_id == current_user.id
+    is_admin = any(r.name == "admin" for r in db.query(Role).join(user_roles, Role.id == user_roles.c.role_id).filter(user_roles.c.user_id == current_user.id).all())
+
+    if not (is_organizer or is_creator or is_admin):
+         # Check if committee?
+         # For now restrict strictly
+         raise HTTPException(status_code=403, detail="Not allowed to view comments")
+
+    comments = (
+        db.query(EventProposalComment)
+        .filter(EventProposalComment.proposal_id == proposal_id)
+        .order_by(EventProposalComment.created_at.asc())
+        .all()
+    )
+    return comments
+
+
+@router.post("/events/proposals/{proposal_id}/comments", response_model=EventProposalCommentResponse)
+def create_proposal_comment(
+    proposal_id: uuid.UUID,
+    body: EventProposalCommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    proposal = db.query(EventProposal).filter(EventProposal.id == proposal_id).first()
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    
+    event = db.query(Event).filter(Event.id == proposal.event_id).first()
+    
+    # Access control
+    is_organizer = event and event.organizer_id == current_user.id
+    is_creator = proposal.created_by_user_id == current_user.id
+    is_admin = any(r.name == "admin" for r in db.query(Role).join(user_roles, Role.id == user_roles.c.role_id).filter(user_roles.c.user_id == current_user.id).all())
+
+    if not (is_organizer or is_creator or is_admin):
+        raise HTTPException(status_code=403, detail="Not allowed to comment")
+
+    comment = EventProposalComment(
+        proposal_id=proposal_id,
+        user_id=current_user.id,
+        content=body.content,
+    )
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+
+    # Send Notification (Email/In-App) handling
+    # If commenter is organizer -> notify creator
+    # If commenter is creator -> notify organizer
+    recipient_id = None
+    if current_user.id == proposal.created_by_user_id:
+        recipient_id = event.organizer_id
+    elif current_user.id == event.organizer_id:
+        recipient_id = proposal.created_by_user_id
+    
+    if recipient_id and recipient_id != current_user.id:
+        # In-app
+        try:
+            notif = Notification(
+                recipient_id=recipient_id,
+                actor_id=current_user.id,
+                type=NotificationType.general, # specific type?
+                content=f"New comment on proposal '{proposal.title}'",
+                link_url=f"/dashboard/events/{event.id}", # Deep link?
+            )
+            db.add(notif)
+            db.commit()
+        except:
+            db.rollback()
+
+        # Email
+        try:
+             # Fetch recipient email
+             recipient = db.query(User).filter(User.id == recipient_id).first()
+             if recipient:
+                 try:
+                    send_event_proposal_comment_email(
+                        email=recipient.email,
+                        event_title=event.title or "Event",
+                        proposal_title=proposal.title or "Proposal",
+                        commenter_name=current_user.email, # or profile name
+                        comment_content=body.content
+                    )
+                 except:
+                    pass
+        except Exception:
+            pass
+
+    return comment

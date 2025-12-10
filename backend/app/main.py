@@ -77,6 +77,9 @@ from app.routers import communication_log_router
 app.include_router(communication_log_router.router, prefix="/api/v1", tags=["Communications"])
 app.include_router(taxonomy_router.router, prefix="/api/v1", tags=["Taxonomy"])
 
+from app.routers import chat_router
+app.include_router(chat_router.router, prefix="/api/v1", tags=["Chat"])
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the ATAS API!"}

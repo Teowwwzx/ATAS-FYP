@@ -1,13 +1,125 @@
 import React, { useState, useEffect, Fragment } from 'react'
 import { EventDetails, EventProposalResponse, EventProposalCreate } from '@/services/api.types'
-import { getEventProposals, createEventProposalWithFile, deleteEventProposal } from '@/services/api'
+import { getEventProposals, createEventProposalWithFile, deleteEventProposal, getProposalComments, createProposalComment } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
+import { EventProposalCommentResponse } from '@/services/api.types'
+
 interface DashboardTabProposalsProps {
     event: EventDetails
+}
+
+function ProposalCommentsModal({ proposalId, isOpen, onClose, proposalTitle }: { proposalId: string, isOpen: boolean, onClose: () => void, proposalTitle: string }) {
+    const [comments, setComments] = useState<EventProposalCommentResponse[]>([])
+    const [newComment, setNewComment] = useState('')
+    const [loading, setLoading] = useState(true)
+    const [sending, setSending] = useState(false)
+
+    useEffect(() => {
+        if (isOpen && proposalId) {
+            setLoading(true)
+            getProposalComments(proposalId)
+                .then(setComments)
+                .catch(err => toast.error("Failed to load comments"))
+                .finally(() => setLoading(false))
+        }
+    }, [isOpen, proposalId])
+
+    const handleSend = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newComment.trim()) return
+        setSending(true)
+        try {
+            const comment = await createProposalComment(proposalId, newComment)
+            setComments([...comments, comment])
+            setNewComment('')
+        } catch (error) {
+            toast.error("Failed to send comment")
+        } finally {
+            setSending(false)
+        }
+    }
+
+    return (
+        <Transition appear show={isOpen} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={onClose}>
+                <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-300"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="ease-in duration-200"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
+                >
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+                </Transition.Child>
+
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <Transition.Child
+                            as={Fragment}
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100 scale-100"
+                            leaveTo="opacity-0 scale-95"
+                        >
+                            <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-[2rem] bg-white p-6 shadow-xl transition-all border border-zinc-100 flex flex-col h-[80vh]">
+                                <Dialog.Title as="h3" className="text-xl font-black text-zinc-900 mb-4 flex justify-between items-center">
+                                    <span>Discussion: <span className="text-zinc-500 font-normal">{proposalTitle}</span></span>
+                                    <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600">
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </Dialog.Title>
+
+                                <div className="flex-1 overflow-y-auto space-y-4 p-4 bg-zinc-50 rounded-xl mb-4 custom-scrollbar">
+                                    {loading ? (
+                                        <div className="flex justify-center p-4"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div></div>
+                                    ) : comments.length === 0 ? (
+                                        <p className="text-center text-zinc-400 py-8">No comments yet. Start the discussion!</p>
+                                    ) : (
+                                        comments.map(c => (
+                                            <div key={c.id} className="flex gap-3 animate-fadeIn">
+                                                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700 flex-shrink-0">
+                                                    {c.user_id.slice(0, 2)}
+                                                </div>
+                                                <div className="bg-white p-3 rounded-xl shadow-sm border border-zinc-100 max-w-[80%]">
+                                                    <p className="text-zinc-800 text-sm whitespace-pre-wrap">{c.content}</p>
+                                                    <p className="text-xs text-zinc-400 mt-1">{new Date(c.created_at).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <form onSubmit={handleSend} className="relative">
+                                    <input
+                                        type="text"
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Type a comment..."
+                                        className="w-full pl-4 pr-32 py-3 rounded-xl border border-zinc-200 focus:border-yellow-400 focus:ring-yellow-400 transition-all font-medium"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={!newComment.trim() || sending}
+                                        className="absolute right-2 top-2 bottom-2 px-4 bg-zinc-900 text-yellow-400 rounded-lg font-bold hover:bg-zinc-800 disabled:opacity-50 transition-colors text-sm"
+                                    >
+                                        {sending ? 'Sending...' : 'Send'}
+                                    </button>
+                                </form>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
+                </div>
+            </Dialog>
+        </Transition>
+    )
 }
 
 // Simple internal component for the template editor
@@ -156,6 +268,9 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
     const [proposalToDelete, setProposalToDelete] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
+    // Comments Modal State
+    const [selectedProposalForComments, setSelectedProposalForComments] = useState<EventProposalResponse | null>(null)
+
     const handleDeleteClick = (id: string) => {
         setProposalToDelete(id)
         setIsDeleteModalOpen(true)
@@ -178,7 +293,6 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
         }
     }
 
-    // AI Logic
 
 
     return (
@@ -195,8 +309,8 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key as any)}
-                            className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition-all ${activeTab === tab.key
-                                ? 'bg-zinc-900 text-white shadow-md'
+                            className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition-all border-2 border-transparent ${activeTab === tab.key
+                                ? 'bg-yellow-400 text-zinc-900 shadow-md'
                                 : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
                                 }`}
                         >
@@ -286,6 +400,13 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                                     className="text-sm font-bold text-zinc-700 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
                                                 >
                                                     Preview
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedProposalForComments(proposal)}
+                                                    className="text-sm font-bold text-zinc-700 hover:text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors flex items-center gap-1"
+                                                >
+                                                    <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                                    Discuss
                                                 </button>
                                                 <a
                                                     href={proposal.file_url || '#'}
@@ -438,6 +559,16 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                 variant="danger"
                 isLoading={isDeleting}
             />
+
+            {/* Comments Modal */}
+            {selectedProposalForComments && (
+                <ProposalCommentsModal
+                    isOpen={!!selectedProposalForComments}
+                    onClose={() => setSelectedProposalForComments(null)}
+                    proposalId={selectedProposalForComments.id}
+                    proposalTitle={selectedProposalForComments.title || 'Untitled'}
+                />
+            )}
         </div>
     )
 }

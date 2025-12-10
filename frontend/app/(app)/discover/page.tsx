@@ -55,7 +55,7 @@ export default function DiscoverPage() {
     useEffect(() => {
         loadAllEventSections()
         loadOrgs()
-        getMe().then(me => setCurrentEmail(me.email)).catch(() => {})
+        getMe().then(me => setCurrentEmail(me.email)).catch(() => { })
     }, [])
 
     // Debounce Search
@@ -151,15 +151,24 @@ export default function DiscoverPage() {
         try {
             setPeopleLoading(true)
             const profiles = useAiPeople
-                ? await semanticSearchProfiles({ q_text: debouncedPeopleSearch || undefined, top_k: 24 })
-                : await findProfiles({ name: debouncedPeopleSearch || '' })
-            // Client side filter for Role/Skill if API doesn't support
-            const filtered = profiles
-            if (peopleRole) {
-                // This is approximate as we don't have role field on profile response explicitly mapped sometimes
-                // But let's assume implementation details or skip complex filtering for now
-            }
-            setPeople(filtered)
+                ? await semanticSearchProfiles({
+                    q_text: debouncedPeopleSearch || undefined,
+                    role: peopleRole || undefined,
+                    top_k: 24
+                })
+                : await findProfiles({
+                    name: debouncedPeopleSearch || '',
+                    role: peopleRole || undefined,
+                    skill: peopleSkill || undefined
+                })
+
+            // Backend now handles filtering including Roles (and Skills for findProfiles)
+            // Semantic search currently searches text embedding so 'skill' might be part of q_text if we wanted, 
+            // but for now let's keep it simple. If usage of AI is on, we might not strictly filter by skill column 
+            // unless we update backend to helper. 
+            // However, the user issue was mainly about Role filtering.
+
+            setPeople(profiles)
         } catch (err) {
             console.error(err)
         } finally {
@@ -223,7 +232,7 @@ export default function DiscoverPage() {
                                 </div>
                                 <input
                                     type="text"
-                                    className="block w-full pl-11 pr-4 py-4 bg-white border-transparent rounded-2xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 font-medium"
+                                    className="block w-full pl-11 pr-4 py-3 bg-white border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 text-sm font-medium"
                                     placeholder="Search events..."
                                     value={eventSearch}
                                     onChange={(e) => setEventSearch(e.target.value)}
@@ -231,7 +240,7 @@ export default function DiscoverPage() {
                             </div>
                             <button
                                 onClick={() => setEventFiltersOpen(!eventFiltersOpen)}
-                                className={`px-6 py-4 rounded-2xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 ${eventFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
+                                className={`px-5 py-3 rounded-xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 text-sm ${eventFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                 Filters
@@ -460,7 +469,7 @@ export default function DiscoverPage() {
                             </div>
                             <input
                                 type="text"
-                                className="block w-full pl-11 pr-4 py-4 bg-white border-transparent rounded-2xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 font-medium"
+                                className="block w-full pl-11 pr-4 py-3 bg-white border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 text-sm font-medium"
                                 placeholder="Search organizations..."
                                 value={orgSearch}
                                 onChange={(e) => setOrgSearch(e.target.value)}
@@ -485,7 +494,7 @@ export default function DiscoverPage() {
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {filteredOrgs.map((org) => (
                                 <Link key={org.id} href={`/organizations/${org.id}`} className="block group">
-                    <div className="bg-white overflow-hidden shadow-sm rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
+                                    <div className="bg-white overflow-hidden shadow-sm rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
                                         <div className="h-3 bg-yellow-400"></div>
                                         <div className="px-6 py-6">
                                             <div className="flex items-center gap-3 mb-4">
@@ -525,7 +534,7 @@ export default function DiscoverPage() {
                                 </div>
                                 <input
                                     type="text"
-                                    className="block w-full pl-11 pr-4 py-4 bg-white border-transparent rounded-2xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 font-medium"
+                                    className="block w-full pl-11 pr-4 py-3 bg-white border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white shadow-sm transition-all duration-200 text-sm font-medium"
                                     placeholder="Search people by name..."
                                     value={peopleSearch}
                                     onChange={(e) => setPeopleSearch(e.target.value)}
@@ -533,9 +542,9 @@ export default function DiscoverPage() {
                             </div>
                             <button
                                 onClick={() => setPeopleFiltersOpen(!peopleFiltersOpen)}
-                                className={`px-6 py-4 rounded-2xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 ${peopleFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
+                                className={`px-5 py-3 rounded-xl font-bold shadow-sm border border-zinc-100 transition-all duration-200 flex items-center gap-2 text-sm ${peopleFiltersOpen ? 'bg-yellow-400 text-zinc-900' : 'bg-white text-zinc-700 hover:bg-zinc-50'}`}
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                 Filters
                             </button>
                             <div className="ml-auto flex items-center gap-2">
@@ -615,7 +624,7 @@ export default function DiscoverPage() {
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {people.map((profile) => (
                                 <Link key={profile.id} href={`/profile/${profile.user_id}`} className="block group">
-                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 flex items-center gap-4">
+                                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 flex items-center gap-4">
                                         {profile.avatar_url ? (
                                             <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
                                         ) : (
