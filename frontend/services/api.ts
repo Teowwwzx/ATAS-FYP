@@ -74,6 +74,11 @@ export const register = async ({ email, password }: AuthRegister) => {
   return response.data
 }
 
+export const resendVerification = async (email: string) => {
+  const response = await api.post<{ message: string }>('/auth/resend-verification', { email })
+  return response.data
+}
+
 export const verifyEmail = async (token: string) => {
   const response = await api.get<VerifyEmailSuccessResponse>(
     `/auth/verify/${token}`,

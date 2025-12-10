@@ -112,9 +112,9 @@ export default function ReviewsPage() {
                                 <tr key={r.id}>
                                     <td className="px-6 py-3 font-bold">{r.rating}</td>
                                     <td className="px-6 py-3 text-gray-700 max-w-lg">{r.comment || '-'}</td>
-                                    <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.reviewer_id.slice(0,8)}...</td>
-                                    <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.reviewee_id.slice(0,8)}...</td>
-                                    <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.event_id.slice(0,8)}...</td>
+                                    <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.reviewer_id.slice(0, 8)}...</td>
+                                    <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.reviewee_id.slice(0, 8)}...</td>
+                                    <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.event_id.slice(0, 8)}...</td>
                                     <td className="px-6 py-3 text-right">
                                         <button onClick={() => handleDelete(r.id)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg">Remove</button>
                                     </td>

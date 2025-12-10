@@ -65,6 +65,7 @@ class ProfileResponse(ProfileBase):
     job_experiences: List[JobExperienceResponse] = []
     average_rating: float = 0.0
     reviews_count: int = 0
+    is_onboarded: bool = False
     model_config = ConfigDict(from_attributes=True)
 
 class EducationBase(BaseModel):
@@ -114,3 +115,20 @@ class OnboardingUpdate(BaseModel):
     instagram_url: Optional[str] = None
     twitter_url: Optional[str] = None
     website_url: Optional[str] = None
+    
+    # New Fields
+    country: Optional[str] = None
+    city: Optional[str] = None
+    origin_country: Optional[str] = None
+    can_be_speaker: bool = False
+    intents: Optional[List[str]] = None
+    
+    specialist: Optional[str] = None # Maps to field_of_study (student) or title (expert)
+    
+    # For Student Education creation
+    education: Optional[EducationCreate] = None
+    
+    # For Tags
+    tag_ids: Optional[List[uuid.UUID]] = None
+    
+    availability: Optional[str] = None # Speaker preferred time

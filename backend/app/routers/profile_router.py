@@ -2,6 +2,7 @@
 
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 import uuid
 from app.database.database import get_db
@@ -26,6 +27,7 @@ from app.models.user_model import User as UserModel
 from app.dependencies import require_roles
 from app.models.notification_model import Notification, NotificationType
 from app.models.user_model import Role, user_roles
+from app.models.onboarding_model import UserOnboarding, OnboardingStatus
 
 router = APIRouter()
 
@@ -307,17 +309,46 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
         instagram_url=onboarding_data.instagram_url,
         twitter_url=onboarding_data.twitter_url,
         website_url=onboarding_data.website_url,
+        # New Fields
+        country=onboarding_data.country,
+        city=onboarding_data.city,
+        origin_country=onboarding_data.origin_country,
+        can_be_speaker=onboarding_data.can_be_speaker,
+        intents=onboarding_data.intents, 
+        title=onboarding_data.specialist if onboarding_data.role in ("expert", "sponsor") else None,
+        availability=onboarding_data.availability,
     )
     db_profile = profile_service.update_profile(db, user_id=current_user.id, profile=profile_update)
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
 
+    # Set is_onboarded = True explicitly
+    db_profile.is_onboarded = True
+    db.add(db_profile) # Ensure marked as modified
+
+    # --- Update UserOnboarding Table (Audit Trail) ---
+    user_onboarding = db.query(UserOnboarding).filter(UserOnboarding.user_id == current_user.id).first()
+    if not user_onboarding:
+        user_onboarding = UserOnboarding(user_id=current_user.id)
+        db.add(user_onboarding)
+    
+    user_onboarding.status = OnboardingStatus.completed
+    user_onboarding.profile_completed = True
+    user_onboarding.completed_at = func.now()
+    user_onboarding.onboarding_data = jsonable_encoder(onboarding_data)
+    # -----------------------------------------------
+
     desired_role = onboarding_data.role
+
+    # --- AI Embedding Logic (Merged) ---
     try:
+        from app.utils.ai_utils import generate_text_embedding, _vec_to_pg
         src = f"{db_profile.full_name}\n{db_profile.bio or ''}"
+        # Only generating if bio is substantial or for experts, but user logic applies generally
         vec = generate_text_embedding(src)
         if vec:
             emb = _vec_to_pg(vec)
+            # Ensure table exists - we kept expert_embeddings
             up = text(
                 """
                 INSERT INTO expert_embeddings(user_id, embedding, source_text)
@@ -326,9 +357,28 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
                 """
             )
             db.execute(up, {"uid": current_user.id, "emb": emb, "src": src})
-            db.commit()
-    except Exception:
-        pass
+            # db.commit() # Merged transaction down below
+    except Exception as e:
+        print(f"Embedding failed: {e}")
+    # -----------------------------------------------
+
+    # --- Welcome Notification ---
+    try:
+        from app.services.notification_service import NotificationService
+        from app.models.notification_model import NotificationType
+        
+        NotificationService.create_notification(
+            db=db,
+            recipient_id=current_user.id,
+            actor_id=current_user.id, # System action essentially, or self-actor
+            type=NotificationType.system,
+            content=f"Welcome to ATAS! Your profile setup as {desired_role.capitalize()} is complete.",
+            link_url="/profile/me"
+        )
+    except Exception as e:
+        print(f"Notification failed: {e}")
+    # ----------------------------
+
     if desired_role in ("expert", "sponsor"):
         pending_role = f"{desired_role}_pending"
         user_service.assign_role_to_user(db, user=current_user, role_name=pending_role)
@@ -347,10 +397,47 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
                 content=f"{desired_role.capitalize()} verification requested by {current_user.email}",
                 link_url=f"/admin/users/{current_user.id}"
             ))
-        db.commit()
+        db.commit() # Commit admin notifications and role
     else:
         user_service.assign_role_to_user(db, user=current_user, role_name=desired_role)
+        
+        # Welcome Notification for Standard Users (automatically approved roles)
+        db.add(Notification(
+            recipient_id=current_user.id,
+            actor_id=current_user.id, # from themselves or system? System usually, but current_user.id is fine for now or maybe NULL actor if system? Model requires actor_id? Let's check model.
+            # Checking notification_model.py... Actor ID is usually mandatory foreign key. 
+            # I'll use current_user.id as actor for "system" messages if no system user exists, or maybe make it nullable? 
+            # Existing code uses current_user.id. I will stick to that.
+            type=NotificationType.system,
+            content="Welcome to ATAS! Your profile is now set up.",
+            link_url="/dashboard"
+        ))
+        db.commit()
 
+    # Handle Education (Student)
+    if onboarding_data.education:
+        # Check if education already created to avoid dupes on re-submission? 
+        # For now assume clean slate or just add.
+        edu = Education(**onboarding_data.education.model_dump(), user_id=current_user.id)
+        # If specialist provided, map to field_of_study if not already in education object
+        if onboarding_data.specialist and not edu.field_of_study:
+            edu.field_of_study = onboarding_data.specialist
+        db.add(edu)
+        db.commit()
+
+    # Handle Tags (Expert)
+    if onboarding_data.tag_ids:
+        for tid in onboarding_data.tag_ids:
+            # Check existence
+            exists = db.execute(profile_tags.select().where(
+                profile_tags.c.profile_id == db_profile.id,
+                profile_tags.c.tag_id == tid
+            )).fetchone()
+            if not exists:
+                db.execute(profile_tags.insert().values(profile_id=db_profile.id, tag_id=tid))
+        db.commit()
+
+    db.refresh(db_profile)
     return db_profile
 
 @router.get("/me", response_model=ProfileResponse)

@@ -28,6 +28,7 @@ const menuItems = [
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon, roles: ['admin'] },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: ReaderIcon, roles: ['admin'] },
     { name: 'Email Templates', href: '/admin/email-templates', icon: EnvelopeClosedIcon, roles: ['admin'] },
+    { name: 'Communication Logs', href: '/admin/communications', icon: EnvelopeClosedIcon, roles: ['admin'] },
 ]
 
 export function AdminSidebar() {

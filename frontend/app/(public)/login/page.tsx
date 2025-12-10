@@ -2,20 +2,24 @@
 // frontend/app/(public)/login/page.tsx
 'use client'
 
-import React, { useState } from 'react'
+
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 import { getApiErrorMessage } from '@/lib/utils'
 
-import { login, getMyProfile } from '@/services/api'
+import { login, getMyProfile, resendVerification } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const [showVerificationModal, setShowVerificationModal] = useState(false)
+    const [isResending, setIsResending] = useState(false)
+    const [countdown, setCountdown] = useState(0)
     const router = useRouter()
 
     React.useEffect(() => {
@@ -24,6 +28,14 @@ export default function LoginPage() {
             router.replace('/dashboard')
         }
     }, [router])
+
+    // Timer effect
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setTimeout(() => setCountdown(c => c - 1), 1000)
+            return () => clearTimeout(timer)
+        }
+    }, [countdown])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -35,9 +47,16 @@ export default function LoginPage() {
             localStorage.setItem('atas_token', access_token)
 
             try {
-                await getMyProfile()
-                toast.success('Welcome back!')
-                router.push('/dashboard')
+                const profile = await getMyProfile()
+
+                // Check is_onboarded status
+                if (!profile.is_onboarded) {
+                    toast('Please complete your onboarding!', { icon: '👋' })
+                    router.push('/onboarding')
+                } else {
+                    toast.success('Welcome back!')
+                    router.push('/dashboard')
+                }
             } catch (profileError) {
                 const err = profileError as AxiosError
                 if (err.response?.status === 404) {
@@ -47,9 +66,16 @@ export default function LoginPage() {
                     throw profileError
                 }
             }
-        } catch (error) {
+        } catch (error: any) {
             const message = getApiErrorMessage(error, 'Invalid credentials.')
-            toast.error(message, { id: 'login-error' })
+
+            // Check if error is related to inactive/unverified account
+            // Backend returns: "User is not active. Please verify your email."
+            if (error.response?.status === 400 && message.toLowerCase().includes('not active')) {
+                setShowVerificationModal(true)
+            } else {
+                toast.error(message, { id: 'login-error' })
+            }
             // Clear password only for security, keep email so user doesn't need to retype
             setPassword('')
         } finally {
@@ -57,8 +83,62 @@ export default function LoginPage() {
         }
     }
 
+    const handleResendVerification = async () => {
+        if (!email) {
+            toast.error('Please enter your email first')
+            return
+        }
+        if (countdown > 0) return
+
+        setIsResending(true)
+        try {
+            await resendVerification(email)
+            toast.success('Verification email sent! Please check your inbox.')
+            setCountdown(60) // Start 60s cooldown
+            // setShowVerificationModal(false) 
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, 'Failed to resend email'))
+        } finally {
+            setIsResending(false)
+        }
+    }
+
     return (
-        <div className="min-h-screen flex bg-amber-50 font-sans">
+        <div className="min-h-screen flex bg-amber-50 font-sans relative">
+
+            {/* Verification Modal */}
+            {showVerificationModal && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl transform scale-100 transition-all">
+                        <div className="text-center">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Email Not Verified</h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Your account is not active yet. Please check your email inbox for the verification link.
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={handleResendVerification}
+                                    disabled={isResending || countdown > 0}
+                                    className="w-full inline-flex justify-center items-center rounded-xl border border-transparent shadow-sm px-4 py-3 bg-yellow-400 text-base font-bold text-zinc-900 hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {isResending ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Resend Verification Email'}
+                                </button>
+                                <button
+                                    onClick={() => setShowVerificationModal(false)}
+                                    className="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Left Side - Playful Yellow */}
             <div className="hidden lg:flex lg:w-1/2 bg-yellow-400 relative flex-col justify-between p-12 lg:p-16 overflow-hidden">

@@ -9,6 +9,7 @@ from app.models.review_model import Review
 from app.models.skill_model import Skill
 from app.models.user_model import User
 from app.models.email_template_model import EmailTemplate
+from app.models.communication_log_model import CommunicationLog
 
 __all__ = [
     "AuditLog",
@@ -22,4 +23,5 @@ __all__ = [
     "Skill",
     "User",
     "EmailTemplate",
+    "CommunicationLog",
 ]

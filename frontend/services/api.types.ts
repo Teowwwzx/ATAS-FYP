@@ -64,6 +64,28 @@ export interface OnboardingData {
     instagram_url?: string
     twitter_url?: string
     website_url?: string
+
+    // New Fields
+    country?: string
+    city?: string
+    origin_country?: string
+    can_be_speaker?: boolean
+    intents?: string[]
+    specialist?: string // Maps to field_of_study (student) or title (expert)
+
+    // For Student
+    education?: {
+        qualification?: string
+        field_of_study?: string
+        start_datetime?: string
+        end_datetime?: string
+        remark?: string // Used for 'Year'
+    }
+
+    // For Expert Tags
+    tag_ids?: string[]
+    availability?: string
+    same_as_origin?: boolean
 }
 
 // Based on your profile_schema.py -> ProfileResponse
@@ -126,6 +148,7 @@ export interface ProfileResponse {
     job_experiences?: JobExperienceResponse[]
     average_rating?: number
     reviews_count?: number
+    is_onboarded: boolean
     title?: string // e.g. "Senior Engineer"
     availability?: string // e.g. "Weekdays after 6pm"
 }
@@ -151,6 +174,7 @@ export type EventFormat =
     | 'webinar'
     | 'seminar'
     | 'club_event'
+    | 'conference'
     | 'other'
 
 export type EventType = 'online' | 'offline' | 'hybrid'
@@ -173,6 +197,8 @@ export interface EventCreate {
     max_participant?: number | null
     venue_place_id?: string | null
     venue_remark?: string | null
+    // ... (skipping unchanged parts)
+    venue_name?: string | null
     remark?: string | null
 }
 
@@ -181,6 +207,7 @@ export interface EventDetails extends EventCreate {
     organizer_id: string
     status: EventStatus
     registration_status?: EventRegistrationStatus
+    category?: { id: string; name: string }
     created_at: string
     updated_at?: string | null
 }
@@ -442,6 +469,7 @@ export interface BroadcastEmailTemplateRequest {
     template_id: string
     variables: Record<string, string>
     target_role?: string
+    target_user_id?: string
 }
 
 export interface EmailTemplate {
@@ -452,6 +480,20 @@ export interface EmailTemplate {
     variables: string[]
     created_at?: string
     updated_at?: string
+}
+
+export interface EmailTemplateCreate {
+    name: string
+    subject: string
+    body_html: string
+    variables: string[]
+}
+
+export interface EmailTemplateUpdate {
+    name?: string
+    subject?: string
+    body_html?: string
+    variables?: string[]
 }
 
 // --- AI Proposal Types ---
@@ -473,4 +515,41 @@ export interface ProposalSuggestResponse {
     closing: string
     email_subjects: string[]
     raw_text: string
+}
+
+export interface ProposalRequest {
+    title?: string
+    description?: string
+    topic?: string
+    expertId?: string
+    expert_name?: string
+}
+
+export interface ProposalResponse {
+    content: string
+    description?: string
+}
+
+// --- Notification Types ---
+
+export interface NotificationItem {
+    id: string
+    user_id: string
+    title: string
+    message: string
+    link?: string | null
+    read: boolean
+    created_at: string
+}
+
+export interface CommunicationLog {
+    id: string
+    type: 'email' | 'notification'
+    recipient: string
+    subject?: string
+    status: 'pending' | 'sent' | 'failed'
+    created_at: string
+    error_message?: string
+    metadata_payload?: Record<string, any>
+    content?: string
 }
