@@ -1,7 +1,7 @@
 
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { getConversations, getMe } from '@/services/api'
 import { ChatConversation, UserMeResponse } from '@/services/api.types'
 import { ConversationList } from './components/ConversationList'
@@ -9,7 +9,7 @@ import { ChatWindow } from './components/ChatWindow'
 import { toast } from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
-export default function MessagesPage() {
+function MessagesContent() {
     const [conversations, setConversations] = useState<ChatConversation[]>([])
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [me, setMe] = useState<UserMeResponse | null>(null)
@@ -115,5 +115,13 @@ export default function MessagesPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function MessagesPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+            <MessagesContent />
+        </Suspense>
     )
 }

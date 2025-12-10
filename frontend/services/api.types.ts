@@ -153,6 +153,13 @@ export interface ProfileResponse {
     availability?: string // e.g. "Weekdays after 6pm"
     can_be_speaker?: boolean
     intents?: string[]
+    
+    // New fields
+    country?: string
+    city?: string
+    origin_country?: string
+    today_status?: string
+    skills?: { id: string; name: string }[]
 }
 
 export interface ProfileUpdate {
@@ -166,6 +173,14 @@ export interface ProfileUpdate {
     visibility?: 'public' | 'private'
     title?: string
     availability?: string
+    
+    // New fields
+    country?: string
+    city?: string
+    origin_country?: string
+    can_be_speaker?: boolean
+    intents?: string[]
+    today_status?: string
 }
 
 // --- Event Types ---

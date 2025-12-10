@@ -57,16 +57,34 @@ class ProfileUpdate(BaseModel):
     twitter_url: Optional[str] = None
     website_url: Optional[str] = None
     visibility: Optional[ProfileVisibility] = None
+    
+    # New Fields
+    country: Optional[str] = None
+    city: Optional[str] = None
+    origin_country: Optional[str] = None
+    can_be_speaker: bool = None
+    intents: Optional[List[str]] = None
+    today_status: Optional[str] = None
 
 class ProfileResponse(ProfileBase):
     id: uuid.UUID
     user_id: uuid.UUID
     tags: List[TagResponse] = []
+    skills: List[SkillResponse] = []
     educations: List[EducationResponse] = []
     job_experiences: List[JobExperienceResponse] = []
     average_rating: float = 0.0
     reviews_count: int = 0
     is_onboarded: bool = False
+    
+    # Missing fields
+    country: Optional[str] = None
+    city: Optional[str] = None
+    origin_country: Optional[str] = None
+    can_be_speaker: bool = False
+    intents: Optional[List[str]] = None
+    today_status: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 class EducationBase(BaseModel):
