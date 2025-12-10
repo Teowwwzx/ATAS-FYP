@@ -73,17 +73,17 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
 
     const handleSelectProfile = (userId: string) => {
         onOpenChange(false)
-        router.push(`/main/profile/${userId}`)
+        router.push(`/profile/${userId}`)
     }
 
     const handleSelectEvent = (eventId: string) => {
         onOpenChange(false)
-        router.push(`/main/events/${eventId}`)
+        router.push(`/events/${eventId}`)
     }
 
     const handleSelectOrg = (orgId: string) => {
         onOpenChange(false)
-        router.push(`/main/organizations/${orgId}`)
+        router.push(`/organizations/${orgId}`)
     }
 
     return (

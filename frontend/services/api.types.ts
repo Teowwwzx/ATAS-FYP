@@ -151,6 +151,8 @@ export interface ProfileResponse {
     is_onboarded: boolean
     title?: string // e.g. "Senior Engineer"
     availability?: string // e.g. "Weekdays after 6pm"
+    can_be_speaker?: boolean
+    intents?: string[]
 }
 
 export interface ProfileUpdate {

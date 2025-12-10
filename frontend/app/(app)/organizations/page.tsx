@@ -57,7 +57,7 @@ export default function OrganizationsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((org) => (
-              <Link key={org.id} href={`/main/organizations/${org.id}`} className="block group">
+              <Link key={org.id} href={`/organizations/${org.id}`} className="block group">
                 <div className="bg-white overflow-hidden shadow-sm rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
                   <div className="h-3 bg-yellow-400"></div>
                   <div className="px-6 py-6">

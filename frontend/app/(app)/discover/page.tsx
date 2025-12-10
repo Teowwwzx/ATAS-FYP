@@ -484,8 +484,8 @@ export default function DiscoverPage() {
                     ) : (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {filteredOrgs.map((org) => (
-                                <Link key={org.id} href={`/main/organizations/${org.id}`} className="block group">
-                                    <div className="bg-white overflow-hidden shadow-sm rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
+                                <Link key={org.id} href={`/organizations/${org.id}`} className="block group">
+                    <div className="bg-white overflow-hidden shadow-sm rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
                                         <div className="h-3 bg-yellow-400"></div>
                                         <div className="px-6 py-6">
                                             <div className="flex items-center gap-3 mb-4">
@@ -614,8 +614,8 @@ export default function DiscoverPage() {
                     ) : (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {people.map((profile) => (
-                                <Link key={profile.id} href={`/main/profile/${profile.user_id}`} className="block group">
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 flex items-center gap-4">
+                                <Link key={profile.id} href={`/profile/${profile.user_id}`} className="block group">
+                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 flex items-center gap-4">
                                         {profile.avatar_url ? (
                                             <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
                                         ) : (
