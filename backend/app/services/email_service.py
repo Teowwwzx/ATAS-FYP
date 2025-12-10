@@ -69,6 +69,7 @@ def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
         db.commit()
     except Exception as e:
         logger.error(f"Error sending email to {email}: {e}")
+    
         log.status = CommunicationStatus.FAILED
         log.error_message = str(e)
         db.commit()
@@ -76,7 +77,7 @@ def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
         db.close()
 
 def send_verification_email(email: str, token: str):
-    verification_link = f"http://localhost:3000/verify-email?token={token}"
+    verification_link = f"{settings.FRONTEND_BASE_URL}/verify-email?token={token}"
     html = _wrap_html(
         "Verify your email",
         (
@@ -88,7 +89,7 @@ def send_verification_email(email: str, token: str):
     _log_and_send(email, "Verify your email address", html, {"type": "verification"})
 
 def send_password_reset_email(email: str, token: str):
-    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={token}"
     html = _wrap_html(
         "Reset your password",
         (
@@ -101,7 +102,7 @@ def send_password_reset_email(email: str, token: str):
 
 def send_event_joined_email(email: str, event: Event):
     """Send a confirmation email when a user joins a public event."""
-    event_link = f"http://localhost:3000/main/events/{event.id}"
+    event_link = f"{settings.FRONTEND_BASE_URL}/main/events/{event.id}"
     subject = f"You're registered: {event.title}"
     html = _wrap_html(
         subject,
@@ -116,7 +117,7 @@ def send_event_joined_email(email: str, event: Event):
 
 def send_event_invitation_email(email: str, event: Event, role: EventParticipantRole, description: Optional[str] = None):
     """Send an invitation email to a participant for an event."""
-    event_link = f"http://localhost:3000/main/events/{event.id}"
+    event_link = f"{settings.FRONTEND_BASE_URL}/main/events/{event.id}"
     subject = f"You're invited: {event.title}"
     desc_html = f"<p style=\"margin:0 0 12px;\">{description}</p>" if description else ""
     html = _wrap_html(
@@ -133,7 +134,7 @@ def send_event_invitation_email(email: str, event: Event, role: EventParticipant
 
 def send_event_role_update_email(email: str, event: Event, new_role: EventParticipantRole, description: Optional[str] = None):
     """Notify a participant that their role has been updated for an event."""
-    event_link = f"http://localhost:3000/main/events/{event.id}"
+    event_link = f"{settings.FRONTEND_BASE_URL}/main/events/{event.id}"
     subject = f"Your role was updated for: {event.title}"
     desc_html = f"<p style=\"margin:0 0 12px;\">{description}</p>" if description else ""
     html = _wrap_html(
@@ -166,7 +167,7 @@ def send_event_reminder_email(email: str, event: Event, when_label: str):
     """Send a reminder email for an upcoming event.
     when_label examples: "one_week", "three_days", "one_day".
     """
-    event_link = f"http://localhost:3000/main/events/{event.id}"
+    event_link = f"{settings.FRONTEND_BASE_URL}/main/events/{event.id}"
     subject = f"Reminder: {event.title} starts soon"
     pretty_when = {
         "one_week": "1 week before",
@@ -186,7 +187,7 @@ def send_event_reminder_email(email: str, event: Event, when_label: str):
 
 def send_event_proposal_comment_email(email: str, event: Event, proposal: EventProposal, comment_content: str):
     """Notify proposal owner of a new comment."""
-    event_link = f"http://localhost:3000/main/events/{event.id}"
+    event_link = f"{settings.FRONTEND_BASE_URL}/main/events/{event.id}"
     subject = f"New comment on your proposal: {event.title}"
     html = _wrap_html(
         subject,

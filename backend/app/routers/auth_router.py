@@ -32,6 +32,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if user.status == UserStatus.suspended:
+        raise HTTPException(
+            status_code=400,
+            detail="Your account has been suspended. Please contact support.",
+        )
     if user.status != UserStatus.active:
         raise HTTPException(
             status_code=400,
@@ -91,22 +96,22 @@ def resend_verification_email_endpoint(
     background_tasks: BackgroundTasks, 
     db: Session = Depends(get_db)
 ):
+    print(f" [DEBUG] Resend verification for: {request.email}")
     user = db.query(User).filter(User.email == request.email).first()
     
-    # Generic message to prevent user enumeration? 
-    # User's requirement implies they know the account exists and is unverified from the login error.
-    # But for security, if user not found, we usually return success too.
-    # However, if user is already verified, we should probably tell them "Already verified".
-    
     if not user:
-        # Return success to prevent enumeration, or maybe 404? 
-        # Given the UX "Your email is not verified", the user KNOWS the email is in system.
-        # But if a different email is typed in the resend box?
+        print(" [DEBUG] User not found.")
         return {"message": "If your account exists and is unverified, a new verification email has been sent."}
         
+    if user.status == UserStatus.suspended:
+        print(" [DEBUG] User suspended.")
+        return {"message": "Your account is suspended. Please contact support."}
+
     if user.is_verified:
+        print(" [DEBUG] User already verified.")
         return {"message": "Email is already verified. Please login."}
 
+    print(" [DEBUG] Sending verification email via background task.")
     # Generate new token
     new_token = str(uuid.uuid4())
     user.verification_token = new_token
