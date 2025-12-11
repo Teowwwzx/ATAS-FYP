@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, Suspense } from 'react'
-import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe, publishEvent, unpublishEvent } from '@/services/api'
-import { EventDetails, ProfileResponse, UserMeResponse, EventInvitationResponse, MyEventItem } from '@/services/api.types'
+import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe, publishEvent, unpublishEvent, getEventAttendanceStats, getMyReview } from '@/services/api'
+import { EventDetails, ProfileResponse, UserMeResponse, EventInvitationResponse, MyEventItem, EventAttendanceStats } from '@/services/api.types'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -13,6 +13,8 @@ import { toast } from 'react-hot-toast'
 import { EventInviteModal } from './EventInviteModal'
 import { EventPreviewModal } from './EventPreviewModal'
 import { DashboardEventList } from './DashboardEventList'
+import { EventReviewModal } from '@/components/event/EventReviewModal'
+import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 
 function DashboardPageInner() {
     const router = useRouter()
@@ -35,6 +37,11 @@ function DashboardPageInner() {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false)
     const [me, setMe] = useState<UserMeResponse | null>(null)
     const [openChecklistCount, setOpenChecklistCount] = useState(0)
+    const [attendanceStats, setAttendanceStats] = useState<EventAttendanceStats | null>(null)
+    const [currentPhase, setCurrentPhase] = useState<EventPhase>(EventPhase.DRAFT)
+    const [isReviewOpen, setIsReviewOpen] = useState(false)
+    const [hasReviewed, setHasReviewed] = useState(false)
+    const [checkingReview, setCheckingReview] = useState(false)
 
     useEffect(() => {
         fetchData()
@@ -64,9 +71,11 @@ function DashboardPageInner() {
             setOpenChecklistCount((checklistItems || []).length)
 
             // Auto-select if only 1 organized event (OPTIONAL: Maybe disable this if we have pending requests?)
-            // Keeping original logic for now as user likes it.
+            // Auto-select if only 1 organized event AND no other activities (joined events or requests)
             const organized = eventsData.filter(e => e.my_role === 'organizer')
-            if (organized.length === 1 && requestsData.length === 0) {
+            const joined = eventsData.filter(e => e.my_role !== 'organizer')
+
+            if (organized.length === 1 && joined.length === 0 && requestsData.length === 0) {
                 setSelectedEventId(organized[0].event_id)
             }
         } catch (error) {
@@ -101,6 +110,33 @@ function DashboardPageInner() {
             const listItem = events.find(e => e.event_id === eventId)
             setNextEvent(fullEvent)
             setRole(listItem?.my_role || null)
+
+            // Calculate and set current phase
+            const phase = getEventPhase(fullEvent)
+            setCurrentPhase(phase)
+
+            // Fetch attendance stats if user is organizer
+            try {
+                const stats = await getEventAttendanceStats(eventId)
+                setAttendanceStats(stats)
+            } catch (e) {
+                // Stats might not be available yet, ignore error
+                setAttendanceStats(null)
+            }
+
+            // Check review status if Post-Event and not organizer
+            if (phase === EventPhase.POST_EVENT && user?.id !== fullEvent.organizer_id) {
+                setCheckingReview(true)
+                try {
+                    const review = await getMyReview(eventId)
+                    setHasReviewed(!!review)
+                } catch {
+                    setHasReviewed(false)
+                } finally {
+                    setCheckingReview(false)
+                }
+            }
+
             setView('detail')
         } catch (error: any) {
             console.error(error)
@@ -119,6 +155,7 @@ function DashboardPageInner() {
     }
 
     const handleBack = () => {
+        router.push('/dashboard')
         setView('list')
         setSelectedEventId(null)
         setNextEvent(null)
@@ -259,59 +296,134 @@ function DashboardPageInner() {
                         {/* Header Section */}
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 w-full animate-fadeIn">
                             <div>
-                                {/* Only show back button for Dashboard Pro users */}
-                                {me?.is_dashboard_pro && (
-                                    <button
-                                        onClick={handleBack}
-                                        className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                        </svg>
-                                        Back to Events
-                                    </button>
-                                )}
+                                {/* Back Button - Available to everyone */}
+                                <button
+                                    onClick={handleBack}
+                                    className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                    </svg>
+                                    Back to Dashboard
+                                </button>
                             </div>
-                            {user?.user_id === nextEvent?.organizer_id && (
+
+                            {/* Participant Actions (Review) */}
+                            {currentPhase === EventPhase.POST_EVENT && user?.user_id !== nextEvent?.organizer_id && role !== 'committee' && (
+                                <div>
+                                    {checkingReview ? (
+                                        <div className="w-8 h-8 animate-spin rounded-full border-b-2 border-zinc-300"></div>
+                                    ) : !hasReviewed ? (
+                                        <button
+                                            onClick={() => setIsReviewOpen(true)}
+                                            className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 to-orange-400 text-zinc-900 font-black rounded-xl hover:from-yellow-500 hover:to-orange-500 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                            Write a Review
+                                        </button>
+                                    ) : (
+                                        <div className="px-6 py-2.5 bg-green-100 text-green-700 font-bold rounded-xl flex items-center gap-2 border border-green-200">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            You reviewed this event
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(user?.user_id === nextEvent?.organizer_id || role === 'committee') && (
                                 <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => setIsPreviewOpen(true)}
-                                        className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
-                                    >
-                                        Preview
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            if (!nextEvent) return
-                                            if (nextEvent.status === 'published') {
-                                                if (confirm('Unpublish this event? It will be hidden from Discover.')) {
-                                                    try {
-                                                        await unpublishEvent(nextEvent.id)
-                                                        toast.success('Event Unpublished')
-                                                        fetchData()
-                                                    } catch (e) {
-                                                        toast.error('Failed to unpublish event')
-                                                    }
-                                                }
-                                            } else {
-                                                if (confirm('Are you ready to publish this event?')) {
-                                                    try {
-                                                        await publishEvent(nextEvent.id)
-                                                        toast.success('Event Published!')
-                                                        fetchData()
-                                                    } catch (e) {
-                                                        toast.error('Failed to publish event')
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                        className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                        {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
-                                    </button>
+                                    {/* Show different controls based on event phase */}
+                                    {(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) ? (
+                                        <>
+                                            {/* Event Day/Ongoing Mode: Attendance Stats + Scan Button */}
+                                            {attendanceStats && (
+                                                <div className="px-6 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <div className="text-sm">
+                                                                <span className="font-black text-green-700 text-lg">{attendanceStats.attended_total}</span>
+                                                                <span className="text-zinc-500 font-medium mx-1">/</span>
+                                                                <span className="font-bold text-zinc-700">{attendanceStats.total_participants}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs font-bold text-green-700 uppercase tracking-wider">
+                                                            Attended
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <Link
+                                                href={`/attendance/scan?eventId=${nextEvent?.id || ''}`}
+                                                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                                </svg>
+                                                Scan Attendance
+                                            </Link>
+                                        </>
+                                    ) : currentPhase === EventPhase.POST_EVENT ? (
+                                        <>
+                                            {/* Post-Event Mode: Export & Analytics */}
+                                            <div className="px-6 py-2.5 bg-zinc-100 border-2 border-zinc-300 rounded-xl">
+                                                <div className="text-sm font-bold text-zinc-700">
+                                                    ✅ Event Completed
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Draft/Pre-Event Mode: Preview + Publish/Unpublish */}
+                                            <button
+                                                onClick={() => setIsPreviewOpen(true)}
+                                                className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
+                                            >
+                                                Preview
+                                            </button>
+                                            {user?.user_id === nextEvent?.organizer_id && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!nextEvent) return
+                                                        if (nextEvent.status === 'published') {
+                                                            if (confirm('Unpublish this event? It will be hidden from Discover.')) {
+                                                                try {
+                                                                    await unpublishEvent(nextEvent.id)
+                                                                    toast.success('Event Unpublished')
+                                                                    fetchData()
+                                                                } catch (e) {
+                                                                    toast.error('Failed to unpublish event')
+                                                                }
+                                                            }
+                                                        } else {
+                                                            if (confirm('Are you ready to publish this event?')) {
+                                                                try {
+                                                                    await publishEvent(nextEvent.id)
+                                                                    toast.success('Event Published!')
+                                                                    fetchData()
+                                                                } catch (e) {
+                                                                    toast.error('Failed to publish event')
+                                                                }
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                    </svg>
+                                                    {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -322,7 +434,8 @@ function DashboardPageInner() {
                                 <DashboardHeroCard
                                     event={nextEvent}
                                     onPreview={() => setIsPreviewOpen(true)}
-                                    canEditCover={user?.user_id === nextEvent.organizer_id}
+                                    canEditCover={user?.user_id === nextEvent.organizer_id || role === 'committee'}
+                                    phase={currentPhase}
                                     onCoverUpdated={() => fetchEventDetails(selectedEventId!)}
                                 />
 
@@ -330,6 +443,7 @@ function DashboardPageInner() {
                                     event={nextEvent}
                                     user={user}
                                     role={role}
+                                    phase={currentPhase}
                                     onUpdate={() => fetchEventDetails(selectedEventId!)}
                                     onDelete={() => {
                                         setSelectedEventId(null)
@@ -351,6 +465,18 @@ function DashboardPageInner() {
                     isOpen={isPreviewOpen}
                     onClose={() => setIsPreviewOpen(false)}
                     event={nextEvent}
+                />
+
+                <EventReviewModal
+                    isOpen={isReviewOpen}
+                    onClose={() => setIsReviewOpen(false)}
+                    eventId={nextEvent?.id || ''}
+                    eventTitle={nextEvent?.title || ''}
+                    organizerId={nextEvent?.organizer_id || ''}
+                    onSuccess={() => {
+                        setHasReviewed(true)
+                        fetchEventDetails(selectedEventId!) // Refresh to potential update details
+                    }}
                 />
 
             </div>

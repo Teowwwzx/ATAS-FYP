@@ -5,9 +5,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user_model import User, UserStatus
-from app.core.security import create_access_token, verify_password, decode_access_token
+from app.core.security import create_access_token, verify_password, decode_access_token, get_password_hash
 from datetime import timedelta
 from app.dependencies import get_current_user
+from app.core.config import settings
+import requests
+import secrets
 
 router = APIRouter()
 
@@ -120,3 +123,69 @@ def resend_verification_email_endpoint(
     background_tasks.add_task(send_verification_email, user.email, new_token)
     
     return {"message": "Verification email resent successfully."}
+
+class GoogleIdTokenRequest(BaseModel):
+    id_token: str
+
+def _process_google_payload(payload: dict, db: Session) -> dict:
+    aud = payload.get("aud")
+    iss = payload.get("iss")
+    email = payload.get("email")
+    email_verified = payload.get("email_verified")
+    sub = payload.get("sub")
+    if aud != settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=401, detail="Invalid Google token audience")
+    if iss not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise HTTPException(status_code=401, detail="Invalid Google token issuer")
+    if not email or str(email_verified).lower() != "true":
+        raise HTTPException(status_code=401, detail="Unverified Google account")
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        random_pw = secrets.token_urlsafe(32)
+        user = create_user(db=db, user=UserCreate(email=email, password=random_pw))
+        user.is_verified = True
+        user.status = UserStatus.active
+        user.verification_token = None
+        db.commit()
+        db.refresh(user)
+    else:
+        if user.status == UserStatus.suspended:
+            raise HTTPException(status_code=400, detail="Your account has been suspended. Please contact support.")
+        if not user.is_verified or user.status != UserStatus.active:
+            user.is_verified = True
+            user.status = UserStatus.active
+            db.commit()
+            db.refresh(user)
+    access_token = create_access_token(data={"sub": str(user.id), "type": "access"})
+    refresh_token = create_access_token(data={"sub": user.email, "type": "refresh"}, expires_delta=timedelta(days=30))
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+@router.post("/google")
+def google_sign_in(body: GoogleIdTokenRequest, db: Session = Depends(get_db)):
+    r = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": body.id_token})
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    payload = r.json()
+    return _process_google_payload(payload, db)
+
+@router.get("/google/callback")
+def google_callback(code: str, db: Session = Depends(get_db)):
+    data = {
+        "code": code,
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    r = requests.post("https://oauth2.googleapis.com/token", data=data)
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Google authorization failed")
+    body = r.json()
+    id_token = body.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=401, detail="Google id_token missing")
+    v = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": id_token})
+    if v.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    payload = v.json()
+    return _process_google_payload(payload, db)

@@ -7,7 +7,9 @@ import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationRespons
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/Skeleton'
 import Link from 'next/link'
+import { DashboardHeroCard } from '@/app/(app)/dashboard/DashboardHeroCard'
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api'
+import { AttendanceQRModal } from '@/components/event/AttendanceQRModal'
 
 export default function EventDetailsPage() {
     const params = useParams()
@@ -27,6 +29,8 @@ export default function EventDetailsPage() {
     const [reviewsLoading, setReviewsLoading] = useState(false)
     const [reviewsAvg, setReviewsAvg] = useState<number>(0)
     const [reviewsCount, setReviewsCount] = useState<number>(0)
+    const [showQRModal, setShowQRModal] = useState(false)
+    const [participantStatus, setParticipantStatus] = useState<string | null>(null)
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -101,16 +105,20 @@ export default function EventDetailsPage() {
             setUser(userData)
             if (userData) {
                 try {
+                    // Use the more efficient getMyParticipationSummary API instead of getEventParticipants
                     const summary = await getMyParticipationSummary(id)
                     setIsParticipant(!!summary?.is_participant)
                     setIsJoinedAccepted(summary?.my_status === 'accepted' || summary?.my_status === 'attended')
+                    setParticipantStatus(summary?.my_status || null)
                 } catch {
                     setIsParticipant(false)
                     setIsJoinedAccepted(false)
+                    setParticipantStatus(null)
                 }
             } else {
                 setIsParticipant(false)
                 setIsJoinedAccepted(false)
+                setParticipantStatus(null)
             }
             try {
                 const s = await getEventAttendanceStats(id)
@@ -158,6 +166,27 @@ export default function EventDetailsPage() {
         }
     }
 
+    const handleShare = async () => {
+        try {
+            const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+            const data = {
+                title: event?.title || 'Event',
+                text: event?.description || 'Check out this event',
+                url: shareUrl,
+            }
+            // @ts-ignore
+            if (navigator.share) {
+                // @ts-ignore
+                await navigator.share(data)
+            } else if (navigator.clipboard && shareUrl) {
+                await navigator.clipboard.writeText(shareUrl)
+                toast.success('Link copied to clipboard')
+            }
+        } catch {
+            toast.error('Unable to share right now')
+        }
+    }
+
     if (loading) {
         return (
             <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -179,117 +208,45 @@ export default function EventDetailsPage() {
     const isEnded = now > new Date(event.end_datetime)
     const isFull = !!(event.max_participant && (stats?.total_participants || 0) >= event.max_participant)
 
-    const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
-    const pickCover = () => {
-        const url = event.cover_url || ''
-        try {
-            const u = new URL(url)
-            if (allowedHosts.has(u.hostname)) return url
-        } catch { }
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
-    }
-    const coverUrl = pickCover()
-    // For now, let's assume getEventById might return 'is_participant' or similar if the backend supports it, 
-    // OR we ignore the "Unregister" button state for MVP if the data isn't easily available without another call.
-    // Actually, createEvent returns EventDetails. 
-
-    // Let's rely on basic display first.
-
-
-    const handleShare = async () => {
-        try {
-            const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
-            const data = {
-                title: event.title,
-                text: event.description || 'Check out this event',
-                url: shareUrl,
-            }
-            // @ts-ignore
-            if (navigator.share) {
-                // @ts-ignore
-                await navigator.share(data)
-            } else if (navigator.clipboard && shareUrl) {
-                await navigator.clipboard.writeText(shareUrl)
-                toast.success('Link copied to clipboard')
-            }
-        } catch {
-            toast.error('Unable to share right now')
-        }
-    }
-
     return (
-        <div className="w-full min-h-screen bg-white">
-            {/* Hero Image Section - Full Width */}
-            <div className="relative h-[50vh] min-h-[400px] w-full bg-zinc-900 group overflow-hidden">
-                {event.cover_url && (
-                    <img
-                        src={event.cover_url}
-                        alt={event.title}
-                        className="absolute inset-0 w-full h-full object-cover opacity-80 transition-transform duration-700 group-hover:scale-105"
-                    />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
+        <div className="w-full min-h-screen bg-zinc-50 pt-8 pb-12">
+            <div className="max-w-[95%] xl:max-w-screen-2xl mx-auto px-4 md:px-8">
+                {/* Hero Card Section - Using DashboardHeroCard component */}
+                <DashboardHeroCard event={event} />
 
-                <div className="absolute top-8 right-8 z-20 flex gap-3">
-                    <span className="px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-xs font-bold uppercase tracking-wider shadow-lg">
-                        {event.format.replace('_', ' ')}
-                    </span>
-                    <span className="px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-xs font-bold uppercase tracking-wider shadow-lg">
-                        {event.type}
-                    </span>
-                </div>
+                {/* Meta Bar with Stats and Share Button */}
+                <div className="mt-6 flex flex-wrap items-center gap-4 justify-between">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="px-4 py-2 rounded-full bg-white border border-zinc-200 text-zinc-700 text-sm font-bold shadow-sm flex items-center gap-2">
+                            <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>Participants:</span>
+                            <span className="text-zinc-900">{stats?.total_participants || 0}</span>
+                            <span className="text-zinc-400">/ {event.max_participant ? event.max_participant : '∞'}</span>
+                        </div>
 
-                {/* Title and Meta Section - Bottom Left */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 z-10 w-full bg-gradient-to-t from-black via-black/80 to-transparent pt-32">
-                    <div className="max-w-7xl mx-auto w-full space-y-4">
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-tight tracking-tight shadow-sm max-w-4xl">
-                            {event.title}
-                        </h1>
-
-                        <div className="flex flex-wrap items-center gap-6 text-zinc-200 font-medium text-lg pt-2">
-                            <div className="flex items-center gap-2">
-                                <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                {new Date(event.start_datetime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} • {new Date(event.start_datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                            
-                            {(event.venue_remark || event.venue_place_id) ? (
-                                <div className="flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span className="truncate max-w-[300px]">{event.venue_remark || event.venue_place_id}</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span className="truncate max-w-[300px]">{event.type === 'online' ? 'Online Event' : 'Venue to be announced'}</span>
-                                </div>
-                            )}
-
-                            {(
-                                typeof stats?.total_participants !== 'undefined' || typeof event.max_participant !== 'undefined'
-                            ) && (
-                                <div className="flex items-center gap-2">
-                                    <span className="truncate max-w-[300px]">
-                                        Participants: {(stats?.total_participants || 0)}
-                                        {typeof event.max_participant !== 'undefined' ? ` / ${event.max_participant}` : ''}
-                                    </span>
-                                </div>
-                            )}
+                        <div className="px-4 py-2 rounded-full bg-white border border-zinc-200 text-zinc-700 text-sm font-bold shadow-sm flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${event.registration_status === 'opened' ? 'bg-green-500' : 'bg-zinc-400'}`}></span>
+                            <span>Registration: </span>
+                            <span className="capitalize text-zinc-900">{event.registration_status || 'closed'}</span>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Main Content Area */}
-            <div className="max-w-7xl mx-auto px-6 md:px-12 py-16">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+                    {/* Share Button */}
+                    <button
+                        onClick={handleShare}
+                        className="px-4 py-2 rounded-full bg-zinc-900 text-white text-sm font-bold shadow-sm hover:bg-zinc-800 flex items-center gap-2 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        Share
+                    </button>
+                </div>
+
+                {/* Main Content Area */}
+                <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
 
                     {/* Left Column: Description & Details (Span 8) */}
                     <div className="lg:col-span-8 space-y-12">
@@ -319,30 +276,41 @@ export default function EventDetailsPage() {
                                 <div className="text-sm text-zinc-500">No reviews yet.</div>
                             ) : (
                                 <div className="space-y-6">
-                                    <div className="flex items-center gap-3">
-                                        {Array.from({ length: 5 }).map((_, i) => (
-                                            <svg key={i} className={`w-5 h-5 ${i < Math.round(reviewsAvg) ? 'text-yellow-400' : 'text-zinc-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                            </svg>
-                                        ))}
-                                        <span className="text-zinc-900 font-bold">{reviewsAvg.toFixed(1)}</span>
-                                        <span className="text-zinc-500">({reviewsCount})</span>
+                                    <div className="flex items-center gap-3 bg-zinc-100 p-4 rounded-2xl">
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <svg key={i} className={`w-5 h-5 ${i < Math.round(reviewsAvg) ? 'text-yellow-400' : 'text-zinc-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                </svg>
+                                            ))}
+                                        </div>
+                                        <span className="text-zinc-900 font-bold text-lg">{reviewsAvg.toFixed(1)}</span>
+                                        <span className="text-zinc-500 text-sm">({reviewsCount} reviews)</span>
                                     </div>
                                     <div className="space-y-4">
-                                        {reviews.slice(0, 3).map((r) => (
-                                            <div key={r.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    {Array.from({ length: 5 }).map((_, i) => (
-                                                        <svg key={i} className={`w-4 h-4 ${i < Math.round(r.rating || 0) ? 'text-yellow-400' : 'text-zinc-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                        </svg>
-                                                    ))}
-                                                    <span className="text-xs text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</span>
+                                        {reviews.map((r) => (
+                                            <div key={r.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-6">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
+                                                            P
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-1">
+                                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                                    <svg key={i} className={`w-3 h-3 ${i < r.rating ? 'text-yellow-400' : 'text-zinc-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.88 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                                    </svg>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs text-zinc-400 font-medium">{new Date(r.created_at).toLocaleDateString()}</span>
                                                 </div>
                                                 {r.comment ? (
-                                                    <p className="text-sm text-zinc-700">{r.comment}</p>
+                                                    <p className="text-sm text-zinc-700 leading-relaxed">{r.comment}</p>
                                                 ) : (
-                                                    <p className="text-sm text-zinc-500 italic">No comment provided.</p>
+                                                    <p className="text-sm text-zinc-400 italic">No comment provided.</p>
                                                 )}
                                             </div>
                                         ))}
@@ -378,19 +346,69 @@ export default function EventDetailsPage() {
                                         )}
 
                                         {isParticipant ? (
-                                            <div className="flex gap-3">
-                                                <button
-                                                    className="flex-1 py-4 bg-zinc-200 text-zinc-700 rounded-2xl font-bold text-center text-lg cursor-default"
-                                                    disabled
-                                                >
-                                                    Joined
-                                                </button>
-                                                <button
-                                                    onClick={handleLeave}
-                                                    className="px-4 py-4 bg-white border border-zinc-200 text-zinc-700 rounded-2xl font-bold hover:bg-zinc-50"
-                                                >
-                                                    Cancel
-                                                </button>
+                                            <div className="space-y-3">
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        className="flex-1 py-4 bg-zinc-200 text-zinc-700 rounded-2xl font-bold text-center text-lg cursor-default"
+                                                        disabled
+                                                    >
+                                                        Joined
+                                                    </button>
+                                                    <button
+                                                        onClick={handleLeave}
+                                                        disabled={registering}
+                                                        className="px-4 py-4 bg-white border border-zinc-200 text-zinc-700 rounded-2xl font-bold hover:bg-zinc-50 disabled:opacity-70"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                                <div className={`text-sm font-bold text-center py-2 px-4 rounded-xl ${participantStatus === 'attended'
+                                                    ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                                                    : 'bg-zinc-100 text-zinc-700 border-2 border-zinc-300'
+                                                    }`}>
+                                                    {participantStatus === 'attended' ? (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span>Attendance Marked</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span>Status: {participantStatus || 'pending approval'}</span>
+                                                    )}
+                                                </div>
+                                                {isJoinedAccepted && (
+                                                    <>
+                                                        <button
+                                                            onClick={async () => {
+                                                                setReminding(true)
+                                                                try {
+                                                                    await setEventReminder(id, { option: 'one_day' })
+                                                                    toast.success('Reminder set for one day before')
+                                                                } catch (e) {
+                                                                    toast.error('Failed to set reminder')
+                                                                } finally {
+                                                                    setReminding(false)
+                                                                }
+                                                            }}
+                                                            disabled={reminding}
+                                                            className="block w-full py-3 bg-zinc-900 text-white rounded-2xl font-bold text-center text-sm hover:bg-zinc-800 transition-all shadow-sm disabled:opacity-70"
+                                                        >
+                                                            {reminding ? 'Setting reminder…' : 'Remind me one day before'}
+                                                        </button>
+
+                                                        {/* QR Attendance Button - Only for accepted participants */}
+                                                        <button
+                                                            onClick={() => setShowQRModal(true)}
+                                                            className="block w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-2xl font-bold text-center text-sm hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                                            </svg>
+                                                            Show Attendance QR
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         ) : (
                                             <button
@@ -415,69 +433,105 @@ export default function EventDetailsPage() {
 
                             {/* Organizer Section */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">Organizer</h3>
-                                <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-lg shrink-0 border border-zinc-100">
-                                        {event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
+                                <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest px-1">Organizer</h3>
+                                <Link href={`/profile/${event.organizer_id}`} className="block group">
+                                    <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4 group-hover:border-yellow-400 transition-colors">
+                                        <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-lg shrink-0 border border-zinc-100 overflow-hidden">
+                                            {/* Ideally fetch organizer details or use placeholder */}
+                                            ?
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-bold text-zinc-900 text-base truncate group-hover:text-yellow-600 transition-colors">Event Host</div>
+                                            <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
+                                        </div>
+                                        <div className="ml-auto w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 flex items-center justify-center group-hover:bg-yellow-100 group-hover:text-yellow-600 transition-colors">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="font-bold text-zinc-900 text-base truncate">Event Host</div>
-                                        <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
+                                </Link>
+
+                                {/* Host Organization Card */}
+                                {hostOrg && (
+                                    <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center overflow-hidden">
+                                            {hostOrg.logo_url ? (
+                                                <img src={hostOrg.logo_url} alt={hostOrg.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="text-zinc-900 font-bold">{hostOrg.name.charAt(0)}</div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-bold text-zinc-900 text-base truncate">{hostOrg.name}</div>
+                                            {hostOrg.type && (
+                                                <div className="text-xs text-zinc-500 font-medium uppercase tracking-wider truncate">{hostOrg.type}</div>
+                                            )}
+                                        </div>
+                                        <Link href={`/organizations/${hostOrg.id}`} className="ml-auto px-3 py-1 rounded-full bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 shrink-0">
+                                            View Organization
+                                        </Link>
                                     </div>
-                                    <button className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                    </button>
-                                </div>
+                                )}
                             </div>
 
                         </div>
                     </div>
                 </div>
+
+                {/* Location Map */}
+                {event.type !== 'online' && event.venue_place_id && (
+                    <div className="mt-12">
+                        <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest mb-3">Location</h3>
+                        <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-sm overflow-hidden">
+                            <div className="h-[300px] w-full">
+                                {isLoaded && mapCenter ? (
+                                    <GoogleMap
+                                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                                        center={mapCenter}
+                                        zoom={15}
+                                    >
+                                        <Marker position={mapCenter} />
+                                    </GoogleMap>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-zinc-500 font-medium">Loading map…</div>
+                                )}
+                            </div>
+                            {event.venue_remark && (
+                                <div className="p-4 border-t border-zinc-200 text-sm text-zinc-700 font-medium">{event.venue_remark}</div>
+                            )}
+                            {mapCenter && (
+                                <div className="p-4 border-t border-zinc-200 text-xs text-zinc-500 font-medium">
+                                    Coordinates: {mapCenter.lat.toFixed(6)}, {mapCenter.lng.toFixed(6)}
+                                </div>
+                            )}
+                            <div className="p-4 border-t border-zinc-200 text-xs">
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1${event.venue_place_id ? `&query_place_id=${encodeURIComponent(event.venue_place_id)}` : `&query=${encodeURIComponent(event.venue_remark || '')}`}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-zinc-700 hover:text-zinc-900 font-bold"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Open in Google Maps
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Location Map */}
-            {event.type !== 'online' && event.venue_place_id && (
-                <div className="max-w-7xl mx-auto px-6 md:px-12 pb-12">
-                    <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest mb-3">Location</h3>
-                    <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-sm overflow-hidden">
-                        <div className="h-[300px] w-full">
-                            {isLoaded && mapCenter ? (
-                                <GoogleMap
-                                    mapContainerStyle={{ width: '100%', height: '100%' }}
-                                    center={mapCenter}
-                                    zoom={15}
-                                >
-                                    <Marker position={mapCenter} />
-                                </GoogleMap>
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-zinc-500 font-medium">Loading map…</div>
-                            )}
-                        </div>
-                        {event.venue_remark && (
-                            <div className="p-4 border-t border-zinc-200 text-sm text-zinc-700 font-medium">{event.venue_remark}</div>
-                        )}
-                        {mapCenter && (
-                            <div className="p-4 border-t border-zinc-200 text-xs text-zinc-500 font-medium">
-                                Coordinates: {mapCenter.lat.toFixed(6)}, {mapCenter.lng.toFixed(6)}
-                            </div>
-                        )}
-                        <div className="p-4 border-t border-zinc-200 text-xs">
-                            <a
-                                href={`https://www.google.com/maps/search/?api=1${event.venue_place_id ? `&query_place_id=${encodeURIComponent(event.venue_place_id)}` : `&query=${encodeURIComponent(event.venue_remark || '')}`}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-zinc-700 hover:text-zinc-900 font-bold"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Open in Google Maps
-                            </a>
-                        </div>
-                    </div>
-                </div>
+            {/* Attendance QR Modal - Only shown for accepted participants */}
+            {event && (
+                <AttendanceQRModal
+                    eventId={event.id}
+                    eventTitle={event.title}
+                    eventEndTime={event.end_datetime}
+                    isOpen={showQRModal}
+                    onClose={() => setShowQRModal(false)}
+                />
             )}
         </div>
     )

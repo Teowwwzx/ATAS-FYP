@@ -24,6 +24,7 @@ from app.models.event_model import (
     EventType,
     EventProposal,
     EventProposalComment,
+
 )
 from app.models.notification_model import Notification, NotificationType
 from app.services.email_service import (
@@ -57,6 +58,7 @@ from app.schemas.event_schema import (
     EventChecklistItemCreate,
     EventChecklistItemUpdate,
     EventChecklistItemResponse,
+
     EventProposalCreate,
     EventProposalResponse,
     EventProposalCommentCreate,
@@ -401,15 +403,15 @@ def create_event(
     - max_participant must be positive when provided
     """
     # Check Dashboard Pro requirement for multiple events
-    if not current_user.is_dashboard_pro:
-        existing_event_count = db.query(Event).filter(
-            Event.organizer_id == current_user.id
-        ).count()
-        if existing_event_count >= 1:
-            raise HTTPException(
-                status_code=403, 
-                detail="Dashboard Pro required to organize multiple events"
-            )
+    # if not current_user.is_dashboard_pro:
+    #     existing_event_count = db.query(Event).filter(
+    #         Event.organizer_id == current_user.id
+    #     ).count()
+    #     if existing_event_count >= 1:
+    #         raise HTTPException(
+    #             status_code=403, 
+    #             detail="Dashboard Pro required to organize multiple events"
+    #         )
     
     # Basic validations
     if not event.title or not event.title.strip():
@@ -2735,9 +2737,18 @@ def update_event(
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    # Only organizer can update core event details
+    # Only organizer or committee can update core event details
     if event.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only organizer can update event")
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role != EventParticipantRole.committee:
+            raise HTTPException(status_code=403, detail="Only organizer or committee can update event")
 
     # Validate date range if provided
     if body.start_datetime is not None and body.end_datetime is not None:
@@ -3108,3 +3119,4 @@ def create_proposal_comment(
             pass
 
     return comment
+

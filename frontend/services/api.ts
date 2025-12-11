@@ -86,6 +86,11 @@ export const verifyEmail = async (token: string) => {
   return response.data
 }
 
+export const loginWithGoogle = async (idToken: string) => {
+  const response = await api.post<LoginSuccessResponse>('/auth/google', { id_token: idToken })
+  return response.data
+}
+
 export const forgotPassword = async (email: string) => {
   const response = await api.post<{ message: string }>('/email/forgot-password', { email })
   return response.data
@@ -251,18 +256,51 @@ export const respondInvitationMe = async (eventId: string, body: EventParticipan
   return response.data
 }
 
-export const updateEventParticipantStatus = async (eventId: string, participantId: string, body: EventParticipantResponseUpdate) => {
-  const response = await api.put<EventParticipantDetails>(`/events/${eventId}/participants/${participantId}/status`, body)
+// --- Event History ---
+
+export const getMyEventHistory = async (roleFilter?: 'organized' | 'participant' | 'speaker' | 'sponsor') => {
+  const params = roleFilter ? { role_filter: roleFilter } : {}
+  const response = await api.get<EventDetails[]>('/events/me/history', { params })
   return response.data
 }
 
-export const getMyEventHistory = async (
-  roleFilter?: 'organized' | 'participant' | 'speaker' | 'sponsor',
-) => {
-  const url = roleFilter
-    ? `/events/me/history?role_filter=${encodeURIComponent(roleFilter)}`
-    : `/events/me/history`
-  const response = await api.get<EventDetails[]>(url)
+// --- QR Attendance (Participants - User-level QR) ---
+
+export const generateMyQR = async (eventId: string) => {
+  const response = await api.post<AttendanceQRResponse>(`/events/${eventId}/attendance/user_qr`)
+  return response.data
+}
+
+export const getMyQRImageUrl = (eventId: string, minutesValid: number = 60) => {
+  return `${api.defaults.baseURL}/events/${eventId}/attendance/user_qr.png?minutes_valid=${minutesValid}`
+}
+
+// --- QR Scanning (Organizers) ---
+
+export interface ScanAttendanceRequest {
+  token: string
+}
+
+export const scanAttendance = async (eventId: string, token: string) => {
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/attendance/scan_user`, { token })
+  return response.data
+}
+
+export interface AttendanceStats {
+  total_participants: number
+  total_attended: number
+  audience_registered: number
+  audience_attended: number
+  attendance_rate: number
+}
+
+export const getAttendanceStats = async (eventId: string) => {
+  const response = await api.get<AttendanceStats>(`/events/${eventId}/attendance/stats`)
+  return response.data
+}
+
+export const updateEventParticipantStatus = async (eventId: string, participantId: string, body: EventParticipantResponseUpdate) => {
+  const response = await api.put<EventParticipantDetails>(`/events/${eventId}/participants/${participantId}/status`, body)
   return response.data
 }
 
@@ -276,14 +314,14 @@ export const leaveEvent = async (eventId: string) => {
   return response.data
 }
 
-// --- Attendance Service ---
+// --- Attendance Service (Event-level QR - Legacy) ---
 
 export const generateAttendanceQR = async (eventId: string) => {
   const response = await api.post<AttendanceQRResponse>(`/events/${eventId}/attendance/qr`)
   return response.data
 }
 
-export const scanAttendance = async (data: AttendanceScanRequest) => {
+export const scanAttendanceToken = async (data: AttendanceScanRequest) => {
   const response = await api.post<EventParticipantDetails>(`/events/attendance/scan`, data)
   return response.data
 }
@@ -410,7 +448,12 @@ export const createReview = async (data: import('./api.types').ReviewCreate) => 
 }
 
 export const getReviewsByEvent = async (eventId: string) => {
-  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews`, { params: { event_id: eventId } })
+  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/event/${eventId}`)
+  return response.data
+}
+
+export const getMyReview = async (eventId: string) => {
+  const response = await api.get<import('./api.types').ReviewResponse | null>(`/reviews/me`, { params: { event_id: eventId } })
   return response.data
 }
 

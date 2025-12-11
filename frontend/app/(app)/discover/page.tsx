@@ -460,39 +460,7 @@ export default function DiscoverPage() {
                     {/* Only show categories if NOT searching/filtering */}
                     {!eventSearch && !filterRegStatus && !filterRegType && !filterEventType && (
                         <>
-                            {/* YOUR SCHEDULE - JOINED EVENTS */}
-                            {myEvents.length > 0 && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <h2 className="text-2xl font-black text-zinc-900">Your Schedule</h2>
-                                            <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full uppercase tracking-wider">
-                                                Attending
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-                                        {myEvents.map((event) => {
-                                            // Map MyEventItem to EventDetails-ish structure for EventCard
-                                            const mappedEvent: any = {
-                                                ...event,
-                                                id: event.event_id,
-                                                organizer_id: '', // Not available in MyEventItem
-                                                created_at: '',
-                                                registration_type: 'free', // Default or fetch if needed
-                                                visibility: 'public',
-                                                format: event.format || 'other'
-                                            }
-                                            return (
-                                                <div key={event.event_id} className="snap-center shrink-0 w-[85vw] sm:w-[320px]">
-                                                    {/* Use standardized EventCard */}
-                                                    <EventCard event={mappedEvent} />
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            )}
+
 
                             {/* Incoming Events Carousel */}
                             {incomingEvents.length > 0 && (

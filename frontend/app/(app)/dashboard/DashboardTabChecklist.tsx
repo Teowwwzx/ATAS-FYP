@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { EventDetails, EventChecklistItemResponse, ProfileResponse } from '@/services/api.types'
-import { getEventChecklist, createEventChecklistItem, updateEventChecklistItem, deleteEventChecklistItem, findProfiles } from '@/services/api'
+import { EventDetails, EventChecklistItemResponse, ProfileResponse, EventProposalResponse } from '@/services/api.types'
+import { getEventChecklist, createEventChecklistItem, updateEventChecklistItem, deleteEventChecklistItem, findProfiles, getEventProposals } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 
@@ -11,6 +11,8 @@ interface DashboardTabChecklistProps {
 export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
     const [items, setItems] = useState<EventChecklistItemResponse[]>([])
     const [loading, setLoading] = useState(true)
+    const [files, setFiles] = useState<EventProposalResponse[]>([])
+    const [fileLinks, setFileLinks] = useState<Record<string, string[]>>({}) // fileId -> checklistId[]
 
     // Inline Add State
     const [newItemTitle, setNewItemTitle] = useState('')
@@ -20,11 +22,29 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
 
     const fetchChecklist = async () => {
         try {
-            const data = await getEventChecklist(event.id)
-            setItems(data.sort((a, b) => a.sort_order - b.sort_order))
+            const [checklistData, filesData] = await Promise.all([
+                getEventChecklist(event.id),
+                getEventProposals(event.id)
+            ])
+            setItems(checklistData.sort((a, b) => a.sort_order - b.sort_order))
+            setFiles(filesData)
+
+            // Load links from local storage
+            const links: Record<string, string[]> = {}
+            try {
+                const stored = localStorage.getItem(`event_${event.id}_file_checklist_links`)
+                if (stored) {
+                    const parsed = JSON.parse(stored)
+                    // Revert mapping: checklistId -> fileIds[]
+                    // Actually, let's keep it fileId -> checklistId[] and search on render for simplicity
+                    setFileLinks(parsed)
+                }
+            } catch (e) {
+                console.error(e)
+            }
         } catch (error) {
             console.error(error)
-            toast.error('Failed to load checklist')
+            toast.error('Failed to load data')
         } finally {
             setLoading(false)
         }
@@ -190,6 +210,34 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                 <span className={`font-bold transition-all ${item.is_completed ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
                                                     {item.title}
                                                 </span>
+                                                {/* Linked Files Display */}
+                                                {(() => {
+                                                    const linkedFiles = files.filter(f => {
+                                                        const linkedChecklistIds = fileLinks[f.id] || []
+                                                        return linkedChecklistIds.includes(item.id)
+                                                    })
+
+                                                    if (linkedFiles.length > 0) {
+                                                        return (
+                                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                                {linkedFiles.map(f => (
+                                                                    <a
+                                                                        key={f.id}
+                                                                        href={f.file_url ?? '#'}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors border border-blue-100"
+                                                                        title={f.title ?? ''}
+                                                                    >
+                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                                        {f.title}
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    }
+                                                    return null
+                                                })()}
                                             </td>
                                             <td className="px-6 py-4">
                                                 {item.assigned_user_id ? (

@@ -140,7 +140,7 @@ def seed_events(db, num_events=20):
             max_participant=random.randint(10, 100) if random.random() > 0.3 else None,
             logo_url=EVENT_LOGO_IMAGES[idx % len(EVENT_LOGO_IMAGES)],
             cover_url=EVENT_COVER_IMAGES[idx % len(EVENT_COVER_IMAGES)],
-            venue_place_id=fake.address() if event_type != EventType.online else None,
+            venue_place_id="ChIJr7mC9fN5zDERSrD1wGg7oYQ" if event_type != EventType.online else None,
             venue_remark=fake.sentence() if random.random() > 0.5 else None,
             remark=fake.sentence() if random.random() > 0.7 else None,
             created_at=datetime.now(),

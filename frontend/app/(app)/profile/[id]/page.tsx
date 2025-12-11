@@ -43,7 +43,7 @@ export default function PublicProfilePage() {
             getMyFollows().then(follows => {
                 const isF = follows.some(f => f.followee_id === userId)
                 setIsFollowing(isF)
-            }).catch(() => {})
+            }).catch(() => { })
 
             const fetchProfile = async () => {
                 try {
@@ -208,7 +208,7 @@ export default function PublicProfilePage() {
                         <div className="flex-1 pb-4 text-center sm:text-left space-y-4">
                             <div>
                                 <h1 className="text-4xl font-black text-zinc-900 tracking-tight mb-1">{profile.full_name}</h1>
-                                
+
                                 <div className="mt-2 flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                                     {profile.title && (
                                         <span className="px-3 py-1 rounded-full bg-zinc-900 text-yellow-400 text-sm font-bold shadow-sm">{profile.title}</span>
@@ -238,11 +238,10 @@ export default function PublicProfilePage() {
                                         <button
                                             onClick={handleConnect}
                                             disabled={followLoading}
-                                            className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 ${
-                                                isFollowing 
-                                                ? 'bg-white text-zinc-900 border-2 border-zinc-200 hover:bg-zinc-50' 
+                                            className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 ${isFollowing
+                                                ? 'bg-white text-zinc-900 border-2 border-zinc-200 hover:bg-zinc-50'
                                                 : 'bg-zinc-900 text-yellow-400 hover:bg-zinc-800'
-                                            }`}
+                                                }`}
                                         >
                                             {isFollowing ? (
                                                 <>
@@ -281,17 +280,17 @@ export default function PublicProfilePage() {
 
                 {/* Categorized Info Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                    
+
                     {/* Left Col: Overview & Professional Details */}
                     <div className="md:col-span-2 space-y-6">
-                        
+
                         {/* About Card */}
                         <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8">
                             <h2 className="text-xl font-black text-zinc-900 mb-4">About</h2>
                             <p className="text-zinc-600 font-medium leading-relaxed mb-6">
                                 {profile.bio || 'No bio provided.'}
                             </p>
-                            
+
                             {/* Snapshot Stats */}
                             <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-50">
                                 {profile.can_be_speaker && (
@@ -439,12 +438,46 @@ export default function PublicProfilePage() {
                 )}
             </div>
 
+            {/* Organized Events Section */}
+            <div className="mt-12 bg-white rounded-2xl border border-zinc-100 shadow-sm p-8">
+                <h2 className="text-xl font-black text-zinc-900 mb-6 flex items-center gap-2">
+                    <span className="w-2 h-8 bg-purple-400 rounded-full"></span>
+                    Organized Events
+                </h2>
+                {organizedEvents.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {organizedEvents.map((event) => (
+                            <Link key={event.id} href={`/events/${event.id}`} className="block group">
+                                <div className="bg-white rounded-2xl border border-zinc-100 overflow-hidden shadow-sm hover:shadow-md transition-all group-hover:-translate-y-1">
+                                    <div className="h-40 bg-zinc-200 relative">
+                                        {event.cover_url ? (
+                                            <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-zinc-400 font-bold text-3xl opacity-20">EVENT</div>
+                                        )}
+                                        <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-bold text-zinc-900">
+                                            {new Date(event.start_datetime).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                    <div className="p-5">
+                                        <h3 className="font-bold text-zinc-900 mb-2 truncate group-hover:text-purple-600 transition-colors">{event.title}</h3>
+                                        <p className="text-zinc-500 text-sm line-clamp-2">{event.description || 'No description'}</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-zinc-500 italic">No public events organized yet.</div>
+                )}
+            </div>
+
             {/* Book Expert Modal */}
             <BookExpertModal
                 isOpen={showInviteModal}
                 onClose={() => setShowInviteModal(false)}
-                expertId={profile.user_id}
-                expertName={profile.full_name}
+                expertId={profile?.user_id || ''}
+                expertName={profile?.full_name || ''}
             />
         </div>
     )
