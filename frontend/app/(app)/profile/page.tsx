@@ -30,6 +30,10 @@ export default function ProfilePage() {
     const [newJob, setNewJob] = useState<JobExperienceCreate>({ title: '', description: '' })
     const [viewFriends, setViewFriends] = useState<'none' | 'followers' | 'following'>('none')
     const [previewImage, setPreviewImage] = useState<string | null>(null)
+    const [confirmUnfollowId, setConfirmUnfollowId] = useState<string | null>(null)
+
+    // ... (rest of the component)
+
 
     const avatarInputRef = useRef<HTMLInputElement>(null)
     const coverInputRef = useRef<HTMLInputElement>(null)
@@ -297,6 +301,101 @@ export default function ProfilePage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+                </div>
+            )}
+
+            {/* Followers/Following Modal */}
+            {viewFriends !== 'none' && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/50 ml-0 flex items-center justify-center p-4 animate-fadeIn backdrop-blur-sm"
+                    onClick={() => setViewFriends('none')}
+                >
+                    <div
+                        className="bg-white rounded-[2rem] w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                            <h3 className="font-black text-xl text-zinc-900 capitalize">{viewFriends}</h3>
+                            <button
+                                onClick={() => setViewFriends('none')}
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-zinc-500 hover:bg-gray-200 hover:text-zinc-900 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-2 scrollbar-hide">
+                            {(viewFriends === 'followers' ? followers : following).length === 0 ? (
+                                <div className="p-8 text-center text-zinc-400 italic">
+                                    No {viewFriends} yet.
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {(viewFriends === 'followers' ? followers : following).map((item: any) => {
+                                        const person = viewFriends === 'followers' ? item.follower : item.followee
+                                        if (!person) return null
+                                        return (
+                                            <div key={item.id} className="flex items-center gap-4 p-3 hover:bg-zinc-50 rounded-2xl transition-colors group">
+                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
+                                                    {person.avatar_url ? (
+                                                        <img src={person.avatar_url} className="w-full h-full object-cover" alt={person.full_name} />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-yellow-100 text-yellow-600 font-bold text-lg">
+                                                            {person.full_name?.[0]?.toUpperCase() || '?'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-bold text-zinc-900 truncate">{person.full_name}</div>
+                                                    <div className="text-xs text-zinc-400 font-medium truncate">User</div>
+                                                </div>
+                                                {viewFriends === 'following' && (
+                                                    confirmUnfollowId === person.id ? (
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    setConfirmUnfollowId(null)
+                                                                }}
+                                                                className="px-3 py-1.5 rounded-full border border-gray-200 text-zinc-500 text-xs font-bold hover:bg-gray-100 transition-all animate-fadeIn"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation()
+                                                                    try {
+                                                                        await unfollowUser(person.id)
+                                                                        setFollowing(prev => prev.filter(f => f.id !== item.id))
+                                                                        toast.success(`Unfollowed ${person.full_name}`)
+                                                                        setConfirmUnfollowId(null)
+                                                                    } catch {
+                                                                        toast.error('Failed to unfollow')
+                                                                    }
+                                                                }}
+                                                                className="px-3 py-1.5 rounded-full bg-red-500 text-white text-xs font-bold shadow-md hover:bg-red-600 transition-all animate-fadeIn"
+                                                            >
+                                                                Confirm
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setConfirmUnfollowId(person.id)
+                                                            }}
+                                                            className="px-4 py-2 rounded-full border border-zinc-300 bg-white text-zinc-800 text-xs font-bold shadow-sm hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all"
+                                                        >
+                                                            Unfollow
+                                                        </button>
+                                                    )
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
             <ProfileHeader
