@@ -1,10 +1,12 @@
 # auth_router.py
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user_model import User, UserStatus
+from app.models.profile_model import Profile
 from app.core.security import create_access_token, verify_password, decode_access_token, get_password_hash
 from datetime import timedelta
 from app.dependencies import get_current_user
@@ -156,6 +158,28 @@ def _process_google_payload(payload: dict, db: Session) -> dict:
             user.status = UserStatus.active
             db.commit()
             db.refresh(user)
+
+    # Sync Google profile info
+    name = payload.get("name")
+    picture = payload.get("picture")
+    
+    if user.profile is None:
+        new_profile = Profile(user_id=user.id, full_name=name or "", avatar_url=picture)
+        db.add(new_profile)
+        db.commit()
+    else:
+        updated = False
+        if not user.profile.full_name and name:
+            user.profile.full_name = name
+            updated = True
+        if not user.profile.avatar_url and picture:
+            user.profile.avatar_url = picture
+            updated = True
+        
+        if updated:
+            db.add(user.profile)
+            db.commit()
+
     access_token = create_access_token(data={"sub": str(user.id), "type": "access"})
     refresh_token = create_access_token(data={"sub": user.email, "type": "refresh"}, expires_delta=timedelta(days=30))
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
@@ -169,7 +193,7 @@ def google_sign_in(body: GoogleIdTokenRequest, db: Session = Depends(get_db)):
     return _process_google_payload(payload, db)
 
 @router.get("/google/callback")
-def google_callback(code: str, db: Session = Depends(get_db)):
+def google_callback(code: str, state: str | None = None, db: Session = Depends(get_db)):
     data = {
         "code": code,
         "client_id": settings.GOOGLE_CLIENT_ID,
@@ -188,4 +212,12 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     if v.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid Google token")
     payload = v.json()
-    return _process_google_payload(payload, db)
+    result = _process_google_payload(payload, db)
+    next_path = "/dashboard"
+    try:
+        if state and state.startswith("/"):
+            next_path = state
+    except Exception:
+        next_path = "/dashboard"
+    url = f"{settings.FRONTEND_BASE_URL}/auth/callback?access_token={result['access_token']}&next={next_path}"
+    return RedirectResponse(url=url, status_code=302)
