@@ -13,6 +13,7 @@ from app.models.profile_model import Profile, Education, JobExperience
 from app.models.review_model import Review
 from app.models.skill_model import Skill
 from app.models.user_model import User
+from app.models.chat_model import Conversation, ConversationParticipant, Message
 
 # Import seeders
 from app.seeders.user_seeder import seed_users
@@ -50,6 +51,19 @@ def create_tables():
     # Create a new session
     db = SessionLocal()
     
+    # Ensure Postgres ENUMs reflect current python enums (drop stale types)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+            DO $$ BEGIN
+              IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notificationtype') THEN
+                DROP TYPE notificationtype CASCADE;
+              END IF;
+            END $$;
+            """))
+    except Exception:
+        pass
+
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 

@@ -3,6 +3,7 @@
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Float
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 import enum
 import uuid
 from app.database.database import Base
@@ -124,6 +125,12 @@ class EventParticipant(Base):
     status = Column(Enum(EventParticipantStatus), nullable=False, default=EventParticipantStatus.pending)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=True)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("event_proposals.id"), nullable=True)
+    
+    event = relationship("Event")
+    proposal = relationship("EventProposal")
 
 class EventMailTemplate(Base):
     __tablename__ = "event_mail_templates"
@@ -176,6 +183,9 @@ class EventProposal(Base):
     file_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Link to a generic conversation (replaces EventProposalComment)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=True)
 
 class EventProposalComment(Base):
     __tablename__ = "event_proposal_comments"

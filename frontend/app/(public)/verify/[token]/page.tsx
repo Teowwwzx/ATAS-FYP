@@ -23,6 +23,7 @@ export default function VerifyEmailPage() {
                     await verifyEmail(token as string)
                     toast.success('Email verified! You may now log in.')
                     setMessage('Verification successful! Redirecting to login...')
+                    try { localStorage.setItem('email_verified', '1') } catch {}
                 } catch (error) {
                     const err = error as AxiosError<ApiErrorResponse>
                     const detail =

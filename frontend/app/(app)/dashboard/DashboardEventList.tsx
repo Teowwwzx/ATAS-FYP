@@ -18,6 +18,7 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
     const [showProModal, setShowProModal] = useState(false)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
     const organizedEvents = events.filter(e => e.my_role === 'organizer')
+    const joinedEvents = events.filter(e => e.my_role !== 'organizer' && e.my_status === 'accepted')
 
     const handleCreateClick = () => {
         // Check if user needs Dashboard Pro
@@ -78,7 +79,7 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
                 </p>
                 <div className="flex items-center justify-between mt-auto pt-3 border-t border-zinc-50">
                     <span className="text-[10px] font-bold text-zinc-400">
-                        Organizing
+                        {event.my_role === 'organizer' ? 'Organizing' : event.my_role || 'Participant'}
                     </span>
                     <svg className="w-4 h-4 text-zinc-300 group-hover:text-yellow-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -201,8 +202,42 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
                 </button>
             </div>
 
+            {/* Joined Events Section - "Upcoming Gigs" */}
+            {joinedEvents.length > 0 && (
+                <section className="space-y-6">
+                    <div>
+                        <h2 className="text-2xl font-black text-zinc-900 mb-2">Upcoming Gigs</h2>
+                        <p className="text-sm text-zinc-500">Events you've confirmed to participate in</p>
+                    </div>
+                    {joinedEvents.length === 1 ? (
+                        <CompactEventCard
+                            event={joinedEvents[0]}
+                            onSelect={onSelect}
+                            handleImageClick={handleImageClick}
+                        />
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {joinedEvents.map(event => (
+                                <CompactEventCard
+                                    key={event.event_id}
+                                    event={event}
+                                    onSelect={onSelect}
+                                    handleImageClick={handleImageClick}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
+
             {/* Organized Section */}
             <section className="space-y-6">
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 mb-2">
+                        {joinedEvents.length > 0 ? 'Organized Events' : 'My Events'}
+                    </h2>
+                    <p className="text-sm text-zinc-500">Events you created and are managing</p>
+                </div>
                 {organizedEvents.length > 0 ? (
                     organizedEvents.length === 1 ? (
                         // Single event: show detailed card

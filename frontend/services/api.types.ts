@@ -153,7 +153,7 @@ export interface ProfileResponse {
     availability?: string // e.g. "Weekdays after 6pm"
     can_be_speaker?: boolean
     intents?: string[]
-    
+
     // New fields
     country?: string
     city?: string
@@ -173,7 +173,7 @@ export interface ProfileUpdate {
     visibility?: 'public' | 'private'
     title?: string
     availability?: string
-    
+
     // New fields
     country?: string
     city?: string
@@ -255,10 +255,18 @@ export interface EventParticipantDetails {
     user_id: string
     role: EventParticipantRole
     description?: string | null
-    join_method?: string | null
-    status: EventParticipantStatus
+    join_method?: string
+    status: 'pending' | 'accepted' | 'rejected'
     created_at: string
-    updated_at?: string | null
+    updated_at?: string
+    conversation_id?: string
+    proposal_id?: string
+}
+
+export interface EventParticipationSummary {
+  is_participant: boolean
+  my_role?: EventParticipantRole | null
+  my_status?: 'pending' | 'accepted' | 'rejected' | 'attended' | 'absent' | null
 }
 
 export interface EventParticipantResponseUpdate {
@@ -356,6 +364,7 @@ export interface EventProposalResponse {
     file_url?: string | null
     created_at: string
     updated_at?: string | null
+    conversation_id?: string | null
 }
 
 export interface EventProposalCommentCreate {
@@ -623,15 +632,42 @@ export interface ChatConversation {
     unread_count: number
 }
 
-export interface ChatConversationCreate {
-    participant_ids: string[]
-}
-
+// --- Event Invitation ---
 
 export interface EventInvitationResponse {
     id: string
-    event: EventDetails
-    role: EventParticipantRole
-    status: EventParticipantStatus
+    event: import('./api.types').EventDetails
+    role: string
+    status: string
     created_at: string
+    description?: string
+    conversation_id?: string
+    proposal_id?: string
+    proposal?: import('./api.types').EventProposalResponse
 }
+
+export interface EventParticipantCreate {
+    user_id: string
+    role: EventParticipantRole
+    description?: string | null
+    proposal_id?: string
+}
+
+export interface EventParticipantDetails {
+    id: string
+    event_id: string
+    user_id: string
+    role: EventParticipantRole
+    description?: string | null
+    join_method?: string
+    status: 'pending' | 'accepted' | 'rejected'
+    created_at: string
+    updated_at?: string
+    conversation_id?: string
+    proposal_id?: string
+}
+
+
+
+
+

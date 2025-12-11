@@ -64,6 +64,7 @@ from app.schemas.event_schema import (
     EventProposalUpdate,
     EventProposalCommentUpdate,
     EventInvitationResponse,
+    EventParticipationSummary,
 )
 from typing import List
 from sqlalchemy import text
@@ -181,6 +182,8 @@ def get_all_events(
     page: int = 1,
     page_size: int = 20,
     include_all_visibility: bool = False, # New param
+    status: EventStatus | None = Query(None),
+    include_all_status: bool = False,
 ):
     query = db.query(Event)
     # Exclude soft-deleted events
@@ -198,6 +201,13 @@ def get_all_events(
     if include_all_visibility:
         if visibility is not None:
              query = query.filter(Event.visibility == visibility)
+
+    # Default: only published events, unless explicitly requesting otherwise
+    if not include_all_status:
+        if status is None:
+            query = query.filter(Event.status == EventStatus.published)
+        else:
+            query = query.filter(Event.status == status)
     
     if upcoming:
         query = query.filter(Event.start_datetime >= func.now())
@@ -369,7 +379,11 @@ def get_my_requests(
         EventParticipant.status == EventParticipantStatus.pending
     ).order_by(EventParticipant.created_at.desc()).all()
     
+
     return participants
+
+
+
 
 
 @router.post("/events", response_model=EventDetails)
@@ -423,47 +437,36 @@ def create_event(
     # Default venue to APU if not provided
     venue_place_id = event.venue_place_id if event.venue_place_id else DEFAULT_APU_PLACE_ID
 
+    # Avoid duplicate/unknown kwargs when constructing the ORM model
+    payload = event.model_dump(exclude={"start_datetime", "end_datetime", "type", "venue_place_id"})
     db_event = Event(
+        **payload,
         organizer_id=current_user.id,
-        title=event.title,
-        description=event.description,
-        logo_url=event.logo_url,
-        cover_url=event.cover_url,
-        format=event.format,
-        type=derived_type,
         start_datetime=sd,
         end_datetime=ed,
-        registration_type=event.registration_type,
-        visibility=event.visibility,
-        max_participant=event.max_participant,
+        type=derived_type,
         venue_place_id=venue_place_id,
-        venue_remark=event.venue_remark,
-        remark=event.remark,
     )
 
     db.add(db_event)
-    # Flush to get event ID without committing, keeping operation atomic
-    db.flush()
-
-    # Assign organizer participant (duplication guard)
-    existing_link = (
-        db.query(EventParticipant)
-        .filter(EventParticipant.event_id == db_event.id, EventParticipant.user_id == current_user.id)
-        .first()
-    )
-    if existing_link is None:
-        organizer_participant = EventParticipant(
-            event_id=db_event.id,
-            user_id=current_user.id,
-            role=EventParticipantRole.organizer,
-            status=EventParticipantStatus.accepted,
-            description=None,
-        )
-        db.add(organizer_participant)
-
-    # Single commit to ensure event and organizer participant are persisted together
     db.commit()
     db.refresh(db_event)
+    
+    # Add organizer as an 'organizer' participant
+    organizer_participant = EventParticipant(
+        event_id=db_event.id,
+        user_id=current_user.id,
+        role=EventParticipantRole.organizer,
+        status=EventParticipantStatus.accepted
+    )
+    db.add(organizer_participant)
+    
+    # Create default checklist for the event if needed
+    # (Leaving simplified for now)
+
+    db.commit()
+    db.refresh(db_event)
+
     try:
         src = f"{db_event.title}\n{db_event.description or ''}\nformat:{db_event.format} type:{db_event.type}"
         vec = generate_text_embedding(src)
@@ -478,8 +481,58 @@ def create_event(
             db.commit()
     except Exception:
         pass
-    
+
     return db_event
+
+
+@router.get("/events/requests/{participant_id}", response_model=EventInvitationResponse)
+def get_request_details(
+    participant_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get detailed information about a specific invitation/request.
+    Also ensures a Conversation exists for this request.
+    """
+    participant = db.query(EventParticipant).filter(EventParticipant.id == participant_id).first()
+    if participant is None:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    if participant.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this invitation")
+    
+    # --- Chat Logic: Ensure Conversation Exists ---
+    if not participant.conversation_id:
+        # Check if conversation already exists (double check)
+        # Assuming 1-on-1 between organizer and invited user for this specific event context?
+        # Actually simplest is to just create a new conversation for this specific "Request" context.
+        # This keeps it separate from other chats.
+        from app.models.chat_model import Conversation, ConversationParticipant as ChatParticipant
+        
+        # Determine organizer ID
+        event = db.query(Event).filter(Event.id == participant.event_id).first()
+        organizer_id = event.organizer_id
+        
+        # Create Conversation
+        new_conv = Conversation()
+        db.add(new_conv)
+        db.commit()
+        db.refresh(new_conv)
+        
+        # Add Participants: Organizer & Expert
+        p1 = ChatParticipant(conversation_id=new_conv.id, user_id=organizer_id)
+        p2 = ChatParticipant(conversation_id=new_conv.id, user_id=participant.user_id)
+        db.add(p1)
+        db.add(p2)
+        
+        # Link to Invitation
+        participant.conversation_id = new_conv.id
+        db.add(participant)
+        db.commit()
+        db.refresh(participant)
+
+    return participant
 
 
 # --- Publish/Unpublish & Registration Management ---
@@ -515,7 +568,7 @@ def publish_event(
             db.execute(up, {"eid": event.id, "emb": emb, "src": src})
             db.commit()
     except Exception:
-        pass
+        db.rollback()
     log_admin_action(db, current_user.id, "event.publish", "event", event.id)
     return event
 
@@ -699,6 +752,24 @@ def get_event_details(
 
     raise HTTPException(status_code=403, detail="This event is private")
 
+
+@router.get("/events/{event_id}/me", response_model=EventParticipationSummary)
+def get_my_participation_summary(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    event = db.query(Event).filter(Event.id == event_id, Event.deleted_at.is_(None)).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    link = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
+        .first()
+    )
+    if link is None:
+        return EventParticipationSummary(is_participant=False, my_role=None, my_status=None)
+    return EventParticipationSummary(is_participant=True, my_role=link.role, my_status=link.status)
 
 @router.get("/events/{event_id}/participants", response_model=List[EventParticipantDetails])
 def list_event_participants(
@@ -1087,7 +1158,23 @@ def invite_event_participants_bulk(
             description=item.description,
             join_method="invited",
             status=EventParticipantStatus.pending,
+            proposal_id=item.proposal_id,
         )
+        
+        # If invited with a proposal, auto-create conversation immediately
+        if item.proposal_id:
+            from app.models.chat_model import Conversation, ConversationParticipant as ChatParticipant
+            new_conv = Conversation()
+            db.add(new_conv)
+            db.flush()
+            
+            # Participants: Organizer & Expert
+            p_ids = {current_user.id, item.user_id}
+            for pid in p_ids:
+                db.add(ChatParticipant(conversation_id=new_conv.id, user_id=pid))
+            
+            participant.conversation_id = new_conv.id
+
         db.add(participant)
         # Create notification per invitee
         notif = Notification(
@@ -1392,6 +1479,33 @@ def list_event_proposals(
         .limit(page_size)
         .all()
     )
+    
+    # Backfill conversation_id if missing
+    from app.models.chat_model import Conversation, ConversationParticipant as ChatParticipant
+    dirty = False
+    for p in proposals:
+        if not p.conversation_id:
+            # Create Conversation
+            new_conv = Conversation()
+            db.add(new_conv)
+            db.flush()
+            
+            # Participants: Organizer (event.organizer_id) & Created By (p.created_by_user_id)
+            cparts = list(set([event.organizer_id, p.created_by_user_id]))
+            for uid in cparts:
+                 db.add(ChatParticipant(conversation_id=new_conv.id, user_id=uid))
+            
+            p.conversation_id = new_conv.id
+            db.add(p)
+            dirty = True
+            
+    if dirty:
+        db.commit()
+        # Refresh all to ensure IDs are loaded? Actually they are objects in session.
+        # But let's be safe.
+        for p in proposals:
+            db.refresh(p)
+            
     return proposals
 
 @router.post("/events/{event_id}/proposals", response_model=EventProposalResponse)
@@ -1413,7 +1527,7 @@ async def create_event_proposal(
             )
             .first()
         )
-        if my_participation is None or my_participation.role not in (EventParticipantRole.committee, EventParticipantRole.speaker):
+        if my_participation is None or my_participation.role not in (EventParticipantRole.committee,):
             raise HTTPException(status_code=403, detail="Not allowed to create proposals")
 
     content_type = request.headers.get("content-type", "")
@@ -1440,19 +1554,48 @@ async def create_event_proposal(
 
     if upload and not file_url:
         file_url = upload_file(upload, "event_proposals")
-
     final_title = title or event.title
     final_description = description or event.description
 
     proposal = EventProposal(
-        event_id=event.id,
+        event_id=event_id,
         created_by_user_id=current_user.id,
-        title=final_title,
-        description=final_description,
+        title=title,
+        description=description,
         file_url=file_url,
     )
     db.add(proposal)
-    db.commit()
+    db.flush()
+
+    # --- Chat Logic: Auto-create Conversation ---
+    # Determine organizer ID
+    event = db.query(Event).filter(Event.id == event_id).first()
+    organizer_id = event.organizer_id
+    
+    # Simple logic: create a new conversation for this proposal
+    from app.models.chat_model import Conversation, ConversationParticipant as ChatParticipant
+    
+    # Create Conversation ONLY if the proposal is created by someone else (e.g. an expert applying)
+    # If the organizer creates the proposal (e.g. a template or internal doc), we don't start a chat yet.
+    # The chat will start when they INVITE someone to this proposal.
+    if current_user.id != organizer_id:
+        new_conv = Conversation()
+        db.add(new_conv)
+        db.flush()
+        
+        # Add Participants: Organizer & Proposer
+        p_ids = {organizer_id, current_user.id}
+        for pid in p_ids:
+            cp = ChatParticipant(conversation_id=new_conv.id, user_id=pid)
+            db.add(cp)
+        
+        proposal.conversation_id = new_conv.id
+        
+        db.commit()
+    else:
+        # Just commit the proposal without a conversation
+        db.commit()
+        
     db.refresh(proposal)
     return proposal
 

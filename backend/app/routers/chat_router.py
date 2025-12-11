@@ -149,6 +149,65 @@ def send_message(
     
     db.commit()
     db.refresh(new_msg)
+
+    # --- Notification Logic ---
+    # Notify other participants
+    from app.models.notification_model import Notification, NotificationType
+    from app.models.event_model import EventParticipant, EventProposal
+
+    other_participants = db.query(ConversationParticipant).filter(
+        ConversationParticipant.conversation_id == conversation_id,
+        ConversationParticipant.user_id != current_user.id
+    ).all()
+
+    # Try to find context (EventParticipant) to generate smart links
+    # 1. Is this conversation linked to a specific EventParticipant?
+    linked_participant = db.query(EventParticipant).filter(EventParticipant.conversation_id == conversation_id).first()
+    
+    # 2. Or an EventProposal?
+    linked_proposal = None
+    if not linked_participant:
+        linked_proposal = db.query(EventProposal).filter(EventProposal.conversation_id == conversation_id).first()
+
+    sender_name = current_user.email
+    if current_user.profile and current_user.profile.full_name:
+        sender_name = current_user.profile.full_name
+
+    for p in other_participants:
+        # Determine Link
+        link = "/dashboard" # Default
+        
+        if linked_participant:
+            # If the recipient IS the participant user, link to their request detail
+            if p.user_id == linked_participant.user_id:
+                link = f"/dashboard/requests/{linked_participant.id}"
+            else:
+                # Recipient is likely organizer
+                # Link to dashboard event proposals tab
+                if linked_participant.proposal_id: # If linked to proposal
+                     link = f"/dashboard?eventId={linked_participant.event_id}&tab=proposals"
+                else:
+                     link = f"/dashboard?eventId={linked_participant.event_id}&tab=people"
+
+        elif linked_proposal:
+             # If conversation linked to proposal directly
+             if linked_proposal.created_by_user_id == p.user_id:
+                  # Recipient is the proposer
+                   pass 
+             else:
+                  # Recipient is Organizer
+                  link = f"/dashboard?eventId={linked_proposal.event_id}&tab=proposals"
+
+        notif = Notification(
+            recipient_id=p.user_id,
+            actor_id=current_user.id,
+            type=NotificationType.chat,
+            content=f"New message from {sender_name}: {new_msg.content[:50]}...",
+            link_url=link
+        )
+        db.add(notif)
+    
+    db.commit()
     
     return _format_message_response(new_msg)
 

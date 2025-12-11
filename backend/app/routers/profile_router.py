@@ -143,6 +143,7 @@ def discover_profiles(
             "city": p.city,
             "origin_country": p.origin_country,
             "can_be_speaker": p.can_be_speaker,
+            "email": p.user.email if p.user else None,
             "intents": p.intents,
             "today_status": p.today_status,
         })
@@ -448,25 +449,25 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
     desired_role = onboarding_data.role
 
     # --- AI Embedding Logic (Merged) ---
-    try:
-        from app.services.ai_service import generate_text_embedding, _vec_to_pg
-        src = f"{db_profile.full_name}\n{db_profile.bio or ''}\navailability:{db_profile.availability or ''}"
-        # Only generating if bio is substantial or for experts, but user logic applies generally
-        vec = generate_text_embedding(src)
-        if vec:
-            emb = _vec_to_pg(vec)
-            # Ensure table exists - we kept expert_embeddings
-            up = text(
-                """
-                INSERT INTO expert_embeddings(user_id, embedding, source_text)
-                VALUES (:uid, CAST(:emb AS vector), :src)
-                ON CONFLICT (user_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
-                """
-            )
-            db.execute(up, {"uid": current_user.id, "emb": emb, "src": src})
-            # db.commit() # Merged transaction down below
-    except Exception as e:
-        print(f"Embedding failed: {e}")
+    # Only create embeddings when the selected role is 'expert'
+    if desired_role == 'expert':
+        try:
+            from app.services.ai_service import generate_text_embedding, _vec_to_pg
+            src = f"{db_profile.full_name}\n{db_profile.bio or ''}\navailability:{db_profile.availability or ''}"
+            vec = generate_text_embedding(src)
+            if vec:
+                emb = _vec_to_pg(vec)
+                up = text(
+                    """
+                    INSERT INTO expert_embeddings(user_id, embedding, source_text)
+                    VALUES (:uid, CAST(:emb AS vector), :src)
+                    ON CONFLICT (user_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+                    """
+                )
+                db.execute(up, {"uid": current_user.id, "emb": emb, "src": src})
+        except Exception as e:
+            print(f"Embedding failed: {e}")
+            db.rollback()
     # -----------------------------------------------
 
     # --- Welcome Notification ---
@@ -552,6 +553,8 @@ def read_my_profile(db: Session = Depends(get_db), current_user: User = Depends(
     db_profile = profile_service.get_profile(db, user_id=current_user.id)
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
+    # Manually attach email since not in Profile model
+    setattr(db_profile, "email", current_user.email)
     return db_profile
 
 @router.get("/{user_id}", response_model=ProfileResponse)
@@ -566,6 +569,11 @@ def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db), current_user
     if db_profile.visibility.value == "private":
         if current_user is None or current_user.id != user_id:
             raise HTTPException(status_code=403, detail="This profile is private")
+            
+    # Manually attach email if user is loaded
+    if db_profile.user:
+        setattr(db_profile, "email", db_profile.user.email)
+        
     return db_profile
 
 @router.post("/backfill")
