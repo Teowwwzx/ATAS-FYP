@@ -86,6 +86,11 @@ export const verifyEmail = async (token: string) => {
   return response.data
 }
 
+export const loginWithGoogle = async (idToken: string) => {
+  const response = await api.post<LoginSuccessResponse>('/auth/google', { id_token: idToken })
+  return response.data
+}
+
 export const forgotPassword = async (email: string) => {
   const response = await api.post<{ message: string }>('/email/forgot-password', { email })
   return response.data
