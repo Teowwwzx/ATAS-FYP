@@ -264,9 +264,9 @@ export interface EventParticipantDetails {
 }
 
 export interface EventParticipationSummary {
-  is_participant: boolean
-  my_role?: EventParticipantRole | null
-  my_status?: 'pending' | 'accepted' | 'rejected' | 'attended' | 'absent' | null
+    is_participant: boolean
+    my_role?: EventParticipantRole | null
+    my_status?: 'pending' | 'accepted' | 'rejected' | 'attended' | 'absent' | null
 }
 
 export interface EventParticipantResponseUpdate {
@@ -666,6 +666,8 @@ export interface EventParticipantDetails {
     conversation_id?: string
     proposal_id?: string
 }
+
+
 
 
 

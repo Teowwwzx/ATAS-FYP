@@ -14,6 +14,19 @@ from app.schemas.review_schema import ReviewCreate, ReviewResponse
 
 router = APIRouter()
 
+@router.get("/reviews/event/{event_id}", response_model=List[ReviewResponse])
+def list_event_reviews(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    items = (
+        db.query(Review)
+        .filter(Review.event_id == event_id, Review.deleted_at.is_(None))
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+    return items
+
 @router.post("/reviews", response_model=ReviewResponse)
 def create_review(
     body: ReviewCreate,
@@ -70,6 +83,23 @@ def list_reviews_by_user(
         .all()
     )
     return items
+
+@router.get("/reviews/me", response_model=ReviewResponse | None)
+def get_my_review_for_event(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    review = (
+        db.query(Review)
+        .filter(
+            Review.reviewer_id == current_user.id,
+            Review.event_id == event_id,
+            Review.deleted_at.is_(None)
+        )
+        .first()
+    )
+    return review
 
 @router.get("/reviews", response_model=List[ReviewResponse])
 def admin_list_reviews(

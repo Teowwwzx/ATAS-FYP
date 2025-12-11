@@ -24,6 +24,7 @@ from app.models.event_model import (
     EventType,
     EventProposal,
     EventProposalComment,
+
 )
 from app.models.notification_model import Notification, NotificationType
 from app.services.email_service import (
@@ -57,6 +58,7 @@ from app.schemas.event_schema import (
     EventChecklistItemCreate,
     EventChecklistItemUpdate,
     EventChecklistItemResponse,
+
     EventProposalCreate,
     EventProposalResponse,
     EventProposalCommentCreate,
@@ -401,15 +403,15 @@ def create_event(
     - max_participant must be positive when provided
     """
     # Check Dashboard Pro requirement for multiple events
-    if not current_user.is_dashboard_pro:
-        existing_event_count = db.query(Event).filter(
-            Event.organizer_id == current_user.id
-        ).count()
-        if existing_event_count >= 1:
-            raise HTTPException(
-                status_code=403, 
-                detail="Dashboard Pro required to organize multiple events"
-            )
+    # if not current_user.is_dashboard_pro:
+    #     existing_event_count = db.query(Event).filter(
+    #         Event.organizer_id == current_user.id
+    #     ).count()
+    #     if existing_event_count >= 1:
+    #         raise HTTPException(
+    #             status_code=403, 
+    #             detail="Dashboard Pro required to organize multiple events"
+    #         )
     
     # Basic validations
     if not event.title or not event.title.strip():
@@ -3117,3 +3119,4 @@ def create_proposal_comment(
             pass
 
     return comment
+

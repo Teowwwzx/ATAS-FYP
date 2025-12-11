@@ -443,7 +443,12 @@ export const createReview = async (data: import('./api.types').ReviewCreate) => 
 }
 
 export const getReviewsByEvent = async (eventId: string) => {
-  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews`, { params: { event_id: eventId } })
+  const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/event/${eventId}`)
+  return response.data
+}
+
+export const getMyReview = async (eventId: string) => {
+  const response = await api.get<import('./api.types').ReviewResponse | null>(`/reviews/me`, { params: { event_id: eventId } })
   return response.data
 }
 

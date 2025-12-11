@@ -11,6 +11,7 @@ import { DashboardTabProposals } from './DashboardTabProposals'
 import { DashboardTabOverview } from './DashboardTabOverview'
 import { DashboardTabPeople } from './DashboardTabPeople'
 import { DashboardTabSettings } from './DashboardTabSettings'
+import { DashboardTabReviews } from './DashboardTabReviews'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { getNotifications, NotificationItem } from '@/services/api'
 import { EventPhase } from '@/lib/eventPhases'
@@ -55,6 +56,7 @@ export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: 
         { name: 'Files', id: 'files', hidden: !canViewProposals },
         { name: 'Checklist', id: 'checklist', hidden: !(isOrganizer || isCommittee) },
         { name: 'Settings', id: 'settings', hidden: !isOrganizer },
+        { name: 'Reviews', id: 'reviews', hidden: !(isOrganizer || isCommittee) },
     ]
 
     const tabs = allTabs.filter(t => !t.hidden)
@@ -163,6 +165,15 @@ export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: 
                         !allTabs[4].hidden && (
                             <Tab.Panel className="focus:outline-none">
                                 <DashboardTabSettings event={event} onUpdate={onUpdate} onDelete={onDelete} />
+                            </Tab.Panel>
+                        )
+                    }
+
+                    {/* 6. Reviews Tab */}
+                    {
+                        !allTabs.find(t => t.id === 'reviews')?.hidden && (
+                            <Tab.Panel className="focus:outline-none">
+                                <DashboardTabReviews event={event} />
                             </Tab.Panel>
                         )
                     }
