@@ -1,12 +1,13 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ProfileResponse, UserMeResponse, MyEventItem, OrganizationResponse } from '@/services/api.types'
+import { getReviewsByEvent } from '@/services/api'
 
 interface ProfileViewProps {
     profile: ProfileResponse
     userInfo: UserMeResponse | null
     events: MyEventItem[]
-    historyEvents?: any[] // Using any[] for now as it matches the state in parent
+    historyEvents?: any[]
     followers: any[]
     following: any[]
     isOwnProfile: boolean
@@ -31,6 +32,37 @@ export function ProfileView({
 }: ProfileViewProps) {
     const jobs = profile.job_experiences || []
     const educations = profile.educations || []
+
+    // Pagination for Events History
+    const [historyPage, setHistoryPage] = useState(0)
+    const [eventReviews, setEventReviews] = useState<Record<string, number>>({})
+    const HISTORY_PAGE_SIZE = 3
+    const totalHistoryPages = Math.ceil(historyEvents.length / HISTORY_PAGE_SIZE)
+
+    const visibleHistoryEvents = historyEvents.slice(
+        historyPage * HISTORY_PAGE_SIZE,
+        (historyPage + 1) * HISTORY_PAGE_SIZE
+    )
+
+    useEffect(() => {
+        const fetchReviews = async () => {
+            for (const evt of visibleHistoryEvents) {
+                const eid = evt.id || evt.event_id
+                if (!eid || eventReviews[eid] !== undefined) continue
+                try {
+                    const reviews = await getReviewsByEvent(eid)
+                    const count = reviews.length
+                    const avg = count > 0 ? reviews.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / count : 0
+                    setEventReviews(prev => ({ ...prev, [eid]: avg }))
+                } catch {
+                    setEventReviews(prev => ({ ...prev, [eid]: 0 }))
+                }
+            }
+        }
+        if (visibleHistoryEvents.length > 0) {
+            fetchReviews()
+        }
+    }, [visibleHistoryEvents])
 
     const renderOrgContent = (org: OrganizationResponse | undefined, fallbackText?: string) => {
         if (!org) return fallbackText || null
@@ -147,40 +179,87 @@ export function ProfileView({
                         </p>
                     </div>
 
-                    {/* Events History (NEW) */}
+                    {/* Events History (ENHANCED) */}
                     <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
-                        <h3 className="font-black text-xl text-zinc-900 mb-6 flex items-center justify-between">
-                            <span>Events History</span>
-                            {historyEvents.length > 0 && <span className="text-sm font-bold bg-zinc-100 text-zinc-600 px-3 py-1 rounded-full">{historyEvents.length}</span>}
-                        </h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-black text-xl text-zinc-900 flex items-center gap-3">
+                                <span>Events History</span>
+                                {historyEvents.length > 0 && <span className="text-sm font-bold bg-zinc-100 text-zinc-600 px-3 py-1 rounded-full">{historyEvents.length}</span>}
+                            </h3>
+                            {/* Pagination Arrows */}
+                            {totalHistoryPages > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setHistoryPage(p => Math.max(0, p - 1))}
+                                        disabled={historyPage === 0}
+                                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-yellow-400 hover:text-zinc-900 disabled:opacity-30 disabled:hover:bg-gray-100 transition-all"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                                    </button>
+                                    <button
+                                        onClick={() => setHistoryPage(p => Math.min(totalHistoryPages - 1, p + 1))}
+                                        disabled={historyPage === totalHistoryPages - 1}
+                                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-yellow-400 hover:text-zinc-900 disabled:opacity-30 disabled:hover:bg-gray-100 transition-all"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {historyEvents.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {historyEvents.map((evt: any) => {
+                            <div className="space-y-4">
+                                {visibleHistoryEvents.map((evt: any) => {
+                                    const eid = evt.id || evt.event_id
                                     const isOrganizer = userInfo && evt.organizer_id === userInfo.id
+                                    const rating = eventReviews[eid] || 0
+
                                     return (
-                                        <Link key={evt.id} href={`/events/${evt.id}`} className="group block bg-gray-50 hover:bg-white border border-gray-100 hover:border-yellow-400 p-4 rounded-2xl transition-all shadow-sm hover:shadow-md">
-                                            <div className="flex gap-4">
-                                                <div className="w-16 h-16 rounded-xl bg-gray-200 overflow-hidden flex-shrink-0">
+                                        <Link key={eid} href={`/events/${eid}`} className="group block bg-gray-50 hover:bg-white border border-gray-100 hover:border-yellow-400 p-0 rounded-2xl transition-all shadow-sm hover:shadow-lg overflow-hidden">
+                                            <div className="flex flex-col sm:flex-row h-full">
+                                                {/* Large Image Section */}
+                                                <div className="w-full sm:w-48 h-48 sm:h-auto bg-gray-200 relative overflow-hidden flex-shrink-0">
                                                     {evt.cover_url ? (
-                                                        <img src={evt.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={evt.title} />
+                                                        <img src={evt.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={evt.title} />
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-zinc-100">
+                                                            <svg className="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                            <span className="text-xs font-bold uppercase tracking-widest opacity-50">No Cover</span>
                                                         </div>
                                                     )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold text-zinc-900 group-hover:text-yellow-600 transition-colors truncate mb-1">{evt.title}</div>
-                                                    <div className="text-xs text-zinc-500 font-medium mb-2">
-                                                        {evt.start_datetime ? new Date(evt.start_datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
-                                                    </div>
-                                                    <div className="flex gap-2">
+                                                    <div className="absolute top-2 left-2 flex gap-1">
                                                         {isOrganizer ? (
-                                                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-md uppercase tracking-wide">Organizer</span>
+                                                            <span className="px-2 py-1 bg-yellow-400 text-zinc-900 text-[10px] font-black rounded shadow-sm uppercase tracking-wide">Organizer</span>
                                                         ) : (
-                                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md uppercase tracking-wide">Participant</span>
+                                                            <span className="px-2 py-1 bg-white/90 backdrop-blur-sm text-blue-600 text-[10px] font-black rounded shadow-sm uppercase tracking-wide">Participant</span>
                                                         )}
-                                                        {evt.status === 'ended' && <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-md uppercase tracking-wide">Ended</span>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="flex-1 p-5 flex flex-col justify-center">
+                                                    <div className="flex justify-between items-start gap-4">
+                                                        <h4 className="font-black text-xl text-zinc-900 group-hover:text-yellow-600 transition-colors leading-tight mb-2 line-clamp-2">{evt.title}</h4>
+                                                        {rating > 0 && (
+                                                            <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100 shrink-0">
+                                                                <svg className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                                                                <span className="font-bold text-sm text-yellow-700">{rating.toFixed(1)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 text-zinc-500 font-bold text-sm mb-4">
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        {evt.start_datetime ? new Date(evt.start_datetime).toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' }) : 'Date TBA'}
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between mt-auto">
+                                                        <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-md ${evt.status === 'ended' ? 'bg-gray-100 text-zinc-500' : 'bg-green-100 text-green-700'}`}>
+                                                            {evt.status}
+                                                        </span>
+                                                        <span className="text-sm font-bold text-yellow-500 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                                                            View Details <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
