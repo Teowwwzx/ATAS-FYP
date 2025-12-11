@@ -206,6 +206,11 @@ export const getEventById = async (id: string) => {
   return response.data
 }
 
+export const getMyParticipationSummary = async (id: string) => {
+  const response = await api.get<import('./api.types').EventParticipationSummary>(`/events/${id}/me`)
+  return response.data
+}
+
 export const getProfileByUserId = async (userId: string) => {
   const response = await api.get<import('./api.types').ProfileResponse>(`/profiles/${userId}`)
   return response.data

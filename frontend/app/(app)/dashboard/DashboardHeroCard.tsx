@@ -1,16 +1,20 @@
 'use client'
 
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import Image from 'next/image'
 import { EventDetails } from '@/services/api.types'
 import { format } from 'date-fns'
+import { updateEventCover } from '@/services/api'
+import { toast } from 'react-hot-toast'
 
 interface DashboardHeroCardProps {
     event: EventDetails
     onPreview?: () => void
+    canEditCover?: boolean
+    onCoverUpdated?: () => void
 }
 
-export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) {
+export function DashboardHeroCard({ event, onPreview, canEditCover, onCoverUpdated }: DashboardHeroCardProps) {
     const startDate = new Date(event.start_datetime)
     const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
     const pickCover = () => {
@@ -22,6 +26,25 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
     }
     const coverUrl = pickCover()
+    const fileRef = useRef<HTMLInputElement>(null)
+    const [uploading, setUploading] = useState(false)
+
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        e.target.value = ''
+        setUploading(true)
+        const tid = toast.loading('Updating cover...')
+        try {
+            await updateEventCover(event.id, file)
+            toast.success('Cover updated', { id: tid })
+            onCoverUpdated && onCoverUpdated()
+        } catch {
+            toast.error('Failed to update cover', { id: tid })
+        } finally {
+            setUploading(false)
+        }
+    }
 
     return (
         <div
@@ -38,7 +61,6 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
             {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
 
-            {/* Badges - Top Right */}
             <div className="absolute top-8 right-8 z-20 flex gap-3">
                 <span className="px-4 py-1.5 rounded-full bg-zinc-900/40 text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg capitalize">
                     {event.format.replace('_', ' ')}
@@ -47,6 +69,17 @@ export function DashboardHeroCard({ event, onPreview }: DashboardHeroCardProps) 
                     }`}>
                     {event.type}
                 </span>
+                {canEditCover && (
+                    <>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); fileRef.current?.click() }}
+                            className="px-3 py-1.5 bg-white/20 text-white font-bold text-sm rounded-xl hover:bg-white/30 border border-white/30"
+                        >
+                            {uploading ? 'Updating...' : 'Change Cover'}
+                        </button>
+                        <input ref={fileRef} type="file" className="hidden" accept="image/*" onChange={handleFile} />
+                    </>
+                )}
             </div>
 
             {/* Content */}

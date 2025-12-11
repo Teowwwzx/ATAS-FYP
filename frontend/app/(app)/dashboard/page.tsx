@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe, publishEvent } from '@/services/api'
+import React, { useEffect, useState, Suspense } from 'react'
+import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe, publishEvent, unpublishEvent } from '@/services/api'
 import { EventDetails, ProfileResponse, UserMeResponse, EventInvitationResponse, MyEventItem } from '@/services/api.types'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -14,7 +14,7 @@ import { EventInviteModal } from './EventInviteModal'
 import { EventPreviewModal } from './EventPreviewModal'
 import { DashboardEventList } from './DashboardEventList'
 
-export default function DashboardPage() {
+function DashboardPageInner() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const urlEventId = searchParams.get('eventId')
@@ -239,20 +239,17 @@ export default function DashboardPage() {
                                 </div>
                             )}
 
-                            {/* Divider & My Events (Only show if organized events exist) */}
-                            {events.some(e => e.my_role === 'organizer') && (
-                                <>
-                                    <div className="border-t border-zinc-100 pt-8" />
-                                    <DashboardEventList
-                                        events={events}
-                                        user={user}
-                                        me={me}
-                                        onSelect={(e) => setSelectedEventId(e.event_id)}
-                                        onCreate={() => router.push('/events/create')}
-                                        onProUpgrade={fetchData}
-                                    />
-                                </>
-                            )}
+                            <>
+                                <div className="border-t border-zinc-100 pt-8" />
+                                <DashboardEventList
+                                    events={events}
+                                    user={user}
+                                    me={me}
+                                    onSelect={(e) => setSelectedEventId(e.event_id)}
+                                    onCreate={() => router.push('/events/create')}
+                                    onProUpgrade={fetchData}
+                                />
+                            </>
                         </div>
                     </>
                 ) : (
@@ -286,13 +283,25 @@ export default function DashboardPage() {
                                     <button
                                         onClick={async () => {
                                             if (!nextEvent) return
-                                            if (confirm('Are you ready to publish this event?')) {
-                                                try {
-                                                    await publishEvent(nextEvent.id)
-                                                    toast.success('Event Published!')
-                                                    fetchData()
-                                                } catch (e) {
-                                                    toast.error('Failed to publish event')
+                                            if (nextEvent.status === 'published') {
+                                                if (confirm('Unpublish this event? It will be hidden from Discover.')) {
+                                                    try {
+                                                        await unpublishEvent(nextEvent.id)
+                                                        toast.success('Event Unpublished')
+                                                        fetchData()
+                                                    } catch (e) {
+                                                        toast.error('Failed to unpublish event')
+                                                    }
+                                                }
+                                            } else {
+                                                if (confirm('Are you ready to publish this event?')) {
+                                                    try {
+                                                        await publishEvent(nextEvent.id)
+                                                        toast.success('Event Published!')
+                                                        fetchData()
+                                                    } catch (e) {
+                                                        toast.error('Failed to publish event')
+                                                    }
                                                 }
                                             }
                                         }}
@@ -301,7 +310,7 @@ export default function DashboardPage() {
                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                         </svg>
-                                        Publish
+                                        {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
                                     </button>
                                 </div>
                             )}
@@ -313,6 +322,8 @@ export default function DashboardPage() {
                                 <DashboardHeroCard
                                     event={nextEvent}
                                     onPreview={() => setIsPreviewOpen(true)}
+                                    canEditCover={user?.user_id === nextEvent.organizer_id}
+                                    onCoverUpdated={() => fetchEventDetails(selectedEventId!)}
                                 />
 
                                 <DashboardTabs
@@ -344,5 +355,13 @@ export default function DashboardPage() {
 
             </div>
         </div>
+    )
+}
+
+export default function DashboardPage() {
+    return (
+        <Suspense fallback={<div className="max-w-5xl mx-auto px-4 py-12"><Skeleton height="400px" className="rounded-[2.5rem]" /></div>}>
+            <DashboardPageInner />
+        </Suspense>
     )
 }

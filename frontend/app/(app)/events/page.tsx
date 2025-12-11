@@ -30,7 +30,7 @@ export default function EventsPage() {
     }
 
     const filteredEvents = events
-        .filter((event) => event.visibility === 'public' && event.status === 'published' && event.registration_status === 'opened')
+        .filter((event) => event.registration_status === 'opened')
         .filter((event) => event.title.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const formatDate = (dateString: string) => {

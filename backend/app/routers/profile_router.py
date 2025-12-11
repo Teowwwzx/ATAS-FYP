@@ -449,25 +449,25 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
     desired_role = onboarding_data.role
 
     # --- AI Embedding Logic (Merged) ---
-    try:
-        from app.services.ai_service import generate_text_embedding, _vec_to_pg
-        src = f"{db_profile.full_name}\n{db_profile.bio or ''}\navailability:{db_profile.availability or ''}"
-        # Only generating if bio is substantial or for experts, but user logic applies generally
-        vec = generate_text_embedding(src)
-        if vec:
-            emb = _vec_to_pg(vec)
-            # Ensure table exists - we kept expert_embeddings
-            up = text(
-                """
-                INSERT INTO expert_embeddings(user_id, embedding, source_text)
-                VALUES (:uid, CAST(:emb AS vector), :src)
-                ON CONFLICT (user_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
-                """
-            )
-            db.execute(up, {"uid": current_user.id, "emb": emb, "src": src})
-            # db.commit() # Merged transaction down below
-    except Exception as e:
-        print(f"Embedding failed: {e}")
+    # Only create embeddings when the selected role is 'expert'
+    if desired_role == 'expert':
+        try:
+            from app.services.ai_service import generate_text_embedding, _vec_to_pg
+            src = f"{db_profile.full_name}\n{db_profile.bio or ''}\navailability:{db_profile.availability or ''}"
+            vec = generate_text_embedding(src)
+            if vec:
+                emb = _vec_to_pg(vec)
+                up = text(
+                    """
+                    INSERT INTO expert_embeddings(user_id, embedding, source_text)
+                    VALUES (:uid, CAST(:emb AS vector), :src)
+                    ON CONFLICT (user_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+                    """
+                )
+                db.execute(up, {"uid": current_user.id, "emb": emb, "src": src})
+        except Exception as e:
+            print(f"Embedding failed: {e}")
+            db.rollback()
     # -----------------------------------------------
 
     # --- Welcome Notification ---

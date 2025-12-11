@@ -64,6 +64,7 @@ from app.schemas.event_schema import (
     EventProposalUpdate,
     EventProposalCommentUpdate,
     EventInvitationResponse,
+    EventParticipationSummary,
 )
 from typing import List
 from sqlalchemy import text
@@ -181,6 +182,8 @@ def get_all_events(
     page: int = 1,
     page_size: int = 20,
     include_all_visibility: bool = False, # New param
+    status: EventStatus | None = Query(None),
+    include_all_status: bool = False,
 ):
     query = db.query(Event)
     # Exclude soft-deleted events
@@ -198,6 +201,13 @@ def get_all_events(
     if include_all_visibility:
         if visibility is not None:
              query = query.filter(Event.visibility == visibility)
+
+    # Default: only published events, unless explicitly requesting otherwise
+    if not include_all_status:
+        if status is None:
+            query = query.filter(Event.status == EventStatus.published)
+        else:
+            query = query.filter(Event.status == status)
     
     if upcoming:
         query = query.filter(Event.start_datetime >= func.now())
@@ -427,15 +437,15 @@ def create_event(
     # Default venue to APU if not provided
     venue_place_id = event.venue_place_id if event.venue_place_id else DEFAULT_APU_PLACE_ID
 
+    # Avoid duplicate/unknown kwargs when constructing the ORM model
+    payload = event.model_dump(exclude={"start_datetime", "end_datetime", "type", "venue_place_id"})
     db_event = Event(
-        **event.model_dump(),
+        **payload,
         organizer_id=current_user.id,
-        created_by_user_id=current_user.id,
         start_datetime=sd,
         end_datetime=ed,
-        is_published=False, # Draft by default
         type=derived_type,
-        venue_place_id=venue_place_id
+        venue_place_id=venue_place_id,
     )
 
     db.add(db_event)
@@ -447,8 +457,7 @@ def create_event(
         event_id=db_event.id,
         user_id=current_user.id,
         role=EventParticipantRole.organizer,
-        status=EventParticipantStatus.accepted,
-        created_by_user_id=current_user.id
+        status=EventParticipantStatus.accepted
     )
     db.add(organizer_participant)
     
@@ -559,7 +568,7 @@ def publish_event(
             db.execute(up, {"eid": event.id, "emb": emb, "src": src})
             db.commit()
     except Exception:
-        pass
+        db.rollback()
     log_admin_action(db, current_user.id, "event.publish", "event", event.id)
     return event
 
@@ -743,6 +752,24 @@ def get_event_details(
 
     raise HTTPException(status_code=403, detail="This event is private")
 
+
+@router.get("/events/{event_id}/me", response_model=EventParticipationSummary)
+def get_my_participation_summary(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    event = db.query(Event).filter(Event.id == event_id, Event.deleted_at.is_(None)).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    link = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
+        .first()
+    )
+    if link is None:
+        return EventParticipationSummary(is_participant=False, my_role=None, my_status=None)
+    return EventParticipationSummary(is_participant=True, my_role=link.role, my_status=link.status)
 
 @router.get("/events/{event_id}/participants", response_model=List[EventParticipantDetails])
 def list_event_participants(

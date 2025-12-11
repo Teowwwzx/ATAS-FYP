@@ -43,6 +43,7 @@ export default function ProfilePage() {
     const [addingEdu, setAddingEdu] = useState(false)
     const [addingJob, setAddingJob] = useState(false)
     const [formData, setFormData] = useState<ProfileUpdate>({})
+    const [dismissIncomplete, setDismissIncomplete] = useState(false)
 
     const avatarInputRef = useRef<HTMLInputElement>(null)
     const coverInputRef = useRef<HTMLInputElement>(null)
@@ -440,7 +441,7 @@ export default function ProfilePage() {
                             )}
 
                             {/* Profile Completion Banner */}
-                            {isProfileIncomplete && (
+                            {isProfileIncomplete && !dismissIncomplete && (
                                 <div className="mb-8 bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-[2rem] p-6 shadow-sm text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn border border-zinc-800">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
@@ -461,12 +462,20 @@ export default function ProfilePage() {
                                             {(profile.educations?.length === 0 && profile.job_experiences?.length === 0) && <span className="px-3 py-1 bg-white/10 text-yellow-400 text-xs font-bold rounded-lg border border-white/5">Add Experience</span>}
                                         </div>
                                     </div>
-                                    <button 
-                                        onClick={() => setEditing(true)}
-                                        className="px-6 py-3 bg-yellow-400 text-zinc-900 text-sm font-bold rounded-xl hover:bg-yellow-300 transition-colors whitespace-nowrap shadow-lg shadow-yellow-400/20"
-                                    >
-                                        Complete Now
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={() => setEditing(true)}
+                                            className="px-6 py-3 bg-yellow-400 text-zinc-900 text-sm font-bold rounded-xl hover:bg-yellow-300 transition-colors whitespace-nowrap shadow-lg shadow-yellow-400/20"
+                                        >
+                                            Complete Now
+                                        </button>
+                                        <button
+                                            onClick={() => setDismissIncomplete(true)}
+                                            className="px-6 py-3 bg-white/10 border border-white/20 text-white text-sm font-bold rounded-xl hover:bg-white/20 transition-colors whitespace-nowrap"
+                                        >
+                                            Dismiss
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
@@ -681,9 +690,9 @@ export default function ProfilePage() {
                             <div className="space-y-8">
                             {/* Basic Info */}
                             <form onSubmit={handleSave} className="space-y-8">
-                                <div id="section-basic" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-                                    <h3 className="text-2xl font-black text-zinc-900 mb-6">Basic Info</h3>
-                                    <div className="space-y-6">
+                        <div id="section-basic" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <h3 className="text-2xl font-black text-zinc-900 mb-6">Basic Info</h3>
+                            <div className="space-y-6">
                                         <div>
                                             <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Full Name</label>
                                             <input
@@ -767,18 +776,34 @@ export default function ProfilePage() {
                                                 placeholder="e.g. Open to offers"
                                             />
                                         </div>
-                                        <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
-                                            <input
-                                                type="checkbox"
-                                                id="can_be_speaker"
-                                                checked={formData.can_be_speaker || false}
-                                                onChange={(e) => setFormData({ ...formData, can_be_speaker: e.target.checked })}
-                                                className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300"
-                                            />
-                                            <label htmlFor="can_be_speaker" className="font-bold text-zinc-900">I am open to being a speaker</label>
-                                        </div>
-                                    </div>
+                                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
+                                    <input
+                                        type="checkbox"
+                                        id="can_be_speaker"
+                                        checked={formData.can_be_speaker || false}
+                                        onChange={(e) => setFormData({ ...formData, can_be_speaker: e.target.checked })}
+                                        className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300"
+                                    />
+                                    <label htmlFor="can_be_speaker" className="font-bold text-zinc-900">I am open to being a speaker</label>
                                 </div>
+                            </div>
+                            <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditing(false)}
+                                    className="px-5 py-2.5 bg-white border border-gray-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 disabled:opacity-50"
+                                >
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </div>
                             </form>
 
                             {/* Education Management */}

@@ -78,6 +78,12 @@ class EventDetails(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EventParticipationSummary(BaseModel):
+    is_participant: bool
+    my_role: EventParticipantRole | None = None
+    my_status: EventParticipantStatus | None = None
+
+
 class EventParticipantDetails(BaseModel):
     id: uuid.UUID
     event_id: uuid.UUID

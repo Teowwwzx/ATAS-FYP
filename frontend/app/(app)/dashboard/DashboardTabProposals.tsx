@@ -154,6 +154,7 @@ function InviteProposalModal({ proposal, eventId, isOpen, onClose }: { proposal:
     const [results, setResults] = useState<ProfileResponse[]>([])
     const [searching, setSearching] = useState(false)
     const [inviting, setInviting] = useState<string | null>(null)
+    const [selectedRole, setSelectedRole] = useState<'speaker' | 'sponsor'>('speaker')
 
     useEffect(() => {
         if (!search.trim()) {
@@ -175,7 +176,7 @@ function InviteProposalModal({ proposal, eventId, isOpen, onClose }: { proposal:
         try {
             await inviteEventParticipants(eventId, [{
                 user_id: userId,
-                role: 'speaker', // Default to speaker for proposal invites? Or generic? Defaulting to speaker for now as context implies "Expert"
+                role: selectedRole,
                 proposal_id: proposal.id
             }])
             toast.success('Invitation sent with proposal attached!')
@@ -200,6 +201,18 @@ function InviteProposalModal({ proposal, eventId, isOpen, onClose }: { proposal:
                             </Dialog.Title>
                             <div className="mb-4">
                                 <p className="text-sm text-zinc-500">Proposal: <span className="font-semibold">{proposal.title}</span></p>
+                            </div>
+
+                            <div className="flex items-center gap-3 mb-4">
+                                <label className="text-sm font-bold text-zinc-700">Invite as</label>
+                                <select
+                                    value={selectedRole}
+                                    onChange={(e) => setSelectedRole(e.target.value as any)}
+                                    className="px-3 py-2 rounded-lg border border-zinc-200 text-sm bg-zinc-50 focus:bg-white focus:border-yellow-400"
+                                >
+                                    <option value="speaker">Speaker</option>
+                                    <option value="sponsor">Sponsor</option>
+                                </select>
                             </div>
 
                             <input
@@ -462,7 +475,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
 
                                     <div className="p-4 bg-zinc-50 border-t border-zinc-100 flex gap-2">
                                         <button
-                                            onClick={() => setPreviewUrl(item.file_url)}
+                                            onClick={() => setPreviewUrl(item.file_url ?? null)}
                                             className="flex-1 px-4 py-2 bg-white border border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-sm"
                                         >
                                             View PDF
@@ -538,7 +551,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                                 type="text"
                                                 className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all"
                                                 placeholder="e.g. Sponsor Deck V1"
-                                                value={uploadForm.title}
+                                                value={uploadForm.title ?? ''}
                                                 onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                                             />
                                         </div>
@@ -547,7 +560,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                             <textarea
                                                 className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all resize-none h-24"
                                                 placeholder="Brief description..."
-                                                value={uploadForm.description}
+                                                value={uploadForm.description ?? ''}
                                                 onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                                             />
                                         </div>

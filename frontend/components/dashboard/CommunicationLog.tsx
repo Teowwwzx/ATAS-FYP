@@ -109,12 +109,12 @@ export function CommunicationLog({ conversationId, organizerName, currentUserId 
                         const isMe = msg.sender_id === currentUserId;
                         return (
                             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${isMe
-                                        ? 'bg-zinc-900 text-white rounded-br-none'
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${isMe
+                                        ? 'bg-zinc-800 text-white rounded-br-none'
                                         : 'bg-white border border-zinc-200 text-zinc-800 rounded-bl-none shadow-sm'
                                     }`}>
                                     <p className="whitespace-pre-wrap">{msg.content}</p>
-                                    <div className={`text-[10px] mt-1 ${isMe ? 'text-zinc-400' : 'text-zinc-400'} text-right`}>
+                                    <div className={`text-[11px] mt-1 ${isMe ? 'text-zinc-300' : 'text-zinc-500'} text-right`}>
                                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
@@ -132,7 +132,7 @@ export function CommunicationLog({ conversationId, organizerName, currentUserId 
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 resize-none max-h-32 min-h-[50px]"
+                        className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-yellow-400/50 resize-none max-h-32 min-h-[50px]"
                         rows={1}
                     />
                     <button

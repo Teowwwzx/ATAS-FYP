@@ -80,6 +80,13 @@ app.include_router(taxonomy_router.router, prefix="/api/v1", tags=["Taxonomy"])
 from app.routers import chat_router
 app.include_router(chat_router.router, prefix="/api/v1", tags=["Chat"])
 
+# Ensure pgvector extension and embeddings tables exist in development/runtime
+try:
+    from app.database.apply_pgvector_embeddings import main as ensure_pgvector
+    ensure_pgvector()
+except Exception as e:
+    logger.warning(f"pgvector setup skipped: {e}")
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the ATAS API!"}

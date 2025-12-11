@@ -27,6 +27,17 @@ export default function LoginPage() {
         if (token) {
             router.replace('/dashboard')
         }
+        try {
+            const pendingEmail = localStorage.getItem('pending_login_email')
+            if (pendingEmail) {
+                setEmail(pendingEmail)
+            }
+            const verified = localStorage.getItem('email_verified')
+            if (verified) {
+                toast.success('Email verified! Please login to continue.')
+                localStorage.removeItem('email_verified')
+            }
+        } catch { }
     }, [router])
 
     // Timer effect
@@ -72,6 +83,7 @@ export default function LoginPage() {
             // Check if error is related to inactive/unverified account
             // Backend returns: "User is not active. Please verify your email."
             if (error.response?.status === 400 && message.toLowerCase().includes('not active')) {
+                try { localStorage.setItem('pending_login_email', email) } catch {}
                 setShowVerificationModal(true)
             } else {
                 toast.error(message, { id: 'login-error' })
@@ -95,6 +107,7 @@ export default function LoginPage() {
             await resendVerification(email)
             toast.success('Verification email sent! Please check your inbox.')
             setCountdown(60) // Start 60s cooldown
+            try { localStorage.setItem('pending_login_email', email) } catch { }
             // setShowVerificationModal(false) 
         } catch (error) {
             toast.error(getApiErrorMessage(error, 'Failed to resend email'))

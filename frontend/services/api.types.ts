@@ -253,14 +253,20 @@ export interface EventParticipantDetails {
     id: string
     event_id: string
     user_id: string
-    role: string
-    description?: string
+    role: EventParticipantRole
+    description?: string | null
     join_method?: string
     status: 'pending' | 'accepted' | 'rejected'
     created_at: string
     updated_at?: string
     conversation_id?: string
     proposal_id?: string
+}
+
+export interface EventParticipationSummary {
+  is_participant: boolean
+  my_role?: EventParticipantRole | null
+  my_status?: 'pending' | 'accepted' | 'rejected' | 'attended' | 'absent' | null
 }
 
 export interface EventParticipantResponseUpdate {
@@ -642,8 +648,8 @@ export interface EventInvitationResponse {
 
 export interface EventParticipantCreate {
     user_id: string
-    role: string
-    description?: string
+    role: EventParticipantRole
+    description?: string | null
     proposal_id?: string
 }
 
@@ -651,8 +657,8 @@ export interface EventParticipantDetails {
     id: string
     event_id: string
     user_id: string
-    role: string
-    description?: string
+    role: EventParticipantRole
+    description?: string | null
     join_method?: string
     status: 'pending' | 'accepted' | 'rejected'
     created_at: string

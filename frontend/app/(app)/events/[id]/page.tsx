@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventParticipants, getEventAttendanceStats, setEventReminder, getPublicOrganizations, getReviewsByEvent } from '@/services/api'
+import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary } from '@/services/api'
 import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -102,10 +102,10 @@ export default function EventDetailsPage() {
             setUser(userData)
             if (userData) {
                 try {
-                    const participants = await getEventParticipants(id)
-                    const mine = participants.find(p => p.user_id === userData.id)
-                    setIsParticipant(!!mine)
-                    setIsJoinedAccepted(!!mine && mine.status === 'accepted')
+                    // Use the more efficient getMyParticipationSummary API instead of getEventParticipants
+                    const summary = await getMyParticipationSummary(id)
+                    setIsParticipant(!!summary?.is_participant)
+                    setIsJoinedAccepted(summary?.my_status === 'accepted' || summary?.my_status === 'attended')
                 } catch {
                     setIsParticipant(false)
                     setIsJoinedAccepted(false)
@@ -160,6 +160,27 @@ export default function EventDetailsPage() {
         }
     }
 
+    const handleShare = async () => {
+        try {
+            const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+            const data = {
+                title: event?.title || 'Event',
+                text: event?.description || 'Check out this event',
+                url: shareUrl,
+            }
+            // @ts-ignore
+            if (navigator.share) {
+                // @ts-ignore
+                await navigator.share(data)
+            } else if (navigator.clipboard && shareUrl) {
+                await navigator.clipboard.writeText(shareUrl)
+                toast.success('Link copied to clipboard')
+            }
+        } catch {
+            toast.error('Unable to share right now')
+        }
+    }
+
     if (loading) {
         return (
             <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -181,128 +202,45 @@ export default function EventDetailsPage() {
     const isEnded = now > new Date(event.end_datetime)
     const isFull = !!(event.max_participant && (stats?.total_participants || 0) >= event.max_participant)
 
-    const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
-    const pickCover = () => {
-        const url = event.cover_url || ''
-        try {
-            const u = new URL(url)
-            if (allowedHosts.has(u.hostname)) return url
-        } catch { }
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
-    }
-    const coverUrl = pickCover()
-    // For now, let's assume getEventById might return 'is_participant' or similar if the backend supports it, 
-    // OR we ignore the "Unregister" button state for MVP if the data isn't easily available without another call.
-    // Actually, createEvent returns EventDetails. 
-
-    // Let's rely on basic display first.
-
-
-    const handleShare = async () => {
-        try {
-            const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
-            const data = {
-                title: event.title,
-                text: event.description || 'Check out this event',
-                url: shareUrl,
-            }
-            // @ts-ignore
-            if (navigator.share) {
-                // @ts-ignore
-                await navigator.share(data)
-            } else if (navigator.clipboard && shareUrl) {
-                await navigator.clipboard.writeText(shareUrl)
-                toast.success('Link copied to clipboard')
-            }
-        } catch {
-            toast.error('Unable to share right now')
-        }
-    }
-
     return (
-        <div className="w-full min-h-screen bg-white">
-            <DashboardHeroCard event={event} />
+        <div className="w-full min-h-screen bg-zinc-50 pt-8 pb-12">
+            <div className="max-w-[95%] xl:max-w-screen-2xl mx-auto px-4 md:px-8">
+                {/* Hero Card Section - Using DashboardHeroCard component */}
+                <DashboardHeroCard event={event} />
 
-            {/* Meta Bar */}
-            <div className="max-w-7xl mx-auto px-6 md:px-12 mt-6">
-                <div className="flex flex-wrap items-center gap-4">
-                    <div className="px-4 py-2 rounded-full bg-white border border-zinc-200 text-zinc-700 text-sm font-bold shadow-sm flex items-center gap-2">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span>Participants:</span>
-                        <span className="text-zinc-900">{stats?.total_participants || 0}</span>
-                        <span className="text-zinc-400">/ {event.max_participant ? event.max_participant : '∞'}</span>
-                    </div>
-
-                    {/* Content */}
-                    <div className="relative z-10 p-8 md:p-16 w-full max-w-7xl mx-auto">
-                        <div className="space-y-6">
-                            <div className="bg-yellow-400 text-zinc-900 inline-block px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider shadow-lg transform -rotate-1">
-                                Public Event
-                            </div>
-                            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-[0.9] tracking-tight shadow-sm max-w-5xl">
-                                {event.title}
-                            </h1>
-
-                            <div className="flex flex-wrap items-center gap-8 text-zinc-200 font-medium text-lg md:text-xl pt-4">
-                                <div className="flex items-center gap-3 bg-black/30 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
-                                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                    {new Date(event.start_datetime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                                    <span className="w-1 h-1 bg-zinc-500 rounded-full"></span>
-                                    {new Date(event.start_datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                                </div>
-
-                                {(event.venue_remark || event.venue_place_id) ? (
-                                    <div className="flex items-center gap-3 bg-black/30 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
-                                        <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        <span className="truncate max-w-[300px]">{event.venue_remark || event.venue_place_id}</span>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-3 bg-black/30 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10">
-                                        <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        <span>{event.type === 'online' ? 'Online Event' : 'Venue TBA'}</span>
-                                    </div>
-                                )}
-                            </div>
-                    <div className="px-4 py-2 rounded-full bg-white border border-zinc-200 text-zinc-700 text-sm font-bold shadow-sm flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${event.registration_status === 'opened' ? 'bg-green-500' : 'bg-zinc-400'}`}></span>
-                        <span>Registration: </span>
-                        <span className="capitalize text-zinc-900">{event.registration_status || 'closed'}</span>
-                    </div>
-
-                    {event.venue_remark && (
+                {/* Meta Bar with Stats and Share Button */}
+                <div className="mt-6 flex flex-wrap items-center gap-4 justify-between">
+                    <div className="flex flex-wrap items-center gap-4">
                         <div className="px-4 py-2 rounded-full bg-white border border-zinc-200 text-zinc-700 text-sm font-bold shadow-sm flex items-center gap-2">
-                            <svg className="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                            <span className="truncate max-w-[240px]">{event.venue_remark}</span>
+                            <span>Participants:</span>
+                            <span className="text-zinc-900">{stats?.total_participants || 0}</span>
+                            <span className="text-zinc-400">/ {event.max_participant ? event.max_participant : '∞'}</span>
                         </div>
-                    )}
 
+                        <div className="px-4 py-2 rounded-full bg-white border border-zinc-200 text-zinc-700 text-sm font-bold shadow-sm flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${event.registration_status === 'opened' ? 'bg-green-500' : 'bg-zinc-400'}`}></span>
+                            <span>Registration: </span>
+                            <span className="capitalize text-zinc-900">{event.registration_status || 'closed'}</span>
+                        </div>
+                    </div>
+
+                    {/* Share Button */}
                     <button
                         onClick={handleShare}
-                        className="ml-auto px-4 py-2 rounded-full bg-zinc-900 text-white text-sm font-bold shadow-sm hover:bg-zinc-800 flex items-center gap-2"
+                        className="px-4 py-2 rounded-full bg-zinc-900 text-white text-sm font-bold shadow-sm hover:bg-zinc-800 flex items-center gap-2 transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4m0 0L8 6m4-4v12" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
                         Share
                     </button>
                 </div>
-            </div>
 
-            {/* Main Content Area */}
-            <div className="max-w-7xl mx-auto px-6 md:px-12 py-16">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+                {/* Main Content Area */}
+                <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
 
                     {/* Left Column: Description & Details (Span 8) */}
                     <div className="lg:col-span-8 space-y-12">
@@ -386,41 +324,27 @@ export default function EventDetailsPage() {
                                         {event.registration_type === 'paid' && (
                                             <div className="flex items-baseline justify-between">
                                                 <span className="text-zinc-400 font-bold uppercase tracking-wider text-xs">Price</span>
-                                                <span className="text-2xl font-black text-zinc-900 tracking-tight">$$$</span>
+                                                <span className="text-4xl font-black text-zinc-900 tracking-tight">$$$</span>
                                             </div>
                                         )}
-                                        {!isParticipant ? (
-                                            <>
-                                                <button
-                                                    onClick={handleJoin}
-                                                    disabled={registering || !isPublished || !isRegistrationOpen || isEnded || isFull}
-                                                    className="block w-full py-4 bg-yellow-400 text-zinc-900 rounded-2xl font-bold text-center text-lg hover:bg-yellow-300 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-70 disabled:transform-none"
-                                                >
-                                                    {registering
-                                                        ? 'Registering...'
-                                                        : (!isPublished
-                                                            ? 'Not Published'
-                                                            : (!isRegistrationOpen
-                                                                ? 'Registration Closed'
-                                                                : (isEnded
-                                                                    ? 'Event Ended'
-                                                                    : (isFull ? 'Event Full' : 'Register Now'))))}
-                                                </button>
-                                                {(isEnded || isFull) && (
-                                                    <div className="text-xs text-zinc-500 font-medium text-center">
-                                                        {isEnded ? 'This event has ended.' : 'Capacity reached.'}
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
+
+                                        {isParticipant ? (
                                             <div className="space-y-3">
-                                                <button
-                                                    onClick={handleLeave}
-                                                    disabled={registering}
-                                                    className="block w-full py-4 bg-white text-zinc-900 border border-zinc-200 rounded-2xl font-bold text-center text-lg hover:bg-zinc-50 transition-all shadow-sm disabled:opacity-70"
-                                                >
-                                                    Cancel Registration
-                                                </button>
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        className="flex-1 py-4 bg-zinc-200 text-zinc-700 rounded-2xl font-bold text-center text-lg cursor-default"
+                                                        disabled
+                                                    >
+                                                        Joined
+                                                    </button>
+                                                    <button
+                                                        onClick={handleLeave}
+                                                        disabled={registering}
+                                                        className="px-4 py-4 bg-white border border-zinc-200 text-zinc-700 rounded-2xl font-bold hover:bg-zinc-50 disabled:opacity-70"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
                                                 <div className="text-xs text-zinc-600 font-medium text-center">
                                                     {isJoinedAccepted ? 'Status: accepted' : 'Status: pending approval'}
                                                 </div>
@@ -444,6 +368,14 @@ export default function EventDetailsPage() {
                                                     </button>
                                                 )}
                                             </div>
+                                        ) : (
+                                            <button
+                                                onClick={handleJoin}
+                                                disabled={registering}
+                                                className="block w-full py-4 bg-yellow-400 text-zinc-900 rounded-2xl font-bold text-center text-lg hover:bg-yellow-300 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-70 disabled:transform-none"
+                                            >
+                                                {registering ? 'Registering...' : 'Register Now'}
+                                            </button>
                                         )}
                                     </div>
                                 )}
@@ -459,89 +391,95 @@ export default function EventDetailsPage() {
 
                             {/* Organizer Section */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">Organizer</h3>
-                                <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-lg shrink-0 border border-zinc-100">
-                                        {event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
+                                <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest px-1">Organizer</h3>
+                                <Link href={`/profile/${event.organizer_id}`} className="block group">
+                                    <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4 group-hover:border-yellow-400 transition-colors">
+                                        <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-lg shrink-0 border border-zinc-100 overflow-hidden">
+                                            {/* Ideally fetch organizer details or use placeholder */}
+                                            ?
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-bold text-zinc-900 text-base truncate group-hover:text-yellow-600 transition-colors">Event Host</div>
+                                            <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
+                                        </div>
+                                        <div className="ml-auto w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 flex items-center justify-center group-hover:bg-yellow-100 group-hover:text-yellow-600 transition-colors">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </div>
                                     </div>
-                            <div className="min-w-0">
-                                <div className="font-bold text-zinc-900 text-base truncate">Event Host</div>
-                                <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
-                            </div>
-                            <button className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                            </button>
-                        </div>
-
-                        {hostOrg && (
-                            <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center overflow-hidden">
-                                    {hostOrg.logo_url ? (
-                                        <img src={hostOrg.logo_url} alt={hostOrg.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="text-zinc-900 font-bold">{hostOrg.name.charAt(0)}</div>
-                                    )}
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="font-bold text-zinc-900 text-base truncate">{hostOrg.name}</div>
-                                    {hostOrg.type && (
-                                        <div className="text-xs text-zinc-500 font-medium uppercase tracking-wider truncate">{hostOrg.type}</div>
-                                    )}
-                                </div>
-                                <Link href={`/organizations/${hostOrg.id}`} className="ml-auto px-3 py-1 rounded-full bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800">
-                                    View Organization
                                 </Link>
+
+                                {/* Host Organization Card */}
+                                {hostOrg && (
+                                    <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center overflow-hidden">
+                                            {hostOrg.logo_url ? (
+                                                <img src={hostOrg.logo_url} alt={hostOrg.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="text-zinc-900 font-bold">{hostOrg.name.charAt(0)}</div>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="font-bold text-zinc-900 text-base truncate">{hostOrg.name}</div>
+                                            {hostOrg.type && (
+                                                <div className="text-xs text-zinc-500 font-medium uppercase tracking-wider truncate">{hostOrg.type}</div>
+                                            )}
+                                        </div>
+                                        <Link href={`/organizations/${hostOrg.id}`} className="ml-auto px-3 py-1 rounded-full bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 shrink-0">
+                                            View Organization
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Location Map */}
-            {event.type !== 'online' && event.venue_place_id && (
-                <div className="max-w-7xl mx-auto px-6 md:px-12 pb-12">
-                    <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest mb-3">Location</h3>
-                    <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-sm overflow-hidden">
-                        <div className="h-[300px] w-full">
-                            {isLoaded && mapCenter ? (
-                                <GoogleMap
-                                    mapContainerStyle={{ width: '100%', height: '100%' }}
-                                    center={mapCenter}
-                                    zoom={15}
-                                >
-                                    <Marker position={mapCenter} />
-                                </GoogleMap>
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-zinc-500 font-medium">Loading map…</div>
+                {/* Location Map */}
+                {event.type !== 'online' && event.venue_place_id && (
+                    <div className="mt-12">
+                        <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest mb-3">Location</h3>
+                        <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-sm overflow-hidden">
+                            <div className="h-[300px] w-full">
+                                {isLoaded && mapCenter ? (
+                                    <GoogleMap
+                                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                                        center={mapCenter}
+                                        zoom={15}
+                                    >
+                                        <Marker position={mapCenter} />
+                                    </GoogleMap>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-zinc-500 font-medium">Loading map…</div>
+                                )}
+                            </div>
+                            {event.venue_remark && (
+                                <div className="p-4 border-t border-zinc-200 text-sm text-zinc-700 font-medium">{event.venue_remark}</div>
                             )}
-                        </div>
-                        {event.venue_remark && (
-                            <div className="p-4 border-t border-zinc-200 text-sm text-zinc-700 font-medium">{event.venue_remark}</div>
-                        )}
-                        {mapCenter && (
-                            <div className="p-4 border-t border-zinc-200 text-xs text-zinc-500 font-medium">
-                                Coordinates: {mapCenter.lat.toFixed(6)}, {mapCenter.lng.toFixed(6)}
+                            {mapCenter && (
+                                <div className="p-4 border-t border-zinc-200 text-xs text-zinc-500 font-medium">
+                                    Coordinates: {mapCenter.lat.toFixed(6)}, {mapCenter.lng.toFixed(6)}
+                                </div>
+                            )}
+                            <div className="p-4 border-t border-zinc-200 text-xs">
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1${event.venue_place_id ? `&query_place_id=${encodeURIComponent(event.venue_place_id)}` : `&query=${encodeURIComponent(event.venue_remark || '')}`}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-zinc-700 hover:text-zinc-900 font-bold"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Open in Google Maps
+                                </a>
                             </div>
-                        )}
-                        <div className="p-4 border-t border-zinc-200 text-xs">
-                            <a
-                                href={`https://www.google.com/maps/search/?api=1${event.venue_place_id ? `&query_place_id=${encodeURIComponent(event.venue_place_id)}` : `&query=${encodeURIComponent(event.venue_remark || '')}`}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-zinc-700 hover:text-zinc-900 font-bold"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Open in Google Maps
-                            </a>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     )
 }
