@@ -4,17 +4,19 @@ import React, { useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { generateMyQR, AttendanceQRResponse } from '@/services/api'
+import { generateMyQR } from '@/services/api'
+import { AttendanceQRResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 
 interface AttendanceQRModalProps {
     eventId: string
     eventTitle: string
+    eventEndTime: string // ISO datetime when event ends
     isOpen: boolean
     onClose: () => void
 }
 
-export function AttendanceQRModal({ eventId, eventTitle, isOpen, onClose }: AttendanceQRModalProps) {
+export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, onClose }: AttendanceQRModalProps) {
     const [qrData, setQrData] = useState<AttendanceQRResponse | null>(null)
     const [loading, setLoading] = useState(false)
     const [expiresIn, setExpiresIn] = useState<string>('')
@@ -30,21 +32,34 @@ export function AttendanceQRModal({ eventId, eventTitle, isOpen, onClose }: Atte
 
         const interval = setInterval(() => {
             const now = new Date().getTime()
-            const expiry = new Date(qrData.expires_at).getTime()
-            const diff = expiry - now
+            const eventEnd = new Date(eventEndTime).getTime()
+            const qrExpiry = new Date(qrData.expires_at).getTime()
+
+            // Use the later of QR expiry or event end time
+            const effectiveExpiry = Math.max(qrExpiry, eventEnd)
+            const diff = effectiveExpiry - now
 
             if (diff <= 0) {
-                setExpiresIn('Expired')
+                setExpiresIn('Event ended')
                 clearInterval(interval)
             } else {
-                const mins = Math.floor(diff / 60000)
-                const secs = Math.floor((diff % 60000) / 1000)
-                setExpiresIn(`${mins}m ${secs}s`)
+                // Show time until event ends
+                const hours = Math.floor(diff / 3600000)
+                const mins = Math.floor((diff % 3600000) / 60000)
+
+                if (hours > 0) {
+                    setExpiresIn(`Valid for ${hours}h ${mins}m`)
+                } else if (mins > 0) {
+                    setExpiresIn(`Valid for ${mins}m`)
+                } else {
+                    const secs = Math.floor((diff % 60000) / 1000)
+                    setExpiresIn(`${secs}s left`)
+                }
             }
         }, 1000)
 
         return () => clearInterval(interval)
-    }, [qrData])
+    }, [qrData, eventEndTime])
 
     const fetchQR = async () => {
         setLoading(true)
@@ -146,34 +161,45 @@ export function AttendanceQRModal({ eventId, eventTitle, isOpen, onClose }: Atte
                                             </div>
 
                                             {/* Expiration Info */}
-                                            <div className="bg-blue-50 rounded-xl p-4 w-full mb-4">
+                                            <div className={`rounded-xl p-4 w-full mb-4 border-2 ${expiresIn === 'Event ended'
+                                                    ? 'bg-red-50 border-red-200'
+                                                    : 'bg-green-50 border-green-200'
+                                                }`}>
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2 text-sm text-zinc-600">
-                                                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <svg
+                                                            className={`w-5 h-5 ${expiresIn === 'Event ended' ? 'text-red-600' : 'text-green-600'}`}
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
-                                                        <span className="font-medium">Expires in:</span>
+                                                        <span className="font-bold text-zinc-900">
+                                                            {expiresIn === 'Event ended' ? 'Status:' : 'Valid:'}
+                                                        </span>
                                                     </div>
-                                                    <span className={`font-bold ${expiresIn === 'Expired' ? 'text-red-600' : 'text-blue-600'}`}>
+                                                    <span className={`font-black text-lg ${expiresIn === 'Event ended' ? 'text-red-600' : 'text-green-600'
+                                                        }`}>
                                                         {expiresIn}
                                                     </span>
                                                 </div>
                                             </div>
 
                                             {/* Instructions */}
-                                            <div className="bg-zinc-50 rounded-xl p-4 w-full space-y-2">
-                                                <p className="text-xs font-bold text-zinc-900 mb-2">How to use:</p>
-                                                <div className="flex gap-2 text-xs text-zinc-600">
-                                                    <span className="text-blue-600 font-bold">1.</span>
-                                                    <p>Keep this QR code ready when arriving at the event</p>
+                                            <div className="bg-zinc-50 rounded-xl p-4 w-full space-y-2 border-2 border-zinc-200">
+                                                <p className="text-sm font-black text-zinc-900 mb-2 uppercase tracking-wider">How to use:</p>
+                                                <div className="flex gap-2 text-sm text-zinc-900">
+                                                    <span className="text-blue-600 font-black">1.</span>
+                                                    <p className="font-medium">Keep this QR code ready when arriving at the event</p>
                                                 </div>
-                                                <div className="flex gap-2 text-xs text-zinc-600">
-                                                    <span className="text-blue-600 font-bold">2.</span>
-                                                    <p>Show it to the organizer for scanning</p>
+                                                <div className="flex gap-2 text-sm text-zinc-900">
+                                                    <span className="text-blue-600 font-black">2.</span>
+                                                    <p className="font-medium">Show it to the organizer for scanning</p>
                                                 </div>
-                                                <div className="flex gap-2 text-xs text-zinc-600">
-                                                    <span className="text-blue-600 font-bold">3.</span>
-                                                    <p>Your attendance will be marked automatically</p>
+                                                <div className="flex gap-2 text-sm text-zinc-900">
+                                                    <span className="text-blue-600 font-black">3.</span>
+                                                    <p className="font-medium">Your attendance will be marked automatically</p>
                                                 </div>
                                             </div>
 

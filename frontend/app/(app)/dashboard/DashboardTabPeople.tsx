@@ -4,14 +4,16 @@ import { getEventParticipants, getProfileByUserId, removeEventParticipant } from
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
+import { EventPhase } from '@/lib/eventPhases'
 
 interface DashboardTabPeopleProps {
     event: EventDetails
     user: ProfileResponse | null
+    phase: EventPhase // Add phase prop
     onInvite?: () => void
 }
 
-export function DashboardTabPeople({ event, user, onInvite }: DashboardTabPeopleProps) {
+export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTabPeopleProps) {
     const [participants, setParticipants] = useState<(EventParticipantDetails & { profile?: ProfileResponse })[]>([])
     const [loading, setLoading] = useState(true)
     const [filter, setFilter] = useState<'all' | 'speaker' | 'audience' | 'staff'>('all')
@@ -95,7 +97,7 @@ export function DashboardTabPeople({ event, user, onInvite }: DashboardTabPeople
                 {[
                     { key: 'all', label: 'All' },
                     { key: 'speaker', label: 'Speakers' },
-                    { key: 'staff', label: 'Staff' },
+                    { key: 'staff', label: 'Committee' },
                     { key: 'audience', label: 'Attendees' },
                 ].map((f) => (
                     <button
@@ -177,15 +179,18 @@ export function DashboardTabPeople({ event, user, onInvite }: DashboardTabPeople
                                                 </button>
                                             )}
 
-                                            <button
-                                                onClick={() => handleRemove(item.id)}
-                                                className="text-zinc-300 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
-                                                title="Remove participant"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
+                                            {/* Delete Button - Hide during event execution */}
+                                            {phase !== EventPhase.EVENT_DAY && phase !== EventPhase.ONGOING && phase !== EventPhase.POST_EVENT && (
+                                                <button
+                                                    onClick={() => handleRemove(item.id)}
+                                                    className="text-zinc-300 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+                                                    title="Remove participant"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

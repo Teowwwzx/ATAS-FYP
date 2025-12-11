@@ -57,7 +57,7 @@ export const eventActions = {
   bulkInvite: (eventId: string, body: EventParticipantBulkCreate) =>
     bulkInviteEventParticipants(eventId, body),
   generateQR: (eventId: string) => generateAttendanceQR(eventId),
-  scanAttendance: (body: AttendanceScanRequest) => scanAttendance(body),
+  scanAttendance: (eventId: string, token: string) => scanAttendance(eventId, token),
   setReminder: (eventId: string, body: EventReminderCreate) =>
     setEventReminder(eventId, body),
   checklist: {

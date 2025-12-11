@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useEffect, useState, Suspense } from 'react'
-import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe, publishEvent, unpublishEvent } from '@/services/api'
-import { EventDetails, ProfileResponse, UserMeResponse, EventInvitationResponse, MyEventItem } from '@/services/api.types'
+import { getMyEvents, getMyProfile, getEventById, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe, publishEvent, unpublishEvent, getEventAttendanceStats } from '@/services/api'
+import { EventDetails, ProfileResponse, UserMeResponse, EventInvitationResponse, MyEventItem, EventAttendanceStats } from '@/services/api.types'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast'
 import { EventInviteModal } from './EventInviteModal'
 import { EventPreviewModal } from './EventPreviewModal'
 import { DashboardEventList } from './DashboardEventList'
+import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 
 function DashboardPageInner() {
     const router = useRouter()
@@ -35,6 +36,8 @@ function DashboardPageInner() {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false)
     const [me, setMe] = useState<UserMeResponse | null>(null)
     const [openChecklistCount, setOpenChecklistCount] = useState(0)
+    const [attendanceStats, setAttendanceStats] = useState<EventAttendanceStats | null>(null)
+    const [currentPhase, setCurrentPhase] = useState<EventPhase>(EventPhase.DRAFT)
 
     useEffect(() => {
         fetchData()
@@ -101,6 +104,20 @@ function DashboardPageInner() {
             const listItem = events.find(e => e.event_id === eventId)
             setNextEvent(fullEvent)
             setRole(listItem?.my_role || null)
+
+            // Calculate and set current phase
+            const phase = getEventPhase(fullEvent)
+            setCurrentPhase(phase)
+
+            // Fetch attendance stats if user is organizer
+            try {
+                const stats = await getEventAttendanceStats(eventId)
+                setAttendanceStats(stats)
+            } catch (e) {
+                // Stats might not be available yet, ignore error
+                setAttendanceStats(null)
+            }
+
             setView('detail')
         } catch (error: any) {
             console.error(error)
@@ -274,44 +291,92 @@ function DashboardPageInner() {
                             </div>
                             {user?.user_id === nextEvent?.organizer_id && (
                                 <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => setIsPreviewOpen(true)}
-                                        className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
-                                    >
-                                        Preview
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            if (!nextEvent) return
-                                            if (nextEvent.status === 'published') {
-                                                if (confirm('Unpublish this event? It will be hidden from Discover.')) {
-                                                    try {
-                                                        await unpublishEvent(nextEvent.id)
-                                                        toast.success('Event Unpublished')
-                                                        fetchData()
-                                                    } catch (e) {
-                                                        toast.error('Failed to unpublish event')
+                                    {/* Show different controls based on event phase */}
+                                    {(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) ? (
+                                        <>
+                                            {/* Event Day/Ongoing Mode: Attendance Stats + Scan Button */}
+                                            {attendanceStats && (
+                                                <div className="px-6 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <div className="text-sm">
+                                                                <span className="font-black text-green-700 text-lg">{attendanceStats.attended_total}</span>
+                                                                <span className="text-zinc-500 font-medium mx-1">/</span>
+                                                                <span className="font-bold text-zinc-700">{attendanceStats.total_participants}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs font-bold text-green-700 uppercase tracking-wider">
+                                                            Attended
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <Link
+                                                href={`/attendance/scan?eventId=${nextEvent?.id || ''}`}
+                                                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                                </svg>
+                                                Scan Attendance
+                                            </Link>
+                                        </>
+                                    ) : currentPhase === EventPhase.POST_EVENT ? (
+                                        <>
+                                            {/* Post-Event Mode: Export & Analytics */}
+                                            <div className="px-6 py-2.5 bg-zinc-100 border-2 border-zinc-300 rounded-xl">
+                                                <div className="text-sm font-bold text-zinc-700">
+                                                    ✅ Event Completed
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Draft/Pre-Event Mode: Preview + Publish/Unpublish */}
+                                            <button
+                                                onClick={() => setIsPreviewOpen(true)}
+                                                className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
+                                            >
+                                                Preview
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!nextEvent) return
+                                                    if (nextEvent.status === 'published') {
+                                                        if (confirm('Unpublish this event? It will be hidden from Discover.')) {
+                                                            try {
+                                                                await unpublishEvent(nextEvent.id)
+                                                                toast.success('Event Unpublished')
+                                                                fetchData()
+                                                            } catch (e) {
+                                                                toast.error('Failed to unpublish event')
+                                                            }
+                                                        }
+                                                    } else {
+                                                        if (confirm('Are you ready to publish this event?')) {
+                                                            try {
+                                                                await publishEvent(nextEvent.id)
+                                                                toast.success('Event Published!')
+                                                                fetchData()
+                                                            } catch (e) {
+                                                                toast.error('Failed to publish event')
+                                                            }
+                                                        }
                                                     }
-                                                }
-                                            } else {
-                                                if (confirm('Are you ready to publish this event?')) {
-                                                    try {
-                                                        await publishEvent(nextEvent.id)
-                                                        toast.success('Event Published!')
-                                                        fetchData()
-                                                    } catch (e) {
-                                                        toast.error('Failed to publish event')
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                        className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
-                                        {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
-                                    </button>
+                                                }}
+                                                className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                </svg>
+                                                {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -323,6 +388,7 @@ function DashboardPageInner() {
                                     event={nextEvent}
                                     onPreview={() => setIsPreviewOpen(true)}
                                     canEditCover={user?.user_id === nextEvent.organizer_id}
+                                    phase={currentPhase}
                                     onCoverUpdated={() => fetchEventDetails(selectedEventId!)}
                                 />
 
@@ -330,6 +396,7 @@ function DashboardPageInner() {
                                     event={nextEvent}
                                     user={user}
                                     role={role}
+                                    phase={currentPhase}
                                     onUpdate={() => fetchEventDetails(selectedEventId!)}
                                     onDelete={() => {
                                         setSelectedEventId(null)

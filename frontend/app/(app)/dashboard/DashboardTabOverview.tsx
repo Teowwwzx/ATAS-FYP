@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation'
 import { differenceInDays, differenceInHours } from 'date-fns'
 import useSWR from 'swr'
 import { getEventAttendanceStats } from '@/services/api'
+import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 
 interface DashboardTabOverviewProps {
     event: EventDetails
     user: ProfileResponse | null
+    phase: EventPhase // Add phase prop
     onUpdate: () => void
 }
 
-export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOverviewProps) {
+export function DashboardTabOverview({ event, user, phase, onUpdate }: DashboardTabOverviewProps) {
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
@@ -23,9 +25,12 @@ export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOver
 
     // Date Logic
     const startDate = new Date(event.start_datetime)
-    const daysLeft = differenceInDays(startDate, new Date())
-    const hoursLeft = differenceInHours(startDate, new Date())
-    const isPast = hoursLeft < 0
+    const endDate = new Date(event.end_datetime)
+    const now = new Date()
+
+    const isEnded = now > endDate
+    const isOngoing = now >= startDate && now <= endDate
+    const daysLeft = differenceInDays(startDate, now)
 
     // Form State
     const [form, setForm] = useState({
@@ -191,11 +196,13 @@ export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOver
                                 <div>
                                     <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Timeline</h4>
                                     <div className="flex items-baseline gap-1">
-                                        {isPast ? (
+                                        {isEnded ? (
                                             <span className="text-lg font-black text-zinc-900">Ended</span>
+                                        ) : isOngoing ? (
+                                            <span className="text-lg font-black text-green-600 animate-pulse">Ongoing</span>
                                         ) : (
                                             <>
-                                                <span className="text-lg font-black text-zinc-900">{daysLeft}</span>
+                                                <span className="text-lg font-black text-zinc-900">{Math.max(0, daysLeft)}</span>
                                                 <span className="text-xs font-bold text-zinc-500">Days Left</span>
                                             </>
                                         )}
@@ -242,7 +249,7 @@ export function DashboardTabOverview({ event, user, onUpdate }: DashboardTabOver
                                             </svg>
                                             View Public Page
                                         </button>
-                                        {canEdit && (
+                                        {canEdit && canEditCoreDetails(phase) && (
                                             <button
                                                 onClick={() => setIsEditing(true)}
                                                 className="text-xs font-bold text-zinc-500 hover:text-zinc-900 transition-colors flex items-center gap-1"

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import Link from 'next/link'
 import { DashboardHeroCard } from '@/app/(app)/dashboard/DashboardHeroCard'
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api'
+import { AttendanceQRModal } from '@/components/event/AttendanceQRModal'
 
 export default function EventDetailsPage() {
     const params = useParams()
@@ -28,6 +29,8 @@ export default function EventDetailsPage() {
     const [reviewsLoading, setReviewsLoading] = useState(false)
     const [reviewsAvg, setReviewsAvg] = useState<number>(0)
     const [reviewsCount, setReviewsCount] = useState<number>(0)
+    const [showQRModal, setShowQRModal] = useState(false)
+    const [participantStatus, setParticipantStatus] = useState<string | null>(null)
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -106,13 +109,16 @@ export default function EventDetailsPage() {
                     const summary = await getMyParticipationSummary(id)
                     setIsParticipant(!!summary?.is_participant)
                     setIsJoinedAccepted(summary?.my_status === 'accepted' || summary?.my_status === 'attended')
+                    setParticipantStatus(summary?.my_status || null)
                 } catch {
                     setIsParticipant(false)
                     setIsJoinedAccepted(false)
+                    setParticipantStatus(null)
                 }
             } else {
                 setIsParticipant(false)
                 setIsJoinedAccepted(false)
+                setParticipantStatus(null)
             }
             try {
                 const s = await getEventAttendanceStats(id)
@@ -345,27 +351,52 @@ export default function EventDetailsPage() {
                                                         Cancel
                                                     </button>
                                                 </div>
-                                                <div className="text-xs text-zinc-600 font-medium text-center">
-                                                    {isJoinedAccepted ? 'Status: accepted' : 'Status: pending approval'}
+                                                <div className={`text-sm font-bold text-center py-2 px-4 rounded-xl ${participantStatus === 'attended'
+                                                        ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                                                        : 'bg-zinc-100 text-zinc-700 border-2 border-zinc-300'
+                                                    }`}>
+                                                    {participantStatus === 'attended' ? (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span>Attendance Marked</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span>Status: {participantStatus || 'pending approval'}</span>
+                                                    )}
                                                 </div>
                                                 {isJoinedAccepted && (
-                                                    <button
-                                                        onClick={async () => {
-                                                            setReminding(true)
-                                                            try {
-                                                                await setEventReminder(id, { option: 'one_day' })
-                                                                toast.success('Reminder set for one day before')
-                                                            } catch (e) {
-                                                                toast.error('Failed to set reminder')
-                                                            } finally {
-                                                                setReminding(false)
-                                                            }
-                                                        }}
-                                                        disabled={reminding}
-                                                        className="block w-full py-3 bg-zinc-900 text-white rounded-2xl font-bold text-center text-sm hover:bg-zinc-800 transition-all shadow-sm disabled:opacity-70"
-                                                    >
-                                                        {reminding ? 'Setting reminder…' : 'Remind me one day before'}
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={async () => {
+                                                                setReminding(true)
+                                                                try {
+                                                                    await setEventReminder(id, { option: 'one_day' })
+                                                                    toast.success('Reminder set for one day before')
+                                                                } catch (e) {
+                                                                    toast.error('Failed to set reminder')
+                                                                } finally {
+                                                                    setReminding(false)
+                                                                }
+                                                            }}
+                                                            disabled={reminding}
+                                                            className="block w-full py-3 bg-zinc-900 text-white rounded-2xl font-bold text-center text-sm hover:bg-zinc-800 transition-all shadow-sm disabled:opacity-70"
+                                                        >
+                                                            {reminding ? 'Setting reminder…' : 'Remind me one day before'}
+                                                        </button>
+
+                                                        {/* QR Attendance Button - Only for accepted participants */}
+                                                        <button
+                                                            onClick={() => setShowQRModal(true)}
+                                                            className="block w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-2xl font-bold text-center text-sm hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                                            </svg>
+                                                            Show Attendance QR
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         ) : (
@@ -480,6 +511,17 @@ export default function EventDetailsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Attendance QR Modal - Only shown for accepted participants */}
+            {event && (
+                <AttendanceQRModal
+                    eventId={event.id}
+                    eventTitle={event.title}
+                    eventEndTime={event.end_datetime}
+                    isOpen={showQRModal}
+                    onClose={() => setShowQRModal(false)}
+                />
+            )}
         </div>
     )
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Fragment } from 'react'
-import { EventDetails, EventProposalResponse, EventProposalCreate, ProfileResponse } from '@/services/api.types'
-import { getEventProposals, createEventProposalWithFile, deleteEventProposal, findProfiles, inviteEventParticipants } from '@/services/api'
+import { EventDetails, EventProposalResponse, EventProposalCreate, ProfileResponse, EventChecklistItemResponse } from '@/services/api.types'
+import { getEventProposals, createEventProposalWithFile, deleteEventProposal, findProfiles, inviteEventParticipants, getEventChecklist } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 
@@ -106,7 +106,7 @@ function TemplateEditor({ type, initialContent }: { type: string, initialContent
                 </div>
             </div>
             <textarea
-                className="w-full h-[400px] p-4 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 font-mono text-sm leading-relaxed resize-none"
+                className="w-full h-[400px] p-4 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 font-mono text-sm leading-relaxed resize-none text-zinc-900"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
             />
@@ -208,7 +208,7 @@ function InviteProposalModal({ proposal, eventId, isOpen, onClose }: { proposal:
                                 <select
                                     value={selectedRole}
                                     onChange={(e) => setSelectedRole(e.target.value as any)}
-                                    className="px-3 py-2 rounded-lg border border-zinc-200 text-sm bg-zinc-50 focus:bg-white focus:border-yellow-400"
+                                    className="px-3 py-2 rounded-lg border border-zinc-200 text-sm bg-zinc-50 focus:bg-white focus:border-yellow-400 text-zinc-900"
                                 >
                                     <option value="speaker">Speaker</option>
                                     <option value="sponsor">Sponsor</option>
@@ -217,7 +217,7 @@ function InviteProposalModal({ proposal, eventId, isOpen, onClose }: { proposal:
 
                             <input
                                 type="text"
-                                className="w-full px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all mb-4"
+                                className="w-full px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all mb-4 text-zinc-900"
                                 placeholder="Search by name..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
@@ -263,6 +263,139 @@ function InviteProposalModal({ proposal, eventId, isOpen, onClose }: { proposal:
 }
 
 
+
+function LinkFileToChecklistModal({
+    file,
+    checklistItems,
+    isOpen,
+    onClose,
+    onSave,
+    initialLinks
+}: {
+    file: EventProposalResponse,
+    checklistItems: EventChecklistItemResponse[],
+    isOpen: boolean,
+    onClose: () => void,
+    onSave: (ids: string[]) => void,
+    initialLinks: string[]
+}) {
+    const [selectedIds, setSelectedIds] = useState<string[]>(initialLinks)
+    const [search, setSearch] = useState('')
+
+    // Default suggestions based on file
+    const [suggestedIds, setSuggestedIds] = useState<string[]>([])
+
+    // On mount, find suggestions
+    useEffect(() => {
+        const category = file.description?.match(/^\[(\w+)\]/)?.[1] || 'other'
+        const fileTitle = (file.title || '').toLowerCase()
+        const keywords: Record<string, string[]> = {
+            'email': ['email', 'confirmation', 'appreciation', 'invite', 'notification', 'letter'],
+            'certificate': ['certificate', 'cert', 'award', 'recognition'],
+            'proposal': ['speaker', 'proposal', 'deck', 'presentation', 'sponsor']
+        }
+        const relevantKeywords = keywords[category] || []
+
+        const suggestions = checklistItems.filter(item => {
+            const itemTitle = item.title.toLowerCase()
+            return relevantKeywords.some(kw => fileTitle.includes(kw) || itemTitle.includes(kw))
+        }).map(i => i.id)
+
+        setSuggestedIds(suggestions)
+    }, [file, checklistItems])
+
+    const filteredItems = checklistItems.filter(item =>
+        item.title.toLowerCase().includes(search.toLowerCase())
+    )
+
+    const toggleId = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        )
+    }
+
+    const handleSave = () => {
+        onSave(selectedIds)
+        onClose()
+    }
+
+    return (
+        <Transition appear show={isOpen} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={onClose}>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+                <div className="fixed inset-0 overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all border border-zinc-100 flex flex-col max-h-[80vh]">
+                            <Dialog.Title as="h3" className="text-lg font-bold text-zinc-900 mb-2">
+                                Link File to Checklist
+                            </Dialog.Title>
+                            <p className="text-sm text-zinc-500 mb-4">
+                                Select tasks to link with <span className="font-semibold text-zinc-700">{file.title}</span>.
+                            </p>
+
+                            <input
+                                type="text"
+                                className="w-full px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all mb-4 text-zinc-900"
+                                placeholder="Search tasks..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+
+                            <div className="flex-1 overflow-y-auto space-y-2 min-h-[200px] mb-4 pr-2">
+                                {checklistItems.length === 0 && (
+                                    <div className="text-center text-zinc-400 py-8 text-sm">No checklist items found.</div>
+                                )}
+                                {filteredItems.map(item => {
+                                    const isSuggested = suggestedIds.includes(item.id)
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => toggleId(item.id)}
+                                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedIds.includes(item.id)
+                                                ? 'bg-yellow-50 border-yellow-400'
+                                                : 'bg-white border-zinc-200 hover:border-zinc-300'
+                                                }`}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className={`text-sm font-medium ${selectedIds.includes(item.id) ? 'text-zinc-900' : 'text-zinc-600'}`}>
+                                                    {item.title}
+                                                </span>
+                                                {isSuggested && (
+                                                    <span className="text-[10px] uppercase font-bold text-blue-500 mt-0.5">Suggested</span>
+                                                )}
+                                            </div>
+                                            {selectedIds.includes(item.id) && (
+                                                <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-zinc-900">
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100">
+                                <button
+                                    onClick={onClose}
+                                    className="px-4 py-2 rounded-xl font-bold text-zinc-500 hover:bg-zinc-100 transition-colors text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="px-4 py-2 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md text-sm"
+                                >
+                                    Save Links ({selectedIds.length})
+                                </button>
+                            </div>
+                        </Dialog.Panel>
+                    </div>
+                </div>
+            </Dialog>
+        </Transition>
+    )
+}
+
 export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
     const [proposals, setProposals] = useState<EventProposalResponse[]>([])
     const [loading, setLoading] = useState(true)
@@ -270,11 +403,12 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
 
     // Upload State
     const [isUploadOpen, setIsUploadOpen] = useState(false)
-    const [uploadForm, setUploadForm] = useState<EventProposalCreate & { file: File | null }>({
+    const [uploadForm, setUploadForm] = useState<EventProposalCreate & { file: File | null; category: string }>({
         title: '',
         description: '',
         file_url: '',
-        file: null
+        file: null,
+        category: 'proposal' // Default category
     })
     const [uploading, setUploading] = useState(false)
 
@@ -302,6 +436,10 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
 
     useEffect(() => {
         fetchProposals()
+        // Fetch checklist items for linking
+        getEventChecklist(event.id)
+            .then(data => setChecklistItems(data.sort((a, b) => a.sort_order - b.sort_order)))
+            .catch(console.error)
     }, [event.id])
 
     const handleUpload = async (e: React.FormEvent) => {
@@ -313,18 +451,24 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
 
         setUploading(true)
         try {
+            // Store category as prefix in description: [category] actual description
+            const categoryPrefix = `[${uploadForm.category}]`
+            const fullDescription = uploadForm.description
+                ? `${categoryPrefix} ${uploadForm.description}`
+                : categoryPrefix
+
             await createEventProposalWithFile(event.id, {
                 title: uploadForm.title,
-                description: uploadForm.description
+                description: fullDescription
             }, uploadForm.file)
 
-            toast.success('Proposal uploaded!')
+            toast.success('File uploaded!')
             setIsUploadOpen(false)
-            setUploadForm({ title: '', description: '', file_url: '', file: null })
+            setUploadForm({ title: '', description: '', file_url: '', file: null, category: 'proposal' })
             fetchProposals()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to upload proposal')
+            toast.error('Failed to upload file')
         } finally {
             setUploading(false)
         }
@@ -340,6 +484,13 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
 
     // Invite Modal State
     const [selectedProposalForInvite, setSelectedProposalForInvite] = useState<EventProposalResponse | null>(null)
+
+    // Checklist State
+    const [checklistItems, setChecklistItems] = useState<EventChecklistItemResponse[]>([])
+
+    // Link to Checklist Modal State
+    const [selectedFileForLinking, setSelectedFileForLinking] = useState<EventProposalResponse | null>(null)
+    const [selectedChecklistIds, setSelectedChecklistIds] = useState<string[]>([])
 
 
     const handleDeleteClick = (id: string) => {
@@ -374,6 +525,69 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
     const filteredProposals = proposals
     // For now we don't have "type" in proposal, so 'all' is just all uploaded proposals.
     // Templates are static.
+
+    // Category Helper Functions
+    const getFileCategory = (description: string | null | undefined): string => {
+        if (!description) return 'other'
+        const match = description.match(/^\[(\w+)\]/)
+        return match ? match[1] : 'other'
+    }
+
+    const getCategoryInfo = (category: string) => {
+        const categories: Record<string, { icon: string; label: string; color: string }> = {
+            proposal: { icon: '📄', label: 'Proposal', color: 'bg-blue-100 text-blue-700' },
+            email: { icon: '✉️', label: 'Email Template', color: 'bg-green-100 text-green-700' },
+            certificate: { icon: '🏆', label: 'Certificate', color: 'bg-yellow-100 text-yellow-700' },
+            other: { icon: '📎', label: 'Document', color: 'bg-zinc-100 text-zinc-700' }
+        }
+        return categories[category] || categories.other
+    }
+
+    // Checklist Linking Logic (localStorage-based for now)
+    const LINK_STORAGE_KEY = `event_${event.id}_file_checklist_links`
+
+    const getFileLinks = (fileId: string): string[] => {
+        try {
+            const stored = localStorage.getItem(LINK_STORAGE_KEY)
+            const links: Record<string, string[]> = stored ? JSON.parse(stored) : {}
+            return links[fileId] || []
+        } catch {
+            return []
+        }
+    }
+
+    const setFileLinks = (fileId: string, checklistIds: string[]) => {
+        try {
+            const stored = localStorage.getItem(LINK_STORAGE_KEY)
+            const links: Record<string, string[]> = stored ? JSON.parse(stored) : {}
+            links[fileId] = checklistIds
+            localStorage.setItem(LINK_STORAGE_KEY, JSON.stringify(links))
+        } catch (e) {
+            console.error('Failed to save file links:', e)
+        }
+    }
+
+    const getSuggestedChecklistItems = (file: EventProposalResponse, checklistItems: EventChecklistItemResponse[]) => {
+        const category = getFileCategory(file.description ?? null)
+        const fileTitle = (file.title ?? '').toLowerCase()
+
+        // Keyword matching rules
+        const keywords: Record<string, string[]> = {
+            'email': ['email', 'confirmation', 'appreciation', 'invite', 'notification'],
+            'certificate': ['certificate', 'cert', 'award', 'recognition'],
+            'proposal': ['speaker', 'proposal', 'deck', 'presentation', 'sponsor']
+        }
+
+        const relevantKeywords = keywords[category] || []
+
+        return checklistItems.filter(item => {
+            const itemTitle = item.title.toLowerCase()
+            // Match if file title or checklist title contains relevant keywords
+            return relevantKeywords.some(kw =>
+                fileTitle.includes(kw) || itemTitle.includes(kw)
+            )
+        })
+    }
 
 
     return (
@@ -418,7 +632,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        Upload Proposal
+                        Upload File
                     </button>
                 </div>
             </div>
@@ -448,59 +662,112 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {proposals.map((item) => (
-                                <div key={item.id} className="group bg-white rounded-3xl border border-zinc-200 overflow-hidden hover:shadow-lg transition-all flex flex-col">
-                                    <div className="p-6 flex-1">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="w-12 h-12 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center font-bold text-lg">
-                                                PDF
+                            {proposals.map((item) => {
+                                const category = getFileCategory(item.description ?? null)
+                                const categoryInfo = getCategoryInfo(category)
+
+                                return (
+                                    <div key={item.id} className="group bg-white rounded-3xl border border-zinc-200 overflow-hidden hover:shadow-lg transition-all flex flex-col">
+                                        <div className="p-6 flex-1">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-12 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center font-bold text-sm">
+                                                        PDF
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${categoryInfo.color}`}>
+                                                        {categoryInfo.icon} {categoryInfo.label}
+                                                    </span>
+                                                </div>
+                                                {/* Dropdown Menu for Delete? Or just delete button */}
+                                                <button
+                                                    onClick={() => handleDeleteClick(item.id)}
+                                                    className="text-zinc-300 hover:text-red-500 transition-colors"
+                                                    title="Delete File"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
                                             </div>
-                                            {/* Dropdown Menu for Delete? Or just delete button */}
-                                            <button
-                                                onClick={() => handleDeleteClick(item.id)}
-                                                className="text-zinc-300 hover:text-red-500 transition-colors"
-                                                title="Delete Proposal"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                        </div>
-                                        <h3 className="text-lg font-bold text-zinc-900 mb-2 line-clamp-2">{item.title}</h3>
-                                        <p className="text-sm text-zinc-500 line-clamp-3 mb-4">{item.description || 'No description'}</p>
+                                            <h3 className="text-lg font-bold text-zinc-900 mb-2 line-clamp-2">{item.title}</h3>
+                                            <p className="text-sm text-zinc-500 line-clamp-3 mb-4">{item.description?.replace(/^\[\w+\]\s*/, '') || 'No description'}</p>
 
-                                        {/* Meta info */}
-                                        <div className="text-xs text-zinc-400">
-                                            {new Date(item.created_at).toLocaleDateString()}
+                                            {/* Linked Checklist Items */}
+                                            {(() => {
+                                                const linkedIds = getFileLinks(item.id)
+                                                const linkedItems = checklistItems.filter(ci => linkedIds.includes(ci.id))
+
+                                                if (linkedItems.length > 0) {
+                                                    return (
+                                                        <div className="mb-3 p-3 bg-green-50 border border-green-100 rounded-xl">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                                                </svg>
+                                                                <span className="text-xs font-bold text-green-700">Linked to Checklist:</span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {linkedItems.map(li => (
+                                                                    <div key={li.id} className="text-xs text-green-600 flex items-center gap-1.5">
+                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span className="font-medium">{li.title}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                }
+                                                return null
+                                            })()}
+
+                                            {/* Meta info */}
+                                            <div className="text-xs text-zinc-400">
+                                                {new Date(item.created_at).toLocaleDateString()}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-zinc-50 border-t border-zinc-100 flex flex-col gap-2">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setPreviewUrl(item.file_url ?? null)}
+                                                    className="flex-1 px-3 py-2 bg-white border border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-xs flex items-center justify-center gap-2"
+                                                >
+                                                    <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    View
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedFileForLinking(item)
+                                                        setSelectedChecklistIds(getFileLinks(item.id))
+                                                    }}
+                                                    className="flex-1 px-3 py-2 bg-white border border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-yellow-400 hover:text-yellow-600 transition-all text-xs flex items-center justify-center gap-2"
+                                                >
+                                                    <svg className="w-4 h-4 text-zinc-400 group-hover:text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                    Link
+                                                </button>
+                                            </div>
+
+                                            {/* Button Logic: Discuss (if chat exists) OR Invite (if organizer upload) */}
+                                            {item.conversation_id ? (
+                                                <button
+                                                    onClick={() => setSelectedProposalForComments(item)}
+                                                    className="w-full px-4 py-2 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-700 transition-all text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    Discuss
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setSelectedProposalForInvite(item)}
+                                                    className="w-full px-4 py-2 bg-yellow-400 text-zinc-900 font-bold rounded-xl hover:bg-yellow-300 transition-all text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                                                    Invite
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-
-                                    <div className="p-4 bg-zinc-50 border-t border-zinc-100 flex gap-2">
-                                        <button
-                                            onClick={() => setPreviewUrl(item.file_url ?? null)}
-                                            className="flex-1 px-4 py-2 bg-white border border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all text-sm"
-                                        >
-                                            View PDF
-                                        </button>
-
-                                        {/* Button Logic: Discuss (if chat exists) OR Invite (if organizer upload) */}
-                                        {item.conversation_id ? (
-                                            <button
-                                                onClick={() => setSelectedProposalForComments(item)}
-                                                className="flex-1 px-4 py-2 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-700 transition-all text-sm flex items-center justify-center gap-2"
-                                            >
-                                                Discuss
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => setSelectedProposalForInvite(item)}
-                                                className="flex-1 px-4 py-2 bg-yellow-400 text-zinc-900 font-bold rounded-xl hover:bg-yellow-300 transition-all text-sm flex items-center justify-center gap-2"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                                                Invite
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </div>
@@ -542,14 +809,27 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                             >
                                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-3xl bg-white p-8 shadow-2xl transition-all border border-zinc-100">
                                     <Dialog.Title as="h3" className="text-2xl font-black text-zinc-900 mb-6 font-display">
-                                        Upload Proposal
+                                        Upload File
                                     </Dialog.Title>
                                     <form onSubmit={handleUpload} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-zinc-700 mb-2">Category</label>
+                                            <select
+                                                value={uploadForm.category}
+                                                onChange={(e) => setUploadForm({ ...uploadForm, category: e.target.value })}
+                                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all text-zinc-900"
+                                            >
+                                                <option value="proposal">📄 Proposal / Speaker Material</option>
+                                                <option value="email">✉️ Email Template</option>
+                                                <option value="certificate">🏆 Certificate</option>
+                                                <option value="other">📎 Other Document</option>
+                                            </select>
+                                        </div>
                                         <div>
                                             <label className="block text-sm font-bold text-zinc-700 mb-2">Title</label>
                                             <input
                                                 type="text"
-                                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all text-zinc-900"
                                                 placeholder="e.g. Sponsor Deck V1"
                                                 value={uploadForm.title ?? ''}
                                                 onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
@@ -558,7 +838,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                         <div>
                                             <label className="block text-sm font-bold text-zinc-700 mb-2">Description</label>
                                             <textarea
-                                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all resize-none h-24"
+                                                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all resize-none h-24 text-zinc-900"
                                                 placeholder="Brief description..."
                                                 value={uploadForm.description ?? ''}
                                                 onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
@@ -569,7 +849,7 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                             <div className="relative">
                                                 <input
                                                     type="file"
-                                                    accept="application/pdf"
+                                                    accept="application/pdf,image/*,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
                                                     onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
                                                     className="w-full text-sm text-zinc-500
                                                     file:mr-4 file:py-2 file:px-4
@@ -625,6 +905,34 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                 />
             )}
 
+            {/* Linking Modal */}
+            {selectedFileForLinking && (
+                <LinkFileToChecklistModal
+                    file={selectedFileForLinking}
+                    checklistItems={checklistItems}
+                    isOpen={!!selectedFileForLinking}
+                    onClose={() => {
+                        setSelectedFileForLinking(null)
+                        setSelectedChecklistIds([])
+                    }}
+                    initialLinks={selectedChecklistIds}
+                    onSave={(ids) => {
+                        if (selectedFileForLinking) {
+                            setFileLinks(selectedFileForLinking.id, ids)
+                            toast.success('Links updated!')
+                            // Force re-render of component to show new links (or local update)
+                            // Since getFileLinks reads from localStorage, we might need to trigger update.
+                            // But React component might not re-render just from localStorage set.
+                            // We can use a dummy state to force update or just setState in parent.
+                            // For now simple alert:
+                            setProposals([...proposals]) // Quick hack to trigger re-render of list
+                        }
+                    }}
+                />
+            )}
+
+
+
             <ConfirmationModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
@@ -649,7 +957,53 @@ export function DashboardTabProposals({ event }: DashboardTabProposalsProps) {
                                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
                                     </div>
-                                    <iframe src={previewUrl || ''} className="flex-1 w-full bg-white rounded-xl" />
+                                    <div className="flex-1 w-full bg-zinc-900 flex items-center justify-center p-4">
+                                        {(() => {
+                                            if (!previewUrl) return null
+
+                                            // Simple extension check
+                                            const ext = previewUrl.split('.').pop()?.toLowerCase()
+                                            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')
+                                            const isOffice = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext || '')
+
+                                            if (isImage) {
+                                                return (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={previewUrl} alt="Preview" className="max-w-full max-h-full object-contain rounded-lg" />
+                                                )
+                                            }
+
+                                            if (isOffice) {
+                                                return (
+                                                    <iframe
+                                                        src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
+                                                        className="w-full h-full bg-white rounded-xl"
+                                                        title="Document Preview"
+                                                    />
+                                                )
+                                            }
+
+                                            // Default to iframe for PDF or browser supported types
+                                            return (
+                                                <iframe
+                                                    src={previewUrl}
+                                                    className="w-full h-full bg-white rounded-xl"
+                                                    title="File Preview"
+                                                />
+                                            )
+                                        })()}
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center bg-zinc-800 border-t border-zinc-700">
+                                        <span className="text-zinc-400 text-sm truncate max-w-md">{previewUrl}</span>
+                                        <a
+                                            href={previewUrl || '#'}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="px-4 py-2 bg-yellow-400 text-zinc-900 font-bold rounded-xl hover:bg-yellow-300 text-sm"
+                                        >
+                                            Download / Open Original
+                                        </a>
+                                    </div>
                                 </div>
                             </Dialog.Panel>
                         </div>

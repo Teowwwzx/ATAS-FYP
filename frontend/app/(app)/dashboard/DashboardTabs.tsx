@@ -13,6 +13,7 @@ import { DashboardTabPeople } from './DashboardTabPeople'
 import { DashboardTabSettings } from './DashboardTabSettings'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { getNotifications, NotificationItem } from '@/services/api'
+import { EventPhase } from '@/lib/eventPhases'
 
 function classNames(...classes: string[]) {
     return classes.filter(Boolean).join(' ')
@@ -22,11 +23,12 @@ interface DashboardTabsProps {
     event: EventDetails
     user: ProfileResponse | null
     role?: string | null
+    phase: EventPhase // Add phase prop
     onUpdate: () => void // Callback to refresh parent data
     onDelete: () => void // Callback when event is deleted
 }
 
-export function DashboardTabs({ event, user, role, onUpdate, onDelete }: DashboardTabsProps) {
+export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: DashboardTabsProps) {
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [refreshPeople, setRefreshPeople] = useState(0)
 
@@ -49,7 +51,7 @@ export function DashboardTabs({ event, user, role, onUpdate, onDelete }: Dashboa
     const allTabs = [
         { name: 'Overview', id: 'overview' },
         { name: 'People', id: 'people', hidden: !isOrganizer },
-        { name: 'Proposals', id: 'proposals', hidden: !canViewProposals },
+        { name: 'Files', id: 'files', hidden: !canViewProposals },
         { name: 'Checklist', id: 'checklist', hidden: !isOrganizer },
         { name: 'Settings', id: 'settings', hidden: !isOrganizer },
     ]
@@ -122,7 +124,7 @@ export function DashboardTabs({ event, user, role, onUpdate, onDelete }: Dashboa
                     {/* 1. Overview Tab */}
                     {!allTabs[0].hidden && (
                         <Tab.Panel className="focus:outline-none animate-fadeIn">
-                            <DashboardTabOverview event={event} user={user} onUpdate={onUpdate} />
+                            <DashboardTabOverview event={event} user={user} phase={phase} onUpdate={onUpdate} />
                         </Tab.Panel>
                     )}
 
@@ -132,13 +134,14 @@ export function DashboardTabs({ event, user, role, onUpdate, onDelete }: Dashboa
                             <DashboardTabPeople
                                 event={event}
                                 user={user}
+                                phase={phase}
                                 onInvite={() => setIsInviteOpen(true)}
                                 key={refreshPeople}
                             />
                         </Tab.Panel>
                     )}
 
-                    {/* 3. Proposals Tab */}
+                    {/* 3. Files Tab */}
                     {!allTabs[2].hidden && (
                         <Tab.Panel className="focus:outline-none">
                             <DashboardTabProposals event={event} />

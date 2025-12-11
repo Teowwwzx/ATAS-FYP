@@ -16,20 +16,24 @@ interface EventInviteModalProps {
 }
 
 export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSuccess }: EventInviteModalProps) {
-    const [inviteRole, setInviteRole] = useState<'speaker' | 'audience'>('speaker')
+    const [inviteRole, setInviteRole] = useState<'speaker' | 'audience' | 'committee'>('speaker')
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(false)
     const [results, setResults] = useState<ProfileResponse[]>([])
     const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-    const [proposals, setProposals] = useState<any[]>([])
     const [selectedProposalId, setSelectedProposalId] = useState<string>('')
     const [joinedUserIds, setJoinedUserIds] = useState<Set<string>>(new Set())
+
+    const getRoleFilter = () => {
+        if (inviteRole === 'speaker') return 'expert'
+        if (inviteRole === 'audience') return 'student'
+        return undefined // Committee = search all
+    }
 
     const fetchDefaultUsers = async () => {
         setLoading(true)
         try {
-            // Filter by role if needed, e.g. { role: inviteRole === 'speaker' ? 'expert' : 'student' }
-            const data = await findProfiles({ role: inviteRole === 'speaker' ? 'expert' : 'student' })
+            const data = await findProfiles({ role: getRoleFilter() })
             setResults(data)
         } catch (error) {
             console.error(error)
@@ -42,7 +46,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
         setLoading(true)
         try {
             const isEmail = query.includes('@')
-            const commonParams = { role: inviteRole === 'speaker' ? 'expert' : 'student' }
+            const commonParams = { role: getRoleFilter() }
             const searchParams = isEmail ? { email: query, ...commonParams } : { name: query, ...commonParams }
 
             const data = await findProfiles(searchParams)
@@ -59,6 +63,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
         if (isOpen) {
             // Fetch existing participants to exclude
             getEventParticipants(eventId).then(participants => {
+                // @ts-ignore
                 const ids = new Set(participants.map(p => p.user_id))
                 setJoinedUserIds(ids)
             }).catch(console.error)
@@ -97,14 +102,22 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
             const promises = selectedUsers.map(userId =>
                 inviteEventParticipant(eventId, {
                     user_id: userId,
-                    role: inviteRole as any, // Cast to match stricter EventParticipantRole type if needed
+                    role: inviteRole as any,
                     description: selectedProposalId ? `Proposal Attached: ${selectedProposalId}` : undefined
                 })
             )
 
             await Promise.all(promises)
 
-            const action = inviteRole === 'speaker' ? (selectedProposalId ? 'Proposals sent' : 'Invited as Speaker') : 'Invited as Attendee'
+            let action = 'Invited'
+            if (inviteRole === 'speaker') {
+                action = selectedProposalId ? 'Proposals sent' : 'Invited as Speaker'
+            } else if (inviteRole === 'committee') {
+                action = 'Invited as Committee'
+            } else {
+                action = 'Invited as Participant'
+            }
+
             toast.success(`${action} to ${selectedUsers.length} users!`)
             if (onSuccess) onSuccess()
             onClose()
@@ -174,6 +187,12 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
                                                 Speaker
                                             </button>
                                             <button
+                                                onClick={() => setInviteRole('committee')}
+                                                className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${inviteRole === 'committee' ? 'bg-white shadow text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
+                                            >
+                                                Committee
+                                            </button>
+                                            <button
                                                 onClick={() => setInviteRole('audience')}
                                                 className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${inviteRole === 'audience' ? 'bg-white shadow text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}
                                             >
@@ -203,7 +222,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
                                         <input
                                             type="text"
                                             className="block w-full pl-12 pr-4 py-4 bg-zinc-50 border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all duration-200 font-medium text-lg"
-                                            placeholder={inviteRole === 'speaker' ? "Search experts by name or email..." : "Search students by name or email..."}
+                                            placeholder={inviteRole === 'speaker' ? "Search experts..." : inviteRole === 'committee' ? "Search anyone..." : "Search students..."}
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
                                         />

@@ -6,15 +6,17 @@ import { EventDetails } from '@/services/api.types'
 import { format } from 'date-fns'
 import { updateEventCover } from '@/services/api'
 import { toast } from 'react-hot-toast'
+import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 
 interface DashboardHeroCardProps {
     event: EventDetails
     onPreview?: () => void
     canEditCover?: boolean
+    phase?: EventPhase // Make optional for public views
     onCoverUpdated?: () => void
 }
 
-export function DashboardHeroCard({ event, onPreview, canEditCover, onCoverUpdated }: DashboardHeroCardProps) {
+export function DashboardHeroCard({ event, onPreview, canEditCover, phase = EventPhase.PRE_EVENT, onCoverUpdated }: DashboardHeroCardProps) {
     const startDate = new Date(event.start_datetime)
     const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
     const pickCover = () => {
@@ -69,7 +71,7 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, onCoverUpdat
                     }`}>
                     {event.type}
                 </span>
-                {canEditCover && (
+                {canEditCover && canEditCoreDetails(phase) && (
                     <>
                         <button
                             onClick={(e) => { e.stopPropagation(); fileRef.current?.click() }}
@@ -97,7 +99,28 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, onCoverUpdat
                             <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            {format(startDate, 'EEEE, MMMM d, yyyy • h:mm a')}
+                            {(() => {
+                                const start = new Date(event.start_datetime)
+                                const end = new Date(event.end_datetime)
+                                const isSame = start.toDateString() === end.toDateString()
+
+                                // Calculate duration
+                                const diffMs = end.getTime() - start.getTime()
+                                const diffMins = Math.floor(diffMs / 60000)
+                                const hours = Math.floor(diffMins / 60)
+                                const mins = diffMins % 60
+                                const durationStr = `${hours > 0 ? `${hours}h ` : ''}${mins > 0 ? `${mins}m` : ''}`.trim()
+
+                                return (
+                                    <span>
+                                        {isSame
+                                            ? `${format(start, 'EEEE, MMMM d, yyyy • h:mm a')} - ${format(end, 'h:mm a')}`
+                                            : `${format(start, 'EEE, MMMM d • h:mm a')} - ${format(end, 'EEE, MMMM d • h:mm a')}`
+                                        }
+                                        {durationStr && <span className="opacity-70 ml-2">({durationStr})</span>}
+                                    </span>
+                                )
+                            })()}
                         </div>
                         {event.venue_remark && (
                             <div className="flex items-center gap-2">
