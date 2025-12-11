@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
-import { generateMyQR, getMyQRImageUrl } from '@/services/api'
+import { generateMyQR, fetchMyQRImageBlob } from '@/services/api'
 import { AttendanceQRResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 
@@ -20,6 +19,7 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
     const [qrData, setQrData] = useState<AttendanceQRResponse | null>(null)
     const [loading, setLoading] = useState(false)
     const [expiresIn, setExpiresIn] = useState<string>('')
+    const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
 
     useEffect(() => {
         if (isOpen && !qrData) {
@@ -66,6 +66,13 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
         try {
             const data = await generateMyQR(eventId)
             setQrData(data)
+            try {
+                const blob = await fetchMyQRImageBlob(eventId, 60)
+                const url = URL.createObjectURL(blob)
+                setQrImageUrl(url)
+            } catch (e) {
+                console.error('Failed to fetch QR image blob', e)
+            }
         } catch (error) {
             console.error(error)
             toast.error('Failed to generate QR code')
@@ -75,11 +82,11 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
     }
 
     const downloadQR = () => {
-        const imgEl = document.querySelector('#attendance-qr img') as HTMLImageElement | null
-        if (!imgEl || !imgEl.src) return
+        const src = qrImageUrl
+        if (!src) return
         const downloadLink = document.createElement('a')
         downloadLink.download = `attendance-qr-${eventTitle}.png`
-        downloadLink.href = imgEl.src
+        downloadLink.href = src
         downloadLink.click()
     }
 
@@ -137,7 +144,11 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
                                         <>
                                             {/* QR Code */}
                                             <div id="attendance-qr" className="bg-white p-6 rounded-2xl shadow-lg border-4 border-blue-100 mb-6">
-                                                <img src={getMyQRImageUrl(eventId)} alt="Attendance QR" width={240} height={240} />
+                                                {qrImageUrl ? (
+                                                    <img src={qrImageUrl} alt="Attendance QR" width={240} height={240} />
+                                                ) : (
+                                                    <div className="w-[240px] h-[240px] flex items-center justify-center text-zinc-500">QR unavailable</div>
+                                                )}
                                             </div>
 
                                             {/* Expiration Info */}

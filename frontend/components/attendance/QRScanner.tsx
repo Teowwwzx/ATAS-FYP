@@ -40,11 +40,11 @@ export default function QRScanner({
                 scannerRef.current = scanner
 
                 // Get available cameras
-                const cameras = await Html5Qrcode.getCameras()
+                const cameras = await Html5Qrcode.getCameras() as Array<{ id: string; label: string }>
 
                 if (cameras && cameras.length > 0) {
                     // Prefer back camera for mobile devices
-                    const backCamera = cameras.find(camera =>
+                    const backCamera = cameras.find((camera: { id: string; label: string }) =>
                         camera.label.toLowerCase().includes('back') ||
                         camera.label.toLowerCase().includes('rear')
                     )
@@ -58,13 +58,13 @@ export default function QRScanner({
                             fps: fps,
                             qrbox: qrbox,
                         },
-                        (decodedText) => {
+                        (decodedText: string) => {
                             // Success callback using the Ref
                             if (callbackRef.current) {
                                 callbackRef.current(decodedText)
                             }
                         },
-                        (errorMessage) => {
+                        (errorMessage: string) => {
                             // Error callback (can be ignored for continuous scanning)
                             // Only log critical errors
                             // dbg: check if error is just 'not found'
@@ -73,7 +73,7 @@ export default function QRScanner({
                 } else {
                     console.error('No cameras found')
                 }
-            } catch (err) {
+            } catch (err: unknown) {
                 console.error('Failed to start QR scanner:', err)
                 isScanning.current = false
             }
@@ -92,7 +92,7 @@ export default function QRScanner({
 
                 scanner.stop()
                     .then(() => scanner.clear())
-                    .catch((err) => console.warn('Scanner stop error:', err))
+                    .catch((err: unknown) => console.warn('Scanner stop error:', err))
             }
         }
     }, [fps, qrbox]) // Removed qrCodeSuccessCallback dependency

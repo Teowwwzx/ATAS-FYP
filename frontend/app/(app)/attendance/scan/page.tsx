@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { scanAttendance } from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic'
 // Dynamically import QR scanner to avoid SSR issues
 const Html5QrcodePlugin = dynamic(() => import('@/components/attendance/QRScanner'), { ssr: false })
 
-export default function AttendanceScanPage() {
+function AttendanceScanInner() {
   const searchParams = useSearchParams()
   const eventId = searchParams.get('eventId') || ''
 
@@ -217,5 +217,13 @@ export default function AttendanceScanPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AttendanceScanPage() {
+  return (
+    <Suspense>
+      <AttendanceScanInner />
+    </Suspense>
   )
 }

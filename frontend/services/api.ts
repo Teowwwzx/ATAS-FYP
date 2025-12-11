@@ -275,6 +275,14 @@ export const getMyQRImageUrl = (eventId: string, minutesValid: number = 60) => {
   return `${api.defaults.baseURL}/events/${eventId}/attendance/user_qr.png?minutes_valid=${minutesValid}`
 }
 
+export const fetchMyQRImageBlob = async (eventId: string, minutesValid: number = 60) => {
+  const response = await api.get(`/events/${eventId}/attendance/user_qr.png`, {
+    params: { minutes_valid: minutesValid },
+    responseType: 'blob',
+  })
+  return response.data as Blob
+}
+
 // --- QR Scanning (Organizers) ---
 
 export interface ScanAttendanceRequest {

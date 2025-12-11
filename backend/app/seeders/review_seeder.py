@@ -2,7 +2,7 @@ import random
 from faker import Faker
 from sqlalchemy.orm import Session
 from app.models.user_model import User
-from app.models.event_model import Event, EventParticipant
+from app.models.event_model import Event, EventParticipant, EventStatus
 from app.models.organization_model import Organization
 from app.models.review_model import Review
 
@@ -53,7 +53,7 @@ def seed_reviews(db: Session, num_reviews: int = 50):
     print(f"Seeding {num_reviews} reviews...")
     
     users = db.query(User).all()
-    events = db.query(Event).all()
+    events = db.query(Event).filter(Event.status == EventStatus.ended).all()
     organizations = db.query(Organization).all()
     
     if not users:
@@ -61,7 +61,7 @@ def seed_reviews(db: Session, num_reviews: int = 50):
         return
     
     if not events and not organizations:
-        print("No events or organizations found. Please seed them first.")
+        print("No events (ended) or organizations found. Please seed them first.")
         return
     
     created = 0

@@ -81,8 +81,11 @@ def seed_events(db, num_events=20):
         return
     
     for idx in range(num_events):
-        # Random start time between now and 30 days in the future or past
-        offset_days = random.randint(-15, 30)
+        # Bias towards future dates to yield more 'published' events
+        if random.random() < 0.7:
+            offset_days = random.randint(0, 30)
+        else:
+            offset_days = random.randint(-15, -1)
         start_time = datetime.now(timezone.utc) + timedelta(days=offset_days)
         # Event duration between 1 and 4 hours
         end_time = start_time + timedelta(hours=random.randint(1, 4))
@@ -91,8 +94,8 @@ def seed_events(db, num_events=20):
         
         # Lifecycle and registration defaults
         status_choice = EventStatus.published if start_time > datetime.now(timezone.utc) else EventStatus.ended
-        # Small portion remain as drafts
-        if random.random() < 0.2:
+        # Smaller portion remain as drafts
+        if random.random() < 0.05:
             status_choice = EventStatus.draft
 
         # More realistic event titles based on format
@@ -132,7 +135,12 @@ def seed_events(db, num_events=20):
             type=event_type,
             start_datetime=start_time,
             end_datetime=end_time,
-            registration_type=random.choice(list(EventRegistrationType)),
+            # Bias towards free registration
+            registration_type=random.choices(
+                population=[EventRegistrationType.free, EventRegistrationType.paid],
+                weights=[85, 15],
+                k=1,
+            )[0],
             status=status_choice,
             visibility=random.choice(list(EventVisibility)),
             registration_status=EventRegistrationStatus.opened,
