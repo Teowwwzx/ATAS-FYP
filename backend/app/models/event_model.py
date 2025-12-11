@@ -68,6 +68,7 @@ class Event(Base):
     description = Column(Text, nullable=True)
     logo_url = Column(String, nullable=True)
     cover_url = Column(String, nullable=True)
+    payment_qr_url = Column(String, nullable=True)
     format = Column(Enum(EventFormat), nullable=False)
     type = Column(Enum(EventType), nullable=False)
     start_datetime = Column(DateTime(timezone=True), nullable=False)

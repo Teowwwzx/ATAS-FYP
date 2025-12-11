@@ -5,11 +5,12 @@ import Link from 'next/link'
 import {
     getMyProfile, updateProfile, updateAvatar, updateCoverPicture, getMe, getMyEvents,
     getTags, attachMyTag, detachMyTag, addMyEducation, deleteMyEducation, getMyFollows, getMyFollowers, unfollowUser,
-    addMyJobExperience, deleteMyJobExperience
+    addMyJobExperience, deleteMyJobExperience,
+    getPublicOrganizations, createOrganization, getOrganizationById
 } from '@/services/api'
 import {
     ProfileResponse, ProfileUpdate, UserMeResponse, MyEventItem,
-    EducationCreate, EducationResponse, JobExperienceCreate
+    EducationCreate, EducationResponse, JobExperienceCreate, OrganizationResponse
 } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 
@@ -25,6 +26,17 @@ export default function ProfilePage() {
     const [viewFriends, setViewFriends] = useState<'none' | 'followers' | 'following'>('none')
     const [previewImage, setPreviewImage] = useState<string | null>(null)
 
+    // Organization selection state for Work Experience
+    const [orgSearch, setOrgSearch] = useState('')
+    const [orgOptions, setOrgOptions] = useState<OrganizationResponse[]>([])
+    const [orgLoading, setOrgLoading] = useState(false)
+    const [selectedOrg, setSelectedOrg] = useState<OrganizationResponse | null>(null)
+    const [showCreateOrg, setShowCreateOrg] = useState(false)
+    const [newOrgName, setNewOrgName] = useState('')
+    const [newOrgType, setNewOrgType] = useState<'company' | 'university' | 'community' | 'nonprofit' | 'government'>('community')
+    const [creatingOrg, setCreatingOrg] = useState(false)
+    const [orgsById, setOrgsById] = useState<Record<string, OrganizationResponse>>({})
+
     const [loading, setLoading] = useState(true)
     const [editing, setEditing] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -38,6 +50,24 @@ export default function ProfilePage() {
     useEffect(() => {
         loadProfile()
     }, [])
+
+    // Debounced organization search
+    useEffect(() => {
+        let active = true
+        const q = orgSearch.trim()
+        if (!q) {
+            setOrgOptions([])
+            return
+        }
+        setOrgLoading(true)
+        const t = setTimeout(() => {
+            getPublicOrganizations({ q, page: 1, page_size: 5 })
+                .then(res => { if (active) setOrgOptions(res) })
+                .catch(() => { if (active) setOrgOptions([]) })
+                .finally(() => { if (active) setOrgLoading(false) })
+        }, 300)
+        return () => { active = false; clearTimeout(t) }
+    }, [orgSearch])
 
     const loadProfile = async () => {
         try {
@@ -75,6 +105,20 @@ export default function ProfilePage() {
                 intents: profileData.intents,
                 today_status: profileData.today_status,
             })
+
+            try {
+                const expOrgIds = Array.from(new Set([
+                    ...(profileData.job_experiences?.map(j => j.org_id).filter(Boolean) as string[]),
+                    ...(profileData.educations?.map(e => e.org_id).filter(Boolean) as string[])
+                ]))
+                if (expOrgIds.length > 0) {
+                    const results = await Promise.all(expOrgIds.map(async (oid) => {
+                        const org = await getOrganizationById(oid)
+                        return [oid, org] as const
+                    }))
+                    setOrgsById(Object.fromEntries(results))
+                }
+            } catch { }
         } catch (error) {
             console.error('Failed to load profile', error)
             toast.error('Failed to load profile')
@@ -224,7 +268,10 @@ export default function ProfilePage() {
         return <div className="p-8 text-center text-zinc-900">Profile not found.</div>
     }
 
-    const isProfileIncomplete = !profile.bio || !profile.title || !profile.country || (profile.educations?.length === 0 && profile.job_experiences?.length === 0)
+    const isProfileIncomplete = !profile.bio || !profile.title || !profile.country || (profile?.educations?.length === 0 && profile?.job_experiences?.length === 0)
+    const educations = profile?.educations ?? []
+    const jobs = profile?.job_experiences ?? []
+    const tagsList = profile?.tags ?? []
 
     return (
         <div className="min-h-screen bg-amber-50 pb-20">
@@ -315,7 +362,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Categorized View Mode */}
-                    {!editing && (
+                    
                         <div className="flex flex-col gap-8 pb-12 animate-fadeIn">
                             {/* Profile Header Section */}
                             <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -531,17 +578,31 @@ export default function ProfilePage() {
                                             <h4 className="font-bold text-lg text-zinc-900 mb-3 border-b border-gray-100 pb-2">Work Experience</h4>
                                             {profile.job_experiences && profile.job_experiences.length > 0 ? (
                                                 <div className="space-y-4">
-                                                    {profile.job_experiences.map((job, i) => (
-                                                        <div key={i} className="flex gap-4">
-                                                            <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0 text-zinc-500">
-                                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                    {profile.job_experiences.map((job, i) => {
+                                                        const org = job.org_id ? orgsById[job.org_id] : undefined
+                                                        return (
+                                                            <div key={i} className="flex gap-4">
+                                                                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0 text-zinc-500">
+                                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-zinc-900">{org?.name || job.description || job.title}</div>
+                                                                    {org?.name && job.title && (
+                                                                        <div className="text-zinc-500 text-sm mt-0.5">{job.title}</div>
+                                                                    )}
+                                                                    {(job.start_datetime || job.end_datetime) && (
+                                                                        <div className="text-zinc-500 text-sm mt-0.5">
+                                                                            {job.start_datetime && !job.end_datetime
+                                                                                ? `Since ${new Date(job.start_datetime).getFullYear()}`
+                                                                                : job.start_datetime && job.end_datetime
+                                                                                ? `${new Date(job.start_datetime).getFullYear()} - ${new Date(job.end_datetime).getFullYear()}`
+                                                                                : ''}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <div className="font-bold text-zinc-900">{job.title}</div>
-                                                                {job.description && <div className="text-zinc-500 text-sm mt-0.5">{job.description}</div>}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        )
+                                                    })}
                                                 </div>
                                             ) : <p className="text-zinc-400 italic text-sm">No work experience added.</p>}
                                         </div>
@@ -595,36 +656,32 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Edit Actions (Save/Cancel) */}
-                    {editing && (
-                        <div className="pb-8 w-full flex justify-end">
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setEditing(false)}
-                                    className="px-6 py-3 bg-white text-zinc-900 rounded-full font-bold shadow-sm hover:bg-gray-50 transition-all duration-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="px-8 py-3 bg-yellow-400 text-zinc-900 rounded-full shadow-lg font-bold hover:bg-yellow-300 hover:scale-105 transition-all duration-200 disabled:opacity-70"
-                                >
-                                    {saving ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
+                    
+                    
                     {/* Edit Form */}
                     {editing && (
-                        <div className="mt-8 animate-fadeIn max-w-3xl mx-auto space-y-8">
+                        <div className="mt-8 animate-fadeIn max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-[220px,1fr] gap-6">
+                            <aside className="hidden md:block">
+                                <div className="sticky top-24 bg-white rounded-[1.5rem] border border-gray-100 shadow-sm p-3">
+                                    {[
+                                        { id: 'section-basic', label: 'Basic Info', icon: (<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>) },
+                                        { id: 'section-experience', label: 'Experience', icon: (<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>) },
+                                        { id: 'section-education', label: 'Education', icon: (<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12.083 12.083 0 0112 20.5c-2.177 0-4.316-.559-6.16-1.922L12 14z" /></svg>) },
+                                        { id: 'section-skills', label: 'Skills', icon: (<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>) },
+                                        { id: 'section-social', label: 'Social Links', icon: (<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>) },
+                                    ].map(item => (
+                                        <button key={item.id} type="button" onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-zinc-600 hover:bg-yellow-50 hover:text-zinc-900">
+                                            <span className="w-7 h-7 rounded-md bg-amber-50 flex items-center justify-center text-yellow-600">{item.icon}</span>
+                                            <span>{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </aside>
+                            <div className="space-y-8">
                             {/* Basic Info */}
                             <form onSubmit={handleSave} className="space-y-8">
-                                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                                <div id="section-basic" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                                     <h3 className="text-2xl font-black text-zinc-900 mb-6">Basic Info</h3>
                                     <div className="space-y-6">
                                         <div>
@@ -725,11 +782,11 @@ export default function ProfilePage() {
                             </form>
 
                             {/* Education Management */}
-                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <div id="section-education" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                                 <h3 className="text-2xl font-black text-zinc-900 mb-6">Education</h3>
-                                {profile.educations && profile.educations.length > 0 && (
+                                {educations.length > 0 && (
                                     <div className="space-y-4 mb-8">
-                                        {profile.educations.map(edu => (
+                                        {educations.map(edu => (
                                             <div key={edu.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                                                 <div>
                                                     <div className="font-bold text-zinc-900">{edu.qualification}</div>
@@ -769,11 +826,11 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Job Experience Management */}
-                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <div id="section-experience" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                                 <h3 className="text-2xl font-black text-zinc-900 mb-6">Work Experience</h3>
-                                {profile.job_experiences && profile.job_experiences.length > 0 && (
+                                {jobs.length > 0 && (
                                     <div className="space-y-4 mb-8">
-                                        {profile.job_experiences.map(job => (
+                                        {jobs.map(job => (
                                             <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
                                                 <div>
                                                     <div className="font-bold text-zinc-900">{job.title}</div>
@@ -809,9 +866,146 @@ export default function ProfilePage() {
                                                 onChange={e => setNewJob({ ...newJob, description: e.target.value })}
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-zinc-900 ml-1">Organization (optional)</label>
+                                            {selectedOrg ? (
+                                                <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center overflow-hidden">
+                                            {selectedOrg?.logo_url ? (
+                                                <img src={selectedOrg?.logo_url || ''} alt={selectedOrg?.name || ''} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-zinc-900 font-bold text-sm">{selectedOrg?.name?.charAt(0) || ''}</span>
+                                            )}
+                                        </div>
+                                        <div className="text-sm font-bold text-zinc-900">{selectedOrg?.name || ''}</div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSelectedOrg(null); setNewJob({ ...newJob, org_id: undefined }); setOrgSearch(''); setOrgOptions([]) }}
+                                                        className="text-xs font-bold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-zinc-600 hover:bg-gray-50"
+                                                    >
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search organization by name..."
+                                                        className="w-full bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400"
+                                                        value={orgSearch}
+                                                        onChange={e => setOrgSearch(e.target.value)}
+                                                    />
+                                                    {orgLoading && (
+                                                        <div className="text-xs text-zinc-500 px-1">Searching...</div>
+                                                    )}
+                                                    {!orgLoading && orgSearch && (
+                                                        <div className="space-y-2">
+                                                            {orgOptions.length > 0 ? (
+                                                                <div className="grid gap-2">
+                                                                    {orgOptions.map(o => (
+                                                                        <button
+                                                                            key={o.id}
+                                                                            type="button"
+                                                                            onClick={() => { setSelectedOrg(o); setNewJob({ ...newJob, org_id: o.id }) }}
+                                                                            className="w-full text-left flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
+                                                                        >
+                                                                            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center overflow-hidden">
+                                                                                {o.logo_url ? (
+                                                                                    <img src={o.logo_url} alt={o.name} className="w-full h-full object-cover" />
+                                                                                ) : (
+                                                                                    <span className="text-zinc-900 font-bold text-sm">{o.name.charAt(0)}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="text-sm font-bold text-zinc-900">{o.name}</div>
+                                                                                <div className="text-xs text-zinc-500 capitalize">{o.type}</div>
+                                                                            </div>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+                                                                    <div className="text-sm text-zinc-600">No organization found for "{orgSearch}"</div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setNewOrgName(orgSearch.trim()); setShowCreateOrg(true) }}
+                                                                        className="text-xs font-bold px-3 py-1.5 rounded-full bg-zinc-900 text-yellow-400 hover:bg-zinc-800"
+                                                                    >
+                                                                        Create Organization
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {showCreateOrg && (
+                                                        <div className="space-y-2 bg-white rounded-xl border border-gray-200 p-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Organization name"
+                                                                    className="bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400"
+                                                                    value={newOrgName}
+                                                                    onChange={e => setNewOrgName(e.target.value)}
+                                                                />
+                                                                <select
+                                                                    className="bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 focus:ring-2 focus:ring-yellow-400"
+                                                                    value={newOrgType}
+                                                                    onChange={e => setNewOrgType(e.target.value as any)}
+                                                                >
+                                                                    <option value="company">Company</option>
+                                                                    <option value="university">University</option>
+                                                                    <option value="community">Community</option>
+                                                                    <option value="nonprofit">Nonprofit</option>
+                                                                    <option value="government">Government</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={creatingOrg || !newOrgName.trim()}
+                                                                    onClick={async () => {
+                                                                        setCreatingOrg(true)
+                                                                        try {
+                                                                            const org = await createOrganization({ name: newOrgName.trim(), type: newOrgType, visibility: 'public' })
+                                                                            setSelectedOrg(org)
+                                                                            setNewJob({ ...newJob, org_id: org.id })
+                                                                            setShowCreateOrg(false)
+                                                                            setOrgSearch('')
+                                                                            setOrgOptions([])
+                                                                            setNewOrgName('')
+                                                                            toast.success('Organization created')
+                                                                        } catch (error: any) {
+                                                                            toast.error(error?.response?.data?.detail || 'Failed to create organization')
+                                                                        } finally {
+                                                                            setCreatingOrg(false)
+                                                                        }
+                                                                    }}
+                                                                    className="px-4 py-2 rounded-xl bg-zinc-900 text-yellow-400 text-sm font-bold disabled:opacity-50"
+                                                                >
+                                                                    {creatingOrg ? 'Creating...' : 'Create & Select'}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowCreateOrg(false)}
+                                                                    className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-zinc-700 text-sm font-bold"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {showCreateOrg && (
+                                            <div className="text-xs text-zinc-500 font-medium text-center">Finish creating the organization to proceed</div>
+                                        )}
                                         <button
                                             type="submit"
-                                            className="w-full py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-colors"
+                                            disabled={showCreateOrg || creatingOrg}
+                                            className="w-full py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Add Experience
                                         </button>
@@ -820,12 +1014,12 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Specialist Tags */}
-                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <div id="section-skills" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                                 <h3 className="text-2xl font-black text-zinc-900 mb-6">Specialist Tags</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {availableTags.length === 0 && <p className="text-zinc-500 italic">No tags available.</p>}
                                     {availableTags.map(tag => {
-                                        const isSelected = profile.tags?.some(t => t.id === tag.id)
+                                        const isSelected = tagsList.some(t => t.id === tag.id)
                                         return (
                                             <button
                                                 key={tag.id}
@@ -843,7 +1037,7 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Social Links Form */}
-                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <div id="section-social" className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                                 <h3 className="text-2xl font-black text-zinc-900 mb-6">Social Links</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {[
@@ -867,36 +1061,13 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         </div>
-                    )}
-
-
-
-                    {/* Events Section */}
-                    {!editing && events.length > 0 && (
-                        <div className="mb-12">
-                            <h2 className="text-2xl font-black text-zinc-900 mb-6 text-center">Current Events</h2>
-                            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                {events.map((evt) => (
-                                    <Link key={evt.event_id} href={`/events/${evt.event_id}`} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-md transition-all block group">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${evt.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                {evt.status}
-                                            </span>
-                                            <span className="text-xs font-bold text-gray-400">{new Date(evt.start_datetime).toLocaleDateString()}</span>
-                                        </div>
-                                        <h3 className="text-xl font-bold text-zinc-900 mb-2 group-hover:text-yellow-600 transition-colors">{evt.title}</h3>
-                                        <div className="text-sm text-gray-500 font-medium">
-                                            {evt.my_role ? (
-                                                <span className="capitalize">Role: {evt.my_role}</span>
-                                            ) : 'Participant'}
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
                         </div>
-                    )}
+                        )}
+
+                    
+                    </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }

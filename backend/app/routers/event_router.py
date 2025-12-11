@@ -717,15 +717,10 @@ def get_event_details(
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    if event.visibility == EventVisibility.public:
-        return event
-
-    # Private event: allow organizer, admin, or any participant to view
+    is_admin = bool(current_user and ("admin" in current_user.roles))
+    is_organizer = bool(current_user and (event.organizer_id == current_user.id))
+    is_participant = False
     if current_user is not None:
-        if "admin" in current_user.roles:
-            return event
-        if event.organizer_id == current_user.id:
-            return event
         participant = (
             db.query(EventParticipant)
             .filter(
@@ -734,8 +729,17 @@ def get_event_details(
             )
             .first()
         )
-        if participant is not None:
-            return event
+        is_participant = participant is not None
+
+    # Hide payment QR unless organizer, participant, or admin
+    if not (is_organizer or is_participant or is_admin):
+        event.payment_qr_url = None
+
+    if event.visibility == EventVisibility.public:
+        return event
+
+    if is_admin or is_organizer or is_participant:
+        return event
 
     raise HTTPException(status_code=403, detail="This event is private")
 
@@ -1931,6 +1935,29 @@ def update_event_cover(
 
     url = upload_file(file, "event_covers")
     event.cover_url = url
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.put("/events/{event_id}/payment_qr", response_model=EventDetails)
+def update_event_payment_qr(
+    event_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Organizer only per requirement
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only organizer can upload payment QR")
+
+    url = upload_file(file, "event_payment_qr")
+    event.payment_qr_url = url
     db.add(event)
     db.commit()
     db.refresh(event)

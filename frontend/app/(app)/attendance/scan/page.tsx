@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { scanAttendance } from '@/services/api'
+import { scanAttendanceToken } from '@/services/api'
 import { toast } from 'react-hot-toast'
 
 export default function AttendanceScanPage() {
@@ -16,7 +16,7 @@ export default function AttendanceScanPage() {
     }
     setLoading(true)
     try {
-      await scanAttendance({ token: token.trim(), email: email.trim() || undefined })
+      await scanAttendanceToken({ token: token.trim(), email: email.trim() || undefined })
       toast.success('Attendance recorded')
     } catch (e: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
