@@ -1,7 +1,7 @@
 # model/onboarding_model.py
 
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Text, Enum, Integer
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Text, Enum, Integer, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import enum
 import uuid
@@ -44,7 +44,7 @@ class UserOnboarding(Base):
     # - Areas of interest
     # - Notification preferences
     # - Accessibility settings
-    onboarding_data = Column(JSONB, nullable=True)
+    onboarding_data = Column(JSON, nullable=True)
     
     # Timestamps
     started_at = Column(DateTime(timezone=True), nullable=True)

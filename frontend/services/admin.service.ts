@@ -155,6 +155,7 @@ export const adminService = {
         name?: string
         visibility?: OrganizationVisibility
         type?: OrganizationType
+        include_all_visibility?: boolean
     }) => {
         const response = await api.get<OrganizationResponse[]>('/organizations', { params })
         return response.data
@@ -167,6 +168,16 @@ export const adminService = {
 
     deleteOrganization: async (orgId: string) => {
         const response = await api.delete(`/organizations/${orgId}`)
+        return response.data
+    },
+
+    approveOrganization: async (orgId: string) => {
+        const response = await api.post<OrganizationResponse>(`/organizations/${orgId}/approve`)
+        return response.data
+    },
+
+    rejectOrganization: async (orgId: string) => {
+        const response = await api.post<OrganizationResponse>(`/organizations/${orgId}/reject`)
         return response.data
     },
 
@@ -243,6 +254,7 @@ export const adminService = {
         name?: string
         visibility?: OrganizationVisibility
         type?: OrganizationType
+        include_all_visibility?: boolean
     }) => {
         const response = await api.get<{ total_count: number }>('/organizations/count', { params })
         return response.data.total_count

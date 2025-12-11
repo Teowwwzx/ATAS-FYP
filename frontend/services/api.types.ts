@@ -453,6 +453,7 @@ export interface UserMeResponse {
 
 export type OrganizationVisibility = 'public' | 'private'
 export type OrganizationType = 'company' | 'university' | 'community' | 'nonprofit' | 'government'
+export type OrganizationStatus = 'pending' | 'approved' | 'rejected'
 
 export interface OrganizationCreate {
     name: string
@@ -487,6 +488,7 @@ export interface OrganizationResponse {
     website_url?: string
     location?: string
     visibility: OrganizationVisibility
+    status: OrganizationStatus
 }
 
 // --- Audit Log Types ---

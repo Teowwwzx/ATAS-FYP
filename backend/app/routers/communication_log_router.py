@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.communication_log_model import CommunicationLog, CommunicationStatus
 from app.schemas.communication_log_schema import CommunicationLogResponse
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_roles
 from app.models.user_model import User
 import resend
 from app.core.config import settings
@@ -18,40 +18,31 @@ logger = logging.getLogger(__name__)
 # For now I will just check if user is authenticated and is admin.
 # Adjust per your auth implementation.
 
-def get_admin_user(current_user: User = Depends(get_current_user)):
-    # Check if user has admin role. 
-    # Your user model has 'roles' which is a list of strings usually ['user', 'admin']? 
-    # Or just 'admin' in roles.
-    is_admin = False
-    if current_user.roles and "admin" in current_user.roles:
-        is_admin = True
-    
-    if not is_admin:
-         raise HTTPException(status_code=403, detail="Not authorized")
-    return current_user
+resend.api_key = settings.RESEND_API_KEY
 
 @router.get("/", response_model=list[CommunicationLogResponse])
 def get_logs(
-    skip: int = 0, 
-    limit: int = 50, 
-    status: str = None, 
+    skip: int = 0,
+    limit: int = 50,
+    status: str | None = None,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_admin_user)
+    admin: User = Depends(require_roles(["admin", "customer_support"]))
 ):
     query = db.query(CommunicationLog).order_by(CommunicationLog.created_at.desc())
     if status:
-        query = query.filter(CommunicationLog.status == status)
-    
+        try:
+            enum_status = CommunicationStatus(status)
+            query = query.filter(CommunicationLog.status == enum_status)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid status")
     return query.offset(skip).limit(limit).all()
 
 @router.post("/{log_id}/resend")
-def resend_log(log_id: str, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def resend_log(log_id: str, db: Session = Depends(get_db), admin: User = Depends(require_roles(["admin", "customer_support"]))):
     log = db.query(CommunicationLog).filter(CommunicationLog.id == log_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
-    
     if log.status == CommunicationStatus.SENT:
-        # Allow re-sending even if sent? Maybe. But warn?
         pass
 
     # Basic Resend Logic using stored HTML
@@ -60,26 +51,20 @@ def resend_log(log_id: str, db: Session = Depends(get_db), admin: User = Depends
     
     try:
         if not log.recipient or not log.subject or not log.content:
-             raise HTTPException(status_code=400, detail="Missing data in log to resend")
-
+            raise HTTPException(status_code=400, detail="Missing data in log to resend")
         params = {
             "from": settings.SENDER_EMAIL,
             "to": [log.recipient],
             "subject": log.subject,
             "html": log.content,
         }
-        
-        # Update to pending first?
-        # log.status = CommunicationStatus.PENDING
-        # db.commit() 
-        
+        log.status = CommunicationStatus.PENDING
+        db.commit()
         resend.Emails.send(params)
-        
         log.status = CommunicationStatus.SENT
-        log.error_message = None # Clear error
+        log.error_message = None
         db.commit()
         return {"message": "Email resent successfully", "status": "sent"}
-        
     except Exception as e:
         logger.error(f"Resend failed for {log_id}: {e}")
         log.status = CommunicationStatus.FAILED

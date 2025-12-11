@@ -25,6 +25,11 @@ class OrganizationRole(enum.Enum):
     admin = "admin"
     member = "member"
 
+class OrganizationStatus(enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
 organization_members = Table(
     'organization_members',
     Base.metadata,
@@ -48,6 +53,7 @@ class Organization(Base):
     website_url = Column(String, nullable=True)
     location = Column(String, nullable=True)
     visibility = Column(Enum(OrganizationVisibility), default=OrganizationVisibility.public, nullable=False)
+    status = Column(Enum(OrganizationStatus), default=OrganizationStatus.approved, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

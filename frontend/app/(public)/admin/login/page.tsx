@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
       const ok = (me.roles || []).some(r => ADMIN_ROLES.includes(r))
       if (!ok) {
         toast.error('This account does not have admin access')
-        router.push('/dashboard')
+        try { localStorage.removeItem('atas_token') } catch {}
         return
       }
       toast.success('Welcome, admin')

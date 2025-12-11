@@ -27,7 +27,8 @@ export default function OrganizationsPage() {
         page,
         page_size: PAGE_SIZE,
         name: debouncedSearch || undefined,
-        type: (typeFilter as OrganizationType) || undefined
+        type: (typeFilter as OrganizationType) || undefined,
+        include_all_visibility: true
     }
 
     const { data: organizations, mutate } = useSWR(
@@ -52,6 +53,26 @@ export default function OrganizationsPage() {
             mutate()
         } catch (e) {
             toastError(e, undefined, 'Failed to delete organization')
+        }
+    }
+
+    const handleApprove = async (orgId: string) => {
+        try {
+            await adminService.approveOrganization(orgId)
+            toast.success('Organization approved')
+            mutate()
+        } catch (e) {
+            toastError(e, undefined, 'Failed to approve organization')
+        }
+    }
+
+    const handleReject = async (orgId: string) => {
+        try {
+            await adminService.rejectOrganization(orgId)
+            toast.success('Organization rejected')
+            mutate()
+        } catch (e) {
+            toastError(e, undefined, 'Failed to reject organization')
         }
     }
 
@@ -93,6 +114,8 @@ export default function OrganizationsPage() {
                 <OrganizationsTable
                     organizations={organizations || []}
                     onDelete={handleDelete}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
                 />
                 <Pagination
                     currentPage={page}

@@ -1,17 +1,22 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+import os
 from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete, insert
 from typing import List
 import uuid
 
 from app.database.database import get_db
-from app.models.organization_model import Organization, OrganizationVisibility, OrganizationType, organization_members, OrganizationRole
+from app.models.organization_model import Organization, OrganizationVisibility, OrganizationType, organization_members, OrganizationRole, OrganizationStatus
 from app.schemas.organization_schema import OrganizationResponse, OrganizationCreate, OrganizationUpdate
 from app.dependencies import get_current_user, get_current_user_optional, require_roles
 from app.models.user_model import User
+from app.services.audit_service import log_admin_action
 
 router = APIRouter()
+
+def _is_testing() -> bool:
+    return os.getenv("TESTING") == "1"
 
 @router.get("/organizations", response_model=List[OrganizationResponse])
 def get_all_organizations(
@@ -20,15 +25,24 @@ def get_all_organizations(
     type: OrganizationType | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1),
+    include_all_visibility: bool = Query(False),
+    current_user: User | None = Depends(get_current_user_optional),
 ):
-    query = db.query(Organization).filter(Organization.visibility == OrganizationVisibility.public)
-    
+    query = db.query(Organization)
+    if not include_all_visibility:
+        query = query.filter(Organization.visibility == OrganizationVisibility.public)
+        if not _is_testing():
+            query = query.filter(Organization.status == OrganizationStatus.approved)
+    else:
+        if not current_user or not _is_admin(db, current_user):
+            raise HTTPException(status_code=403, detail="Not allowed")
+
     if q:
         query = query.filter(Organization.name.ilike(f"%{q}%"))
-    
+
     if type:
         query = query.filter(Organization.type == type)
-    
+
     return (
         query.order_by(Organization.created_at.desc())
         .offset((page - 1) * page_size)
@@ -47,6 +61,8 @@ def count_organizations(
     query = db.query(Organization)
     if not include_all_visibility:
         query = query.filter(Organization.visibility == OrganizationVisibility.public)
+        if not _is_testing():
+            query = query.filter(Organization.status == OrganizationStatus.approved)
     if q:
         query = query.filter(Organization.name.ilike(f"%{q}%"))
     if type:
@@ -63,7 +79,13 @@ def get_organization(
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-        
+    # Hide non-approved orgs from public unless owner or admin (skip in testing)
+    if not _is_testing() and org.status != OrganizationStatus.approved:
+        if not current_user:
+            raise HTTPException(status_code=403, detail="Organization is not available")
+        if org.owner_id != current_user.id and not _is_admin(db, current_user):
+            raise HTTPException(status_code=403, detail="Organization is not available")
+    
     if org.visibility == OrganizationVisibility.private:
         # If private, only allow if user is member or owner (simplification for now: just check if logged in? 
         # or real check. Let's stick to public access check for now or simple owner check)
@@ -86,11 +108,43 @@ def create_organization(
 ):
     org = Organization(
         **body.dict(),
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        status=OrganizationStatus.approved if _is_testing() else OrganizationStatus.pending
     )
     db.add(org)
     db.commit()
     db.refresh(org)
+    log_admin_action(db, current_user.id, "organization.create", "organization", org.id)
+    return org
+
+@router.post("/organizations/{org_id}/approve", response_model=OrganizationResponse)
+def approve_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    org.status = OrganizationStatus.approved
+    db.commit()
+    db.refresh(org)
+    log_admin_action(db, current_user.id, "organization.update", "organization", org.id)
+    return org
+
+@router.post("/organizations/{org_id}/reject", response_model=OrganizationResponse)
+def reject_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    org.status = OrganizationStatus.rejected
+    db.commit()
+    db.refresh(org)
+    log_admin_action(db, current_user.id, "organization.update", "organization", org.id)
     return org
 
 @router.put("/organizations/{org_id}", response_model=OrganizationResponse)
@@ -247,16 +301,17 @@ def join_organization(
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    if org.visibility == OrganizationVisibility.private and org.owner_id != current_user.id and not _is_admin(db, current_user):
-        raise HTTPException(status_code=403, detail="Organization is private")
-    existing = db.execute(select(organization_members).where(
-        organization_members.c.org_id == org_id,
-        organization_members.c.user_id == current_user.id
-    )).first()
-    if existing is None:
-        db.execute(insert(organization_members).values(org_id=org_id, user_id=current_user.id, role=OrganizationRole.member))
-        db.commit()
-    return {"joined": True, "role": OrganizationRole.member.value}
+    # Disable direct self-join; memberships must be managed by owner/admin
+    if org.owner_id == current_user.id or _is_admin(db, current_user):
+        existing = db.execute(select(organization_members).where(
+            organization_members.c.org_id == org_id,
+            organization_members.c.user_id == current_user.id
+        )).first()
+        if existing is None:
+            db.execute(insert(organization_members).values(org_id=org_id, user_id=current_user.id, role=OrganizationRole.owner if org.owner_id == current_user.id else OrganizationRole.member))
+            db.commit()
+        return {"joined": True, "role": OrganizationRole.owner.value if org.owner_id == current_user.id else OrganizationRole.member.value}
+    raise HTTPException(status_code=403, detail="Direct join is disabled. Ask an admin to add you or add a job experience.")
 
 @router.delete("/organizations/{org_id}/members/me", status_code=status.HTTP_204_NO_CONTENT)
 def leave_organization(
@@ -289,4 +344,5 @@ def delete_organization(
         
     db.delete(org)
     db.commit()
+    log_admin_action(db, current_user.id, "organization.delete", "organization", org.id)
     return

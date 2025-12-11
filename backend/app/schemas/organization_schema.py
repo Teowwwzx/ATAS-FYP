@@ -3,7 +3,7 @@ from pydantic import BaseModel, HttpUrl, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
-from app.models.organization_model import OrganizationType, OrganizationVisibility
+from app.models.organization_model import OrganizationType, OrganizationVisibility, OrganizationStatus
 
 class OrganizationBase(BaseModel):
     name: str
@@ -31,6 +31,7 @@ class OrganizationUpdate(BaseModel):
 class OrganizationResponse(OrganizationBase):
     id: UUID
     owner_id: UUID
+    status: OrganizationStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
 
