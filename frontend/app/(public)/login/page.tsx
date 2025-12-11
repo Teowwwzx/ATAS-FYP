@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 import { getApiErrorMessage } from '@/lib/utils'
 
-import { login, getMyProfile, resendVerification } from '@/services/api'
+import { login, getMyProfile, resendVerification, loginWithGoogle } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 
 export default function LoginPage() {
@@ -20,6 +20,7 @@ export default function LoginPage() {
     const [showVerificationModal, setShowVerificationModal] = useState(false)
     const [isResending, setIsResending] = useState(false)
     const [countdown, setCountdown] = useState(0)
+    const [googleReady, setGoogleReady] = useState(false)
     const router = useRouter()
 
     React.useEffect(() => {
@@ -39,6 +40,56 @@ export default function LoginPage() {
             }
         } catch { }
     }, [router])
+
+    useEffect(() => {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        if (!clientId) {
+            return
+        }
+        const scriptId = 'google-identity-services'
+        if (!document.getElementById(scriptId)) {
+            const script = document.createElement('script')
+            script.src = 'https://accounts.google.com/gsi/client'
+            script.async = true
+            script.defer = true
+            script.id = scriptId
+            script.onload = () => {
+                setGoogleReady(true)
+                try {
+                    (window as any).google?.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: async (response: any) => {
+                            const idToken = response?.credential
+                            if (!idToken) return
+                            try {
+                                const { access_token } = await loginWithGoogle(idToken)
+                                localStorage.setItem('atas_token', access_token)
+                                const profile = await getMyProfile()
+                                if (!profile.is_onboarded) {
+                                    toast('Please complete your onboarding!', { icon: '👋' })
+                                    router.push('/onboarding')
+                                } else {
+                                    toast.success('Welcome back!')
+                                    router.push('/dashboard')
+                                }
+                            } catch (err: any) {
+                                toast.error(getApiErrorMessage(err, 'Google sign-in failed'))
+                            }
+                        },
+                    })
+                } catch {}
+                try {
+                    const target = document.getElementById('googleSignInBtn')
+                    if (target && (window as any).google?.accounts.id.renderButton) {
+                        (window as any).google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with' })
+                    }
+                } catch {}
+            }
+            document.body.appendChild(script)
+        } else {
+            setGoogleReady(true)
+        }
+    }, [])
 
     // Timer effect
     useEffect(() => {
@@ -261,6 +312,18 @@ export default function LoginPage() {
                                 </svg>
                             )}
                         </button>
+
+                        <div className="relative">
+                            <div className="flex items-center gap-2 my-6">
+                                <div className="h-px bg-gray-200 flex-1" />
+                                <span className="text-xs font-bold text-gray-400">OR</span>
+                                <div className="h-px bg-gray-200 flex-1" />
+                            </div>
+                            <div id="googleSignInBtn" className="flex justify-center" />
+                            {!googleReady && (
+                                <button type="button" disabled className="w-full mt-4 py-3 rounded-xl bg-gray-100 text-gray-400 font-bold cursor-not-allowed">Loading Google...</button>
+                            )}
+                        </div>
 
 
                     </form>

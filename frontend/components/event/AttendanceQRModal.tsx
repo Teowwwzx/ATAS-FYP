@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
-import { generateMyQR, AttendanceQRResponse } from '@/services/api'
+import { generateMyQR, getMyQRImageUrl } from '@/services/api'
+import type { AttendanceQRResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 
 interface AttendanceQRModalProps {
@@ -60,27 +60,12 @@ export function AttendanceQRModal({ eventId, eventTitle, isOpen, onClose }: Atte
     }
 
     const downloadQR = () => {
-        const svg = document.querySelector('#attendance-qr svg')
-        if (!svg) return
-
-        const svgData = new XMLSerializer().serializeToString(svg)
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        const img = new Image()
-
-        img.onload = () => {
-            canvas.width = img.width
-            canvas.height = img.height
-            ctx?.drawImage(img, 0, 0)
-            const pngFile = canvas.toDataURL('image/png')
-
-            const downloadLink = document.createElement('a')
-            downloadLink.download = `attendance-qr-${eventTitle}.png`
-            downloadLink.href = pngFile
-            downloadLink.click()
-        }
-
-        img.src = 'data:image/svg+xml;base64,' + btoa(svgData)
+        const imgEl = document.querySelector('#attendance-qr img') as HTMLImageElement | null
+        if (!imgEl || !imgEl.src) return
+        const downloadLink = document.createElement('a')
+        downloadLink.download = `attendance-qr-${eventTitle}.png`
+        downloadLink.href = imgEl.src
+        downloadLink.click()
     }
 
     return (
@@ -137,12 +122,7 @@ export function AttendanceQRModal({ eventId, eventTitle, isOpen, onClose }: Atte
                                         <>
                                             {/* QR Code */}
                                             <div id="attendance-qr" className="bg-white p-6 rounded-2xl shadow-lg border-4 border-blue-100 mb-6">
-                                                <QRCodeSVG
-                                                    value={qrData.token}
-                                                    size={240}
-                                                    level="H"
-                                                    includeMargin={true}
-                                                />
+                                                <img src={getMyQRImageUrl(eventId)} alt="Attendance QR" width={240} height={240} />
                                             </div>
 
                                             {/* Expiration Info */}

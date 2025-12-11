@@ -8,7 +8,7 @@ import api, {
   leaveEvent,
   bulkInviteEventParticipants,
   generateAttendanceQR,
-  scanAttendance,
+  scanAttendanceToken,
   setEventReminder,
   getEventChecklist,
   createEventChecklistItem,
@@ -57,7 +57,7 @@ export const eventActions = {
   bulkInvite: (eventId: string, body: EventParticipantBulkCreate) =>
     bulkInviteEventParticipants(eventId, body),
   generateQR: (eventId: string) => generateAttendanceQR(eventId),
-  scanAttendance: (body: AttendanceScanRequest) => scanAttendance(body),
+  scanAttendance: (body: AttendanceScanRequest) => scanAttendanceToken(body),
   setReminder: (eventId: string, body: EventReminderCreate) =>
     setEventReminder(eventId, body),
   checklist: {
