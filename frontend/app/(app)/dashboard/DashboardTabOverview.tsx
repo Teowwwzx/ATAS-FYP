@@ -11,17 +11,20 @@ import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 interface DashboardTabOverviewProps {
     event: EventDetails
     user: ProfileResponse | null
+    role?: string | null
     phase: EventPhase // Add phase prop
     onUpdate: () => void
 }
 
-export function DashboardTabOverview({ event, user, phase, onUpdate }: DashboardTabOverviewProps) {
+export function DashboardTabOverview({ event, user, role, phase, onUpdate }: DashboardTabOverviewProps) {
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
 
     // Check permissions
-    const canEdit = user?.user_id === event.organizer_id
+    const isOrganizer = user?.user_id === event.organizer_id
+    const isCommittee = role === 'committee'
+    const canEdit = isOrganizer || isCommittee
 
     // Date Logic
     const startDate = new Date(event.start_datetime)

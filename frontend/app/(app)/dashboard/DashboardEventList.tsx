@@ -18,7 +18,7 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
     const [showProModal, setShowProModal] = useState(false)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
     const organizedEvents = events.filter(e => e.my_role === 'organizer')
-    const joinedEvents = events.filter(e => e.my_role !== 'organizer' && e.my_status === 'accepted')
+    const joinedEvents = events.filter(e => e.my_role !== 'organizer')
 
     const handleCreateClick = () => {
         // Check if user needs Dashboard Pro
@@ -206,8 +206,8 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
             {joinedEvents.length > 0 && (
                 <section className="space-y-6">
                     <div>
-                        <h2 className="text-2xl font-black text-zinc-900 mb-2">Upcoming Gigs</h2>
-                        <p className="text-sm text-zinc-500">Events you've confirmed to participate in</p>
+                        <h2 className="text-2xl font-black text-zinc-900 mb-2">Your Schedule</h2>
+                        <p className="text-sm text-zinc-500">Events you are participating in</p>
                     </div>
                     {joinedEvents.length === 1 ? (
                         <CompactEventCard

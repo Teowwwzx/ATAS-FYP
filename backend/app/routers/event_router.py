@@ -2735,9 +2735,18 @@ def update_event(
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    # Only organizer can update core event details
+    # Only organizer or committee can update core event details
     if event.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only organizer can update event")
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role != EventParticipantRole.committee:
+            raise HTTPException(status_code=403, detail="Only organizer or committee can update event")
 
     # Validate date range if provided
     if body.start_datetime is not None and body.end_datetime is not None:
