@@ -39,7 +39,7 @@ export function ProfileView({
 
         if (isApproved) {
             return (
-                <Link href={`/organization/${org.id}`} className="hover:underline text-zinc-900 font-bold hover:text-yellow-600 transition-colors">
+                <Link href={`/organizations/${org.id}`} className="hover:underline text-zinc-900 font-bold hover:text-yellow-600 transition-colors">
                     {org.name}
                 </Link>
             )
@@ -67,7 +67,7 @@ export function ProfileView({
         )
 
         if (org && org.status === 'approved') {
-            return <Link href={`/organization/${org.id}`}>{content}</Link>
+            return <Link href={`/organizations/${org.id}`}>{content}</Link>
         }
         return content
     }
