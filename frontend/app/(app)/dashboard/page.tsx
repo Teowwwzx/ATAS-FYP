@@ -248,38 +248,38 @@ function DashboardPageInner() {
                         <>
                             {activeTab === 'overview' && (
                                 <div className="space-y-10 animate-slideUp">
-                                    {/* Stats Cards - Flex Wrap for Auto Full Width */}
-                                    <div className="flex flex-wrap gap-4">
-                                        <div onClick={() => setActiveTab('invitations')} className="flex-1 min-w-[280px] bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-yellow-400 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
-                                            <div className="relative z-10">
+                                    {/* Stats Cards - Flexible Row (No Gaps) */}
+                                    <div className="flex flex-col md:flex-row gap-4 w-full">
+                                        <div onClick={() => setActiveTab('invitations')} className="flex-1 min-w-0 bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-yellow-400 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
+                                            <div className="relative z-10 shrink-0">
                                                 <div className="text-yellow-600 font-bold uppercase text-xs tracking-wider mb-1">Pending Inivites</div>
                                                 <div className="text-4xl font-black text-zinc-900">{requests.length}</div>
                                                 <div className="text-sm font-medium text-zinc-500 mt-1 group-hover:text-zinc-900 transition-colors">Action Required</div>
                                             </div>
-                                            <div className="p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                                <svg className="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                                                <svg className="w-24 h-24 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
                                             </div>
                                         </div>
 
-                                        <div onClick={() => setActiveTab('schedule')} className="flex-1 min-w-[280px] bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-blue-500 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
-                                            <div className="relative z-10">
+                                        <div onClick={() => setActiveTab('schedule')} className="flex-1 min-w-0 bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-blue-500 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
+                                            <div className="relative z-10 shrink-0">
                                                 <div className="text-blue-600 font-bold uppercase text-xs tracking-wider mb-1">Upcoming Gigs</div>
                                                 <div className="text-4xl font-black text-zinc-900">{upcomingBookings.length}</div>
                                                 <div className="text-sm font-medium text-zinc-500 mt-1 group-hover:text-zinc-900 transition-colors">Confirmed</div>
                                             </div>
-                                            <div className="p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                                <svg className="w-16 h-16 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                                                <svg className="w-24 h-24 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
                                             </div>
                                         </div>
 
-                                        <div onClick={() => setActiveTab('organized')} className="flex-1 min-w-[280px] bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-purple-500 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
-                                            <div className="relative z-10">
+                                        <div onClick={() => setActiveTab('organized')} className="flex-1 min-w-0 bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-purple-500 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
+                                            <div className="relative z-10 shrink-0">
                                                 <div className="text-purple-600 font-bold uppercase text-xs tracking-wider mb-1">Organized</div>
                                                 <div className="text-4xl font-black text-zinc-900">{organizedCount}</div>
                                                 <div className="text-sm font-medium text-zinc-500 mt-1 group-hover:text-zinc-900 transition-colors">My Events</div>
                                             </div>
-                                            <div className="p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                                <svg className="w-16 h-16 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                                                <svg className="w-24 h-24 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>
                                             </div>
                                         </div>
                                     </div>
@@ -307,7 +307,7 @@ function DashboardPageInner() {
                                             <button onClick={() => setActiveTab('schedule')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">See all</button>
                                         </div>
                                         {upcomingBookings.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {upcomingBookings.slice(0, 2).map((evt) => (
                                                     <div
                                                         key={evt.event_id}
@@ -347,7 +347,7 @@ function DashboardPageInner() {
                                                 <h3 className="text-xl font-bold text-zinc-900">Recently Organized</h3>
                                                 <button onClick={() => setActiveTab('organized')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">View all</button>
                                             </div>
-                                            <div className="grid grid-cols-1 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {events.filter(e => e.my_role === 'organizer').slice(0, 2).map((evt) => (
                                                     <div
                                                         key={evt.event_id}
