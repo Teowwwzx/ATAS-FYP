@@ -29,6 +29,8 @@
     "react-google-places-autocomplete": "^4.1.0",
     "react-hot-toast": "^2.6.0",
     "react-places-autocomplete": "^7.3.0",
+    "stream-chat": "^9.27.1",
+    "stream-chat-react": "^13.13.0",
     "swr": "^2.3.6"
   },
   "devDependencies": {

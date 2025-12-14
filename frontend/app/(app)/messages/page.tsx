@@ -5,7 +5,7 @@ import React, { useEffect, useState, Suspense } from 'react'
 import { getConversations, getMe } from '@/services/api'
 import { ChatConversation, UserMeResponse } from '@/services/api.types'
 import { ConversationList } from './components/ConversationList'
-import { ChatWindow } from './components/ChatWindow'
+import { StreamChatWindow } from './components/StreamChatWindow'
 import { toast } from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
@@ -55,11 +55,8 @@ function MessagesContent() {
         }
     }
 
-    // Polling for list (unread counts)
-    useEffect(() => {
-        const interval = setInterval(refreshList, 15000)
-        return () => clearInterval(interval)
-    }, [])
+    // Note: Polling removed - GetStream provides real-time updates via WebSocket
+    // The conversation list is updated via onMessageSent callback
 
     const selectedConv = conversations.find(c => c.id === selectedId)
 
@@ -95,7 +92,7 @@ function MessagesContent() {
                 {/* Chat Window */}
                 <div className={`flex-1 flex flex-col ${!selectedId ? 'hidden md:flex' : 'flex'}`}>
                     {selectedConv && me ? (
-                        <ChatWindow
+                        <StreamChatWindow
                             conversation={selectedConv}
                             currentUserId={me.id}
                             onMessageSent={refreshList}

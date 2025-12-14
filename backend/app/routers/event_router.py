@@ -2550,7 +2550,7 @@ def list_event_checklist(
 
 @router.get("/events/checklist/me", response_model=list[EventChecklistItemResponse])
 def list_my_checklist_items(
-    only_open: bool = True,
+    only_open: bool = Query(True),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

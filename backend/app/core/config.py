@@ -23,4 +23,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
 
+    # GetStream Chat
+    GET_STREAM_API_KEY: str = ""
+    GET_STREAM_SECRET_KEY: str = ""
+
 settings = Settings()
