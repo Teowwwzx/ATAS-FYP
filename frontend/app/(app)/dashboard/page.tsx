@@ -15,6 +15,7 @@ import { EventPreviewModal } from './EventPreviewModal'
 import { DashboardEventList } from './DashboardEventList'
 import { EventReviewModal } from '@/components/event/EventReviewModal'
 import { getEventPhase, EventPhase } from '@/lib/eventPhases'
+import { EnvelopeClosedIcon, CalendarIcon, DashboardIcon } from '@radix-ui/react-icons'
 
 function DashboardPageInner() {
     const router = useRouter()
@@ -169,55 +170,85 @@ function DashboardPageInner() {
         )
     }
 
-    // Filter for upcoming bookings (accepted events where I am NOT organizer)
     const upcomingBookings = events.filter(e =>
         e.my_role !== 'organizer' &&
         e.my_status === 'accepted' &&
         new Date(e.start_datetime) > new Date()
     )
 
+    const organizerEvents = events.filter(e => e.my_role === 'organizer')
+    const organizerPublishedCount = organizerEvents.filter(e => e.status === 'published').length
+    const committeeEvents = events.filter(e => e.my_role === 'committee')
+    const sponsorEvents = events.filter(e => e.my_role === 'sponsor')
+
     return (
         <div className="w-full max-w-[95%] 2xl:max-w-screen-2xl mx-auto px-4 py-8">
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex gap-8">
+                <aside className="hidden md:block w-64 shrink-0">
+                    <button
+                        onClick={() => router.push('/events/create')}
+                        className="w-full px-4 py-3 bg-zinc-900 text-yellow-400 rounded-2xl font-black shadow-md hover:bg-zinc-800"
+                    >
+                        Create Event
+                    </button>
+                    <nav className="mt-6 space-y-2">
+                        <button
+                            onClick={() => { router.push('/dashboard'); setView('list'); setSelectedEventId(null) }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-zinc-200 rounded-xl text-zinc-700 font-bold hover:bg-zinc-50"
+                        >
+                            <span className="flex items-center gap-2"><DashboardIcon /> Overview</span>
+                        </button>
+                        <button
+                            onClick={() => { router.push('/dashboard'); setView('list'); setTimeout(() => { const el = document.getElementById('invitations'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 100) }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-zinc-200 rounded-xl text-zinc-700 font-bold hover:bg-zinc-50"
+                        >
+                            <span className="flex items-center gap-2"><EnvelopeClosedIcon /> Invitations</span>
+                            <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold">{requests.length}</span>
+                        </button>
+                        <button
+                            onClick={() => { router.push('/dashboard'); setView('list') }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-zinc-200 rounded-xl text-zinc-700 font-bold hover:bg-zinc-50"
+                        >
+                            <span className="flex items-center gap-2"><CalendarIcon /> My Schedule</span>
+                            <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">{upcomingBookings.length}</span>
+                        </button>
+                        <button
+                            onClick={() => { router.push('/dashboard'); setView('list') }}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white border border-zinc-200 rounded-xl text-zinc-700 font-bold hover:bg-zinc-50"
+                        >
+                            <span className="flex items-center gap-2"><DashboardIcon /> Organized</span>
+                            <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">{organizerEvents.length}</span>
+                        </button>
+                    </nav>
+                </aside>
+                <div className="flex-1 flex flex-col items-center justify-center">
 
                 {view === 'list' ? (
                     <>
-                        {/* EXPERT DASHBOARD SECTION */}
                         <div className="w-full max-w-5xl mb-12 space-y-8">
-                            {/* Stats Overview */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xl">
-                                        {requests.length}
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                                {[
+                                    { title: 'Pending Invites', subtitle: 'Action Required', value: requests.length, bg: 'bg-yellow-100', text: 'text-yellow-600' },
+                                    { title: 'Upcoming Gigs', subtitle: 'Confirmed', value: upcomingBookings.length, bg: 'bg-blue-100', text: 'text-blue-600' },
+                                    { title: 'Organized', subtitle: 'My Events', value: organizerEvents.length, bg: 'bg-purple-100', text: 'text-purple-600' },
+                                    ...(committeeEvents.length > 0 || openChecklistCount > 0 ? [{ title: 'Open Tasks', subtitle: 'Assigned', value: openChecklistCount, bg: 'bg-orange-100', text: 'text-orange-600' }] : []),
+                                    ...(sponsorEvents.length > 0 ? [{ title: 'Active Sponsorships', subtitle: 'Live', value: sponsorEvents.filter(e => e.status === 'published').length, bg: 'bg-emerald-100', text: 'text-emerald-600' }] : []),
+                                ].map((card, idx) => (
+                                    <div key={idx} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-2xl ${card.bg} ${card.text} flex items-center justify-center font-bold text-xl`}>
+                                            {card.value}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">{card.title}</div>
+                                            <div className="text-zinc-900 font-bold">{card.subtitle}</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Pending Invites</div>
-                                        <div className="text-zinc-900 font-bold">Action Required</div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl">
-                                        {upcomingBookings.length}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Upcoming Gigs</div>
-                                        <div className="text-zinc-900 font-bold">Confirmed</div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xl">
-                                        {events.filter(e => e.my_role === 'organizer').length}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Organized</div>
-                                        <div className="text-zinc-900 font-bold">My Events</div>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
 
                             {/* Pending Requests */}
                             {requests.length > 0 && (
-                                <div className="animate-fadeIn">
+                                <div id="invitations" className="animate-fadeIn">
                                     <h2 className="text-2xl font-black text-zinc-900 mb-6 flex items-center gap-2">
                                         <span className="w-2 h-8 bg-yellow-400 rounded-full"></span>
                                         Pending Invitations
@@ -479,6 +510,7 @@ function DashboardPageInner() {
                     }}
                 />
 
+                </div>
             </div>
         </div>
     )
