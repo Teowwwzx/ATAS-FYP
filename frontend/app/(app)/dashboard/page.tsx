@@ -28,6 +28,8 @@ function DashboardPageInner() {
     const [requests, setRequests] = useState<EventInvitationResponse[]>([])
     const [processingReq, setProcessingReq] = useState<string | null>(null)
     const [view, setView] = useState<'list' | 'detail'>('list')
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+    const [layoutView, setLayoutView] = useState<'grid' | 'list'>('grid')
 
     // Detail View State
     const [selectedEventId, setSelectedEventId] = useState<string | null>(urlEventId || null)
@@ -181,63 +183,104 @@ function DashboardPageInner() {
         new Date(e.start_datetime) > new Date()
     )
 
-    const organizedCount = events.filter(e => e.my_role === 'organizer').length
+    const organizedCount = events.filter(e => e.my_role === 'organizer' && new Date(e.end_datetime) > new Date()).length
     const scheduleCount = upcomingBookings.length
 
     return (
         <div className="w-full max-w-[95%] 2xl:max-w-screen-2xl mx-auto px-4 py-8 animate-fadeIn">
             <div className="flex flex-col lg:flex-row gap-10">
 
-                {/* SIDEBAR NAVIGATION - Clean & Minimal */}
-                <aside className="w-full lg:w-64 flex-shrink-0 lg:sticky lg:top-24 h-fit space-y-8">
-                    {/* Create Event Button */}
+                {/* SIDEBAR NAVIGATION - Collapsible */}
+                <aside className={`${isSidebarExpanded ? 'w-full lg:w-64' : 'w-full lg:w-20'} flex-shrink-0 lg:sticky lg:top-24 h-fit space-y-4 flex flex-col transition-all duration-300 bg-white lg:bg-transparent rounded-2xl lg:rounded-none shadow-sm lg:shadow-none mb-6 lg:mb-0 pb-4 lg:pb-0 border lg:border-none border-zinc-100`}>
+                    {/* Toggle Button */}
                     <button
-                        onClick={() => router.push('/events/create')}
-                        className="w-full py-4 bg-zinc-900 text-yellow-400 font-black rounded-2xl hover:bg-zinc-800 hover:scale-[1.02] hover:shadow-xl hover:shadow-zinc-900/20 transition-all flex items-center justify-center gap-2 group"
+                        onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                        className="hidden lg:flex w-full items-center justify-center p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                        title={isSidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
                     >
-                        <svg className="w-6 h-6 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                        <span className="tracking-wide">CREATE EVENT</span>
+                        {isSidebarExpanded ? (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                        )}
                     </button>
 
-                    <nav className="space-y-2">
+                    <nav className="space-y-2 w-full flex flex-row lg:flex-col justify-evenly lg:justify-start overflow-x-auto lg:overflow-visible px-2 lg:px-0">
                         <button
                             onClick={() => { setActiveTab('overview'); setView('list'); }}
-                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'overview' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                            title="Overview"
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${activeTab === 'overview' && view === 'list'
+                                ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'} ${!isSidebarExpanded && 'justify-center'}`}
                         >
-                            <span className="flex items-center gap-3">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                                Overview
-                            </span>
+                            <svg className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'Overview' : ''}</span>}
                         </button>
                         <button
                             onClick={() => { setActiveTab('invitations'); setView('list'); }}
-                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'invitations' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                            title="Invitations"
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all relative ${activeTab === 'invitations' && view === 'list'
+                                ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'} ${!isSidebarExpanded && 'justify-center'}`}
                         >
-                            <span className="flex items-center gap-3">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                Invitations
-                            </span>
-                            {requests.length > 0 && <span className={`text-xs font-black px-2 py-0.5 rounded-full min-w-[20px] text-center ${activeTab === 'invitations' ? 'bg-black text-yellow-400' : 'bg-red-500 text-white'}`}>{requests.length}</span>}
+                            <div className="relative">
+                                <svg className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                {!isSidebarExpanded && requests.length > 0 && (
+                                    <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+                                        {requests.length}
+                                    </span>
+                                )}
+                            </div>
+                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'Invitations' : ''}</span>}
+                            {isSidebarExpanded && requests.length > 0 && (
+                                <span className="absolute right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                    {requests.length}
+                                </span>
+                            )}
                         </button>
                         <button
                             onClick={() => { setActiveTab('schedule'); setView('list'); }}
-                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'schedule' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                            title="My Schedule"
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all relative ${activeTab === 'schedule' && view === 'list'
+                                ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'} ${!isSidebarExpanded && 'justify-center'}`}
                         >
-                            <span className="flex items-center gap-3">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                My Schedule
-                            </span>
-                            {scheduleCount > 0 && <span className={`text-xs font-black px-2 py-0.5 rounded-full ${activeTab === 'schedule' ? 'bg-black text-yellow-400' : 'bg-zinc-200 text-zinc-600'}`}>{scheduleCount}</span>}
+                            <div className="relative">
+                                <svg className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                {!isSidebarExpanded && scheduleCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+                                        {scheduleCount}
+                                    </span>
+                                )}
+                            </div>
+                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'My Schedule' : ''}</span>}
+                            {isSidebarExpanded && scheduleCount > 0 && (
+                                <span className="absolute right-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                    {scheduleCount}
+                                </span>
+                            )}
                         </button>
                         <button
                             onClick={() => { setActiveTab('organized'); setView('list'); }}
-                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'organized' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                            title="Organized Events"
+                            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all relative ${activeTab === 'organized' && view === 'list'
+                                ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'} ${!isSidebarExpanded && 'justify-center'}`}
                         >
-                            <span className="flex items-center gap-3">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                Organized
-                            </span>
-                            {organizedCount > 0 && <span className={`text-xs font-black px-2 py-0.5 rounded-full ${activeTab === 'organized' ? 'bg-black text-yellow-400' : 'bg-zinc-200 text-zinc-600'}`}>{organizedCount}</span>}
+                            <div className="relative">
+                                <svg className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                {!isSidebarExpanded && organizedCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-purple-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+                                        {organizedCount}
+                                    </span>
+                                )}
+                            </div>
+                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'Organized' : ''}</span>}
+                            {isSidebarExpanded && organizedCount > 0 && (
+                                <span className="absolute right-2 flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                    {organizedCount}
+                                </span>
+                            )}
                         </button>
                     </nav>
                 </aside>
@@ -284,6 +327,18 @@ function DashboardPageInner() {
                                         </div>
                                     </div>
 
+                                    {/* Simple View Toggle */}
+                                    <div className="flex justify-end">
+                                        <div className="bg-zinc-100 p-1 rounded-xl flex gap-1">
+                                            <button onClick={() => setLayoutView('grid')} className={`p-2 rounded-lg transition-all ${layoutView === 'grid' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`} title="Grid View">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                                            </button>
+                                            <button onClick={() => setLayoutView('list')} className={`p-2 rounded-lg transition-all ${layoutView === 'list' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`} title="List View">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* Section: Pending Invites (if any) */}
                                     {requests.length > 0 && (
                                         <section>
@@ -291,11 +346,11 @@ function DashboardPageInner() {
                                                 <h3 className="text-xl font-bold text-zinc-900">Pending Invitations</h3>
                                                 <button onClick={() => setActiveTab('invitations')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">See all</button>
                                             </div>
-                                            {/* Show only first 2 invites */}
                                             <DashboardInvitationList
-                                                requests={requests.slice(0, 2)}
+                                                requests={requests.slice(0, 4)}
                                                 onRespond={handleRespond}
                                                 processingReq={processingReq}
+                                                layoutMode={layoutView}
                                             />
                                         </section>
                                     )}
@@ -307,30 +362,59 @@ function DashboardPageInner() {
                                             <button onClick={() => setActiveTab('schedule')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">See all</button>
                                         </div>
                                         {upcomingBookings.length > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {upcomingBookings.slice(0, 2).map((evt) => (
-                                                    <div
-                                                        key={evt.event_id}
-                                                        onClick={() => { setSelectedEventId(evt.event_id); setView('detail'); }}
-                                                        className="bg-white p-4 rounded-2xl border border-zinc-100 hover:border-zinc-300 hover:shadow-lg transition-all cursor-pointer flex gap-4 group"
-                                                    >
-                                                        {/* Date Box */}
-                                                        <div className="w-16 h-16 bg-blue-50 rounded-xl flex flex-col items-center justify-center text-blue-900 flex-shrink-0 group-hover:bg-blue-100">
-                                                            <span className="text-xs font-bold uppercase">{new Date(evt.start_datetime).toLocaleDateString(undefined, { month: 'short' })}</span>
-                                                            <span className="text-2xl font-black">{new Date(evt.start_datetime).getDate()}</span>
-                                                        </div>
-                                                        <div className="overflow-hidden">
-                                                            <h4 className="font-bold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">{evt.title}</h4>
-                                                            <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
-                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                                {new Date(evt.start_datetime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                                                            </p>
-                                                            <div className="mt-2 text-xs font-bold px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded-full w-fit">
-                                                                {evt.my_role}
+                                            <div className={`${layoutView === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-4'}`}>
+                                                {upcomingBookings.slice(0, layoutView === 'grid' ? 4 : 3).map((evt) => {
+                                                    const eventDate = new Date(evt.start_datetime)
+                                                    const daysRemaining = Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                                    // Determine colors
+                                                    const typeColor = evt.type === 'online' ? 'bg-blue-100 text-blue-700' :
+                                                        (evt.type as any) === 'physical' || (evt.type as any) === 'offline' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-purple-100 text-purple-700'
+
+                                                    return (
+                                                        <div
+                                                            key={evt.event_id}
+                                                            onClick={() => { setSelectedEventId(evt.event_id); setView('detail'); }}
+                                                            className={`bg-white p-4 rounded-2xl border border-zinc-100 hover:border-zinc-300 hover:shadow-lg transition-all cursor-pointer flex gap-4 group ${layoutView === 'grid' ? 'flex-col sm:flex-row' : 'flex-row'}`}
+                                                        >
+                                                            {/* Image or Date Box */}
+                                                            {evt.cover_url ? (
+                                                                <div className="w-16 h-16 rounded-xl bg-zinc-100 flex-shrink-0 overflow-hidden">
+                                                                    <img src={evt.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-16 h-16 bg-blue-50 rounded-xl flex flex-col items-center justify-center text-blue-900 flex-shrink-0 group-hover:bg-blue-100">
+                                                                    <span className="text-xs font-bold uppercase">{eventDate.toLocaleDateString(undefined, { month: 'short' })}</span>
+                                                                    <span className="text-2xl font-black">{eventDate.getDate()}</span>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="overflow-hidden flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-md ${evt.my_role === 'organizer' ? 'bg-purple-100 text-purple-700' :
+                                                                        evt.my_role === 'committee' ? 'bg-blue-100 text-blue-700' :
+                                                                            'bg-green-100 text-green-700'
+                                                                        }`}>
+                                                                        {evt.my_role}
+                                                                    </span>
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${typeColor}`}>
+                                                                        {evt.type}
+                                                                    </span>
+                                                                    {daysRemaining > 0 && daysRemaining <= 30 && (
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">
+                                                                            {daysRemaining} days left
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <h4 className="font-bold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">{evt.title}</h4>
+                                                                <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                    {eventDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    )
+                                                })}
                                             </div>
                                         ) : (
                                             <div className="bg-zinc-50 rounded-2xl p-8 border border-dashed border-zinc-200 text-center">
@@ -347,29 +431,58 @@ function DashboardPageInner() {
                                                 <h3 className="text-xl font-bold text-zinc-900">Recently Organized</h3>
                                                 <button onClick={() => setActiveTab('organized')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">View all</button>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {events.filter(e => e.my_role === 'organizer').slice(0, 2).map((evt) => (
-                                                    <div
-                                                        key={evt.event_id}
-                                                        onClick={() => { setSelectedEventId(evt.event_id); setView('detail'); }}
-                                                        className="bg-white p-4 rounded-2xl border border-zinc-100 hover:border-yellow-400 hover:shadow-lg transition-all cursor-pointer flex gap-4 group"
-                                                    >
-                                                        {/* Icon Box */}
-                                                        <div className="w-16 h-16 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600 flex-shrink-0 group-hover:bg-yellow-100">
-                                                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                                        </div>
-                                                        <div className="overflow-hidden">
-                                                            <h4 className="font-bold text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{evt.title}</h4>
-                                                            <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
-                                                                <span className={`w-2 h-2 rounded-full ${evt.status === 'published' ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                                                                {evt.status}
-                                                            </p>
-                                                            <div className="mt-2 text-xs text-zinc-400">
-                                                                {evt.participant_count || 0} participants
+                                            <div className={`${layoutView === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-4'}`}>
+                                                {events.filter(e => e.my_role === 'organizer' && new Date(e.end_datetime) > new Date()).slice(0, 4).map((evt) => {
+                                                    const eventDate = new Date(evt.start_datetime)
+                                                    const daysRemaining = Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                                    // Determine colors
+                                                    const typeColor = evt.type === 'online' ? 'bg-blue-100 text-blue-700' :
+                                                        (evt.type as any) === 'physical' || (evt.type as any) === 'offline' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-purple-100 text-purple-700'
+
+                                                    return (
+                                                        <div
+                                                            key={evt.event_id}
+                                                            onClick={() => { setSelectedEventId(evt.event_id); setView('detail'); }}
+                                                            className={`bg-white p-4 rounded-2xl border border-zinc-100 hover:border-yellow-400 hover:shadow-lg transition-all cursor-pointer flex gap-4 group ${layoutView === 'grid' ? 'flex-col sm:flex-row' : 'flex-row'}`}
+                                                        >
+                                                            {/* Image or Icon Box */}
+                                                            {evt.cover_url ? (
+                                                                <div className="w-16 h-16 rounded-xl bg-zinc-100 flex-shrink-0 overflow-hidden">
+                                                                    <img src={evt.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="w-16 h-16 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600 flex-shrink-0 group-hover:bg-yellow-100">
+                                                                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="overflow-hidden flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-md ${evt.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
+                                                                        evt.status === 'draft' ? 'bg-zinc-100 text-zinc-700' :
+                                                                            'bg-red-100 text-red-700'
+                                                                        }`}>
+                                                                        {evt.status}
+                                                                    </span>
+                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${typeColor}`}>
+                                                                        {evt.type}
+                                                                    </span>
+                                                                    {daysRemaining > 0 && daysRemaining <= 30 && (
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">
+                                                                            {daysRemaining} days left
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <h4 className="font-bold text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{evt.title}</h4>
+                                                                <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                                                    {evt.participant_count || 0} participants
+                                                                </p>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    )
+                                                })}
                                             </div>
                                         </section>
                                     )}
@@ -387,6 +500,7 @@ function DashboardPageInner() {
                                         requests={requests}
                                         onRespond={handleRespond}
                                         processingReq={processingReq}
+                                        layoutMode={layoutView}
                                     />
                                 </div>
                             )}
