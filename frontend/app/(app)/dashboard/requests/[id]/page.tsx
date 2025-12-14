@@ -8,7 +8,7 @@ import { EventInvitationResponse, ProfileResponse, EventDetails, UserMeResponse 
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
+import { StreamCommunicationLog } from '@/components/dashboard/StreamCommunicationLog'
 
 export default function RequestDetailsPage() {
     const params = useParams()
@@ -268,10 +268,11 @@ export default function RequestDetailsPage() {
 
                 {/* Right Column: Communication Log */}
                 <div className="space-y-6">
-                    <CommunicationLog
+                    <StreamCommunicationLog
                         conversationId={request.conversation_id}
                         organizerName={organizer?.full_name || 'Organizer'}
                         currentUserId={currentUser?.id}
+                        organizerId={request.event?.organizer_id}
                     />
                 </div>
             </div>

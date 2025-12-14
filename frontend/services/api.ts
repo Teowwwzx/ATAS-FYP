@@ -875,6 +875,19 @@ export const sendChatMessage = async (conversationId: string, content: string) =
   return response.data
 }
 
+// GetStream Chat Token
+export interface StreamTokenResponse {
+  token: string
+  user_id: string
+  api_key: string
+}
+
+export const getStreamChatToken = async (): Promise<StreamTokenResponse> => {
+  const response = await api.get<StreamTokenResponse>('/chat/stream/token')
+  return response.data
+}
+
+
 
 
 

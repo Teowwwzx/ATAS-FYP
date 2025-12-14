@@ -10,8 +10,60 @@ from app.models.chat_model import Conversation, ConversationParticipant, Message
 from app.models.user_model import User
 from app.schemas.chat_schema import ConversationCreate, ConversationResponse, MessageCreate, MessageResponse, ParticipantResponse
 from app.dependencies import get_current_user
+from app.services.stream_service import get_stream_service
+from app.core.config import settings
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+
+# ==================== GetStream Endpoints ====================
+
+@router.get("/stream/token")
+def get_stream_token(current_user: User = Depends(get_current_user)):
+    """
+    Generate GetStream authentication token for the current user.
+    This endpoint creates/updates the user in GetStream and returns credentials
+    for client-side SDK initialization.
+    """
+    try:
+        stream_service = get_stream_service()
+        
+        # Prepare user data
+        user_id = str(current_user.id)
+        user_name = current_user.email  # Default to email
+        user_image = None
+        
+        # Enrich with profile data if available
+        if current_user.profile:
+            if current_user.profile.full_name:
+                user_name = current_user.profile.full_name
+            if current_user.profile.avatar_url:
+                user_image = current_user.profile.avatar_url
+        
+        # Upsert user in GetStream
+        stream_service.upsert_user(
+            user_id=user_id,
+            name=user_name,
+            image=user_image
+        )
+        
+        # Generate token
+        token = stream_service.create_user_token(user_id)
+        
+        return {
+            "token": token,
+            "user_id": user_id,
+            "api_key": settings.GET_STREAM_API_KEY
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate GetStream token: {str(e)}"
+        )
+
+
+# ==================== Legacy Chat Endpoints ====================
+
 
 @router.post("/conversations", response_model=ConversationResponse)
 def create_or_get_conversation(

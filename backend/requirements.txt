@@ -20,3 +20,4 @@ Pillow
 cloudinary
 resend
 google-generativeai
+stream-chat
