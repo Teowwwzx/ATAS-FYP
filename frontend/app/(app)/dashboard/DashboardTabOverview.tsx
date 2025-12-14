@@ -235,55 +235,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-2xl border border-zinc-200 p-6 shadow-sm">
-                            {(() => {
-                                const roleTitle = isOrganizer ? 'Organizer Focus' : isCommittee ? 'Committee Focus' : role === 'sponsor' ? 'Sponsor Focus' : role === 'speaker' ? 'Expert Focus' : null
-                                if (!roleTitle) return null
-                                const actions = isOrganizer
-                                    ? [
-                                        { name: 'People', tab: 'people' },
-                                        { name: 'Checklist', tab: 'checklist' },
-                                        { name: 'Files', tab: 'files' },
-                                        { name: 'Settings', tab: 'settings' },
-                                      ]
-                                    : isCommittee
-                                        ? [
-                                            { name: 'Checklist', tab: 'checklist' },
-                                            { name: 'People', tab: 'people' },
-                                            { name: 'Files', tab: 'files' },
-                                          ]
-                                        : role === 'sponsor'
-                                            ? [
-                                                { name: 'Files', tab: 'files' },
-                                                { name: 'Overview', tab: 'overview' },
-                                                { name: 'Reviews', tab: 'reviews' },
-                                              ]
-                                            : [
-                                                { name: 'Overview', tab: 'overview' },
-                                                { name: 'Files', tab: 'files' },
-                                                { name: 'People', tab: 'people' },
-                                                { name: 'Reviews', tab: 'reviews' },
-                                              ]
-                                return (
-                                    <div className="mb-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">{roleTitle}</h3>
-                                        </div>
-                                        <div className="flex flex-wrap gap-3">
-                                            {actions.map(a => (
-                                                <button
-                                                    key={a.tab}
-                                                    onClick={() => router.push(`/dashboard?eventId=${event.id}&tab=${a.tab}`, { scroll: false })}
-                                                    className="px-4 py-2 bg-zinc-100 text-zinc-700 font-bold text-sm rounded-xl hover:bg-zinc-200 transition-colors"
-                                                >
-                                                    {a.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )
-                            })()}
-                        </div>
+                        {/* focus section removed */}
 
                         {/* 2. Main Detail Area */}
                         <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
