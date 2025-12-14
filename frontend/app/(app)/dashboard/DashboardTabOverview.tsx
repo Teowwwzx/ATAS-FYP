@@ -235,9 +235,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             </div>
                         </div>
 
-                        {/* focus section removed */}
-
-                        {/* 2. Main Detail Area */}
+                        {/* 2. Main Detail Area (NO ACTIONS SIDEBAR) */}
                         <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
 
                             {/* About & Dates */}

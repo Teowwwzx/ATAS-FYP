@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useParams, useRouter, usePathname } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary } from '@/services/api'
 import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
@@ -14,7 +14,6 @@ import { AttendanceQRModal } from '@/components/event/AttendanceQRModal'
 export default function EventDetailsPage() {
     const params = useParams()
     const router = useRouter()
-    const pathname = usePathname()
     const id = params?.id as string
 
     const [event, setEvent] = useState<EventDetails | null>(null)
@@ -209,22 +208,9 @@ export default function EventDetailsPage() {
     const isEnded = now > new Date(event.end_datetime)
     const isFull = !!(event.max_participant && (stats?.total_participants || 0) >= event.max_participant)
 
-    const inDashboard = pathname.startsWith('/dashboard')
-
     return (
         <div className="w-full min-h-screen bg-zinc-50 pt-8 pb-12">
             <div className="max-w-[95%] xl:max-w-screen-2xl mx-auto px-4 md:px-8">
-                {inDashboard && (
-                    <button
-                        onClick={() => router.push('/dashboard')}
-                        className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        Back to Dashboard
-                    </button>
-                )}
                 {/* Hero Card Section - Using DashboardHeroCard component */}
                 <DashboardHeroCard event={event} />
 
@@ -344,16 +330,12 @@ export default function EventDetailsPage() {
 
                                 {/* Action Button */}
                                 {isOrganizer ? (
-                                    <>
-                                        {!inDashboard && (
-                                            <Link
-                                                href={`/dashboard/event/${id}`}
-                                                className="block w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold text-center text-lg hover:bg-zinc-800 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
-                                            >
-                                                Manage Event
-                                            </Link>
-                                        )}
-                                    </>
+                                    <Link
+                                        href={`/dashboard`}
+                                        className="block w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold text-center text-lg hover:bg-zinc-800 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1"
+                                    >
+                                        Manage Event
+                                    </Link>
                                 ) : (
                                     <div className="space-y-6">
                                         {event.registration_type === 'paid' && (
@@ -429,22 +411,13 @@ export default function EventDetailsPage() {
                                                 )}
                                             </div>
                                         ) : (
-                                            <>
-                                                {!inDashboard && (
-                                                    <button
-                                                        onClick={handleJoin}
-                                                        disabled={registering}
-                                                        className="block w-full py-4 bg-yellow-400 text-zinc-900 rounded-2xl font-bold text-center text-lg hover:bg-yellow-300 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-70 disabled:transform-none"
-                                                    >
-                                                        {registering ? 'Registering...' : 'Register Now'}
-                                                    </button>
-                                                )}
-                                                {inDashboard && (
-                                                    <div className="px-4 py-3 bg-zinc-100 text-zinc-600 rounded-2xl font-bold text-sm border border-zinc-200 text-center">
-                                                        Registration available on the public page.
-                                                    </div>
-                                                )}
-                                            </>
+                                            <button
+                                                onClick={handleJoin}
+                                                disabled={registering}
+                                                className="block w-full py-4 bg-yellow-400 text-zinc-900 rounded-2xl font-bold text-center text-lg hover:bg-yellow-300 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-70 disabled:transform-none"
+                                            >
+                                                {registering ? 'Registering...' : 'Register Now'}
+                                            </button>
                                         )}
                                     </div>
                                 )}
