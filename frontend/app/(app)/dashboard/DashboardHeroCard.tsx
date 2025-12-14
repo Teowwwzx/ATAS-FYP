@@ -2,14 +2,14 @@
 
 import React, { useRef, useState } from 'react'
 import Image from 'next/image'
-import { EventDetails } from '@/services/api.types'
+import { EventDetails, MyEventItem } from '@/services/api.types'
 import { format } from 'date-fns'
 import { updateEventCover } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 
 interface DashboardHeroCardProps {
-    event: EventDetails
+    event: EventDetails | MyEventItem
     onPreview?: () => void
     canEditCover?: boolean
     phase?: EventPhase // Make optional for public views
@@ -17,6 +17,9 @@ interface DashboardHeroCardProps {
 }
 
 export function DashboardHeroCard({ event, onPreview, canEditCover, phase = EventPhase.PRE_EVENT, onCoverUpdated }: DashboardHeroCardProps) {
+    // Handle different ID fields between EventDetails (id) and MyEventItem (event_id)
+    const eventId = 'id' in event ? event.id : event.event_id
+
     const startDate = new Date(event.start_datetime)
     const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
     const pickCover = () => {
@@ -38,7 +41,7 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
         setUploading(true)
         const tid = toast.loading('Updating cover...')
         try {
-            await updateEventCover(event.id, file)
+            await updateEventCover(eventId, file)
             toast.success('Cover updated', { id: tid })
             onCoverUpdated && onCoverUpdated()
         } catch {
@@ -64,9 +67,11 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
 
             <div className="absolute top-8 right-8 z-20 flex gap-3">
-                <span className="px-4 py-1.5 rounded-full bg-zinc-900/40 text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg capitalize">
-                    {event.format.replace('_', ' ')}
-                </span>
+                {event.format && (
+                    <span className="px-4 py-1.5 rounded-full bg-zinc-900/40 text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg capitalize">
+                        {event.format.replace('_', ' ')}
+                    </span>
+                )}
                 <span className={`px-4 py-1.5 rounded-full text-white text-sm font-bold backdrop-blur-md border border-white/20 shadow-lg uppercase ${event.type === 'online' ? 'bg-blue-500/60' : event.type === 'offline' ? 'bg-green-500/60' : 'bg-purple-500/60'
                     }`}>
                     {event.type}

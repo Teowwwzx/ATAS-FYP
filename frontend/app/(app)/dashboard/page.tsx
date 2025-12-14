@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast'
 import { EventInviteModal } from './EventInviteModal'
 import { EventPreviewModal } from './EventPreviewModal'
 import { DashboardEventList } from './DashboardEventList'
+import { DashboardInvitationList } from './DashboardInvitationList'
 import { EventReviewModal } from '@/components/event/EventReviewModal'
 import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 
@@ -161,6 +162,10 @@ function DashboardPageInner() {
         setNextEvent(null)
     }
 
+    const [activeTab, setActiveTab] = useState<'overview' | 'invitations' | 'schedule' | 'organized'>('overview')
+
+    // ... (keep existing useEffects & functions)
+
     if (loading && view === 'list' && events.length === 0) {
         return (
             <div className="max-w-5xl mx-auto px-4 py-12 space-y-8">
@@ -176,290 +181,428 @@ function DashboardPageInner() {
         new Date(e.start_datetime) > new Date()
     )
 
+    const organizedCount = events.filter(e => e.my_role === 'organizer').length
+    const scheduleCount = upcomingBookings.length
+
     return (
-        <div className="w-full max-w-[95%] 2xl:max-w-screen-2xl mx-auto px-4 py-8">
-            <div className="flex flex-col items-center justify-center">
+        <div className="w-full max-w-[95%] 2xl:max-w-screen-2xl mx-auto px-4 py-8 animate-fadeIn">
+            <div className="flex flex-col lg:flex-row gap-10">
 
-                {view === 'list' ? (
-                    <>
-                        {/* EXPERT DASHBOARD SECTION */}
-                        <div className="w-full max-w-5xl mb-12 space-y-8">
-                            {/* Stats Overview */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xl">
-                                        {requests.length}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Pending Invites</div>
-                                        <div className="text-zinc-900 font-bold">Action Required</div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl">
-                                        {upcomingBookings.length}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Upcoming Gigs</div>
-                                        <div className="text-zinc-900 font-bold">Confirmed</div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xl">
-                                        {events.filter(e => e.my_role === 'organizer').length}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Organized</div>
-                                        <div className="text-zinc-900 font-bold">My Events</div>
-                                    </div>
-                                </div>
-                            </div>
+                {/* SIDEBAR NAVIGATION - Clean & Minimal */}
+                <aside className="w-full lg:w-64 flex-shrink-0 lg:sticky lg:top-24 h-fit space-y-8">
+                    {/* Create Event Button */}
+                    <button
+                        onClick={() => router.push('/events/create')}
+                        className="w-full py-4 bg-zinc-900 text-yellow-400 font-black rounded-2xl hover:bg-zinc-800 hover:scale-[1.02] hover:shadow-xl hover:shadow-zinc-900/20 transition-all flex items-center justify-center gap-2 group"
+                    >
+                        <svg className="w-6 h-6 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                        <span className="tracking-wide">CREATE EVENT</span>
+                    </button>
 
-                            {/* Pending Requests */}
-                            {requests.length > 0 && (
-                                <div className="animate-fadeIn">
-                                    <h2 className="text-2xl font-black text-zinc-900 mb-6 flex items-center gap-2">
-                                        <span className="w-2 h-8 bg-yellow-400 rounded-full"></span>
-                                        Pending Invitations
-                                    </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {requests.map(req => (
-                                            <div key={req.id} className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-lg relative overflow-hidden group">
-                                                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <nav className="space-y-2">
+                        <button
+                            onClick={() => { setActiveTab('overview'); setView('list'); }}
+                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'overview' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                        >
+                            <span className="flex items-center gap-3">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                                Overview
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('invitations'); setView('list'); }}
+                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'invitations' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                        >
+                            <span className="flex items-center gap-3">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                Invitations
+                            </span>
+                            {requests.length > 0 && <span className={`text-xs font-black px-2 py-0.5 rounded-full min-w-[20px] text-center ${activeTab === 'invitations' ? 'bg-black text-yellow-400' : 'bg-red-500 text-white'}`}>{requests.length}</span>}
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('schedule'); setView('list'); }}
+                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'schedule' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                        >
+                            <span className="flex items-center gap-3">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                My Schedule
+                            </span>
+                            {scheduleCount > 0 && <span className={`text-xs font-black px-2 py-0.5 rounded-full ${activeTab === 'schedule' ? 'bg-black text-yellow-400' : 'bg-zinc-200 text-zinc-600'}`}>{scheduleCount}</span>}
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('organized'); setView('list'); }}
+                            className={`w-full text-left px-5 py-3.5 rounded-xl font-bold flex items-center justify-between transition-all ${activeTab === 'organized' && view === 'list' ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20 scale-[1.02]' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'}`}
+                        >
+                            <span className="flex items-center gap-3">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                Organized
+                            </span>
+                            {organizedCount > 0 && <span className={`text-xs font-black px-2 py-0.5 rounded-full ${activeTab === 'organized' ? 'bg-black text-yellow-400' : 'bg-zinc-200 text-zinc-600'}`}>{organizedCount}</span>}
+                        </button>
+                    </nav>
+                </aside>
 
-                                                <div className="relative z-10">
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <span className="px-3 py-1 bg-zinc-100 rounded-full text-xs font-bold uppercase tracking-wider text-zinc-600">
-                                                            Invited as {req.role}
-                                                        </span>
-                                                        <span className="text-xs font-mono text-zinc-400">
-                                                            {new Date(req.created_at).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-
-                                                    <h3 className="text-xl font-bold text-zinc-900 mb-2 truncate group-hover:text-yellow-600 transition-colors cursor-pointer"
-                                                        title={req.event.title}
-                                                        onClick={() => router.push(`/dashboard/requests/${req.id}`)}
-                                                    >
-                                                        {req.event.title}
-                                                    </h3>
-                                                    <p className="text-zinc-500 text-sm mb-6 line-clamp-2">
-                                                        {req.event.description || 'No description provided.'}
-                                                    </p>
-
-                                                    <div className="flex gap-3">
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/requests/${req.id}`)}
-                                                            className="px-4 py-3 bg-white border border-zinc-200 text-zinc-700 font-bold text-sm rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-colors"
-                                                        >
-                                                            Details
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRespond(req.id, req.event.id, 'accepted')}
-                                                            disabled={processingReq === req.id}
-                                                            className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-transform active:scale-95 disabled:opacity-50"
-                                                        >
-                                                            {processingReq === req.id ? '...' : 'Accept'}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRespond(req.id, req.event.id, 'rejected')}
-                                                            disabled={processingReq === req.id}
-                                                            className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-xl font-bold text-sm hover:bg-zinc-200 transition-transform active:scale-95 disabled:opacity-50"
-                                                        >
-                                                            Decline
-                                                        </button>
-                                                    </div>
-                                                </div>
+                {/* MAIN CONTENT AREA */}
+                <main className="flex-1 min-w-0">
+                    {view === 'list' ? (
+                        <>
+                            {activeTab === 'overview' && (
+                                <div className="space-y-10 animate-slideUp">
+                                    {/* Stats Cards - Flex Wrap for Auto Full Width */}
+                                    <div className="flex flex-wrap gap-4">
+                                        <div onClick={() => setActiveTab('invitations')} className="flex-1 min-w-[280px] bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-yellow-400 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <div className="text-yellow-600 font-bold uppercase text-xs tracking-wider mb-1">Pending Inivites</div>
+                                                <div className="text-4xl font-black text-zinc-900">{requests.length}</div>
+                                                <div className="text-sm font-medium text-zinc-500 mt-1 group-hover:text-zinc-900 transition-colors">Action Required</div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <>
-                                <div className="border-t border-zinc-100 pt-8" />
-                                <DashboardEventList
-                                    events={events}
-                                    user={user}
-                                    me={me}
-                                    onSelect={(e) => setSelectedEventId(e.event_id)}
-                                    onCreate={() => router.push('/events/create')}
-                                    onProUpgrade={fetchData}
-                                />
-                            </>
-                        </div>
-                    </>
-                ) : (
-
-                    // DETAIL VIEW
-                    <>
-                        {/* Header Section */}
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 w-full animate-fadeIn">
-                            <div>
-                                {/* Back Button - Available to everyone */}
-                                <button
-                                    onClick={handleBack}
-                                    className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                    </svg>
-                                    Back to Dashboard
-                                </button>
-                            </div>
-
-                            {/* Participant Actions (Review) */}
-                            {currentPhase === EventPhase.POST_EVENT && user?.user_id !== nextEvent?.organizer_id && role !== 'committee' && (
-                                <div>
-                                    {checkingReview ? (
-                                        <div className="w-8 h-8 animate-spin rounded-full border-b-2 border-zinc-300"></div>
-                                    ) : !hasReviewed ? (
-                                        <button
-                                            onClick={() => setIsReviewOpen(true)}
-                                            className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 to-orange-400 text-zinc-900 font-black rounded-xl hover:from-yellow-500 hover:to-orange-500 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                            </svg>
-                                            Write a Review
-                                        </button>
-                                    ) : (
-                                        <div className="px-6 py-2.5 bg-green-100 text-green-700 font-bold rounded-xl flex items-center gap-2 border border-green-200">
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            You reviewed this event
+                                            <div className="p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                <svg className="w-16 h-16 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            )}
 
-                            {(user?.user_id === nextEvent?.organizer_id || role === 'committee') && (
-                                <div className="flex items-center gap-3">
-                                    {/* Show different controls based on event phase */}
-                                    {(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) ? (
-                                        <>
-                                            {/* Event Day/Ongoing Mode: Attendance Stats + Scan Button */}
-                                            {attendanceStats && (
-                                                <div className="px-6 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            <div className="text-sm">
-                                                                <span className="font-black text-green-700 text-lg">{attendanceStats.attended_total}</span>
-                                                                <span className="text-zinc-500 font-medium mx-1">/</span>
-                                                                <span className="font-bold text-zinc-700">{attendanceStats.total_participants}</span>
+                                        <div onClick={() => setActiveTab('schedule')} className="flex-1 min-w-[280px] bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-blue-500 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <div className="text-blue-600 font-bold uppercase text-xs tracking-wider mb-1">Upcoming Gigs</div>
+                                                <div className="text-4xl font-black text-zinc-900">{upcomingBookings.length}</div>
+                                                <div className="text-sm font-medium text-zinc-500 mt-1 group-hover:text-zinc-900 transition-colors">Confirmed</div>
+                                            </div>
+                                            <div className="p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                <svg className="w-16 h-16 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
+                                            </div>
+                                        </div>
+
+                                        <div onClick={() => setActiveTab('organized')} className="flex-1 min-w-[280px] bg-white p-6 rounded-2xl border border-zinc-100 border-l-4 border-l-purple-500 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all group flex items-center justify-between relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <div className="text-purple-600 font-bold uppercase text-xs tracking-wider mb-1">Organized</div>
+                                                <div className="text-4xl font-black text-zinc-900">{organizedCount}</div>
+                                                <div className="text-sm font-medium text-zinc-500 mt-1 group-hover:text-zinc-900 transition-colors">My Events</div>
+                                            </div>
+                                            <div className="p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                <svg className="w-16 h-16 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Section: Pending Invites (if any) */}
+                                    {requests.length > 0 && (
+                                        <section>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-xl font-bold text-zinc-900">Pending Invitations</h3>
+                                                <button onClick={() => setActiveTab('invitations')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">See all</button>
+                                            </div>
+                                            {/* Show only first 2 invites */}
+                                            <DashboardInvitationList
+                                                requests={requests.slice(0, 2)}
+                                                onRespond={handleRespond}
+                                                processingReq={processingReq}
+                                            />
+                                        </section>
+                                    )}
+
+                                    {/* Section: Schedule */}
+                                    <section>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-xl font-bold text-zinc-900">Your Schedule</h3>
+                                            <button onClick={() => setActiveTab('schedule')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">See all</button>
+                                        </div>
+                                        {upcomingBookings.length > 0 ? (
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {upcomingBookings.slice(0, 2).map((evt) => (
+                                                    <div
+                                                        key={evt.event_id}
+                                                        onClick={() => { setSelectedEventId(evt.event_id); setView('detail'); }}
+                                                        className="bg-white p-4 rounded-2xl border border-zinc-100 hover:border-zinc-300 hover:shadow-lg transition-all cursor-pointer flex gap-4 group"
+                                                    >
+                                                        {/* Date Box */}
+                                                        <div className="w-16 h-16 bg-blue-50 rounded-xl flex flex-col items-center justify-center text-blue-900 flex-shrink-0 group-hover:bg-blue-100">
+                                                            <span className="text-xs font-bold uppercase">{new Date(evt.start_datetime).toLocaleDateString(undefined, { month: 'short' })}</span>
+                                                            <span className="text-2xl font-black">{new Date(evt.start_datetime).getDate()}</span>
+                                                        </div>
+                                                        <div className="overflow-hidden">
+                                                            <h4 className="font-bold text-zinc-900 truncate group-hover:text-blue-600 transition-colors">{evt.title}</h4>
+                                                            <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                {new Date(evt.start_datetime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                            <div className="mt-2 text-xs font-bold px-2 py-0.5 bg-zinc-100 text-zinc-600 rounded-full w-fit">
+                                                                {evt.my_role}
                                                             </div>
                                                         </div>
-                                                        <div className="text-xs font-bold text-green-700 uppercase tracking-wider">
-                                                            Attended
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-zinc-50 rounded-2xl p-8 border border-dashed border-zinc-200 text-center">
+                                                <p className="text-zinc-400 font-medium">No upcoming events.</p>
+                                                <button onClick={() => router.push('/events')} className="text-sm font-bold text-zinc-900 mt-2 hover:underline">Browse Events</button>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    {/* Section: Organized */}
+                                    {organizedCount > 0 && (
+                                        <section>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-xl font-bold text-zinc-900">Recently Organized</h3>
+                                                <button onClick={() => setActiveTab('organized')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">View all</button>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                {events.filter(e => e.my_role === 'organizer').slice(0, 2).map((evt) => (
+                                                    <div
+                                                        key={evt.event_id}
+                                                        onClick={() => { setSelectedEventId(evt.event_id); setView('detail'); }}
+                                                        className="bg-white p-4 rounded-2xl border border-zinc-100 hover:border-yellow-400 hover:shadow-lg transition-all cursor-pointer flex gap-4 group"
+                                                    >
+                                                        {/* Icon Box */}
+                                                        <div className="w-16 h-16 bg-yellow-50 rounded-xl flex items-center justify-center text-yellow-600 flex-shrink-0 group-hover:bg-yellow-100">
+                                                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                                        </div>
+                                                        <div className="overflow-hidden">
+                                                            <h4 className="font-bold text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{evt.title}</h4>
+                                                            <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                                                                <span className={`w-2 h-2 rounded-full ${evt.status === 'published' ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                                                {evt.status}
+                                                            </p>
+                                                            <div className="mt-2 text-xs text-zinc-400">
+                                                                {evt.participant_count || 0} participants
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-
-                                            <Link
-                                                href={`/attendance/scan?eventId=${nextEvent?.id || ''}`}
-                                                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                                                </svg>
-                                                Scan Attendance
-                                            </Link>
-                                        </>
-                                    ) : currentPhase === EventPhase.POST_EVENT ? (
-                                        <>
-                                            {/* Post-Event Mode: Export & Analytics */}
-                                            <div className="px-6 py-2.5 bg-zinc-100 border-2 border-zinc-300 rounded-xl">
-                                                <div className="text-sm font-bold text-zinc-700">
-                                                    ✅ Event Completed
-                                                </div>
+                                                ))}
                                             </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            {/* Draft/Pre-Event Mode: Preview + Publish/Unpublish */}
-                                            <button
-                                                onClick={() => setIsPreviewOpen(true)}
-                                                className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
-                                            >
-                                                Preview
-                                            </button>
-                                            {user?.user_id === nextEvent?.organizer_id && (
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!nextEvent) return
-                                                        if (nextEvent.status === 'published') {
-                                                            if (confirm('Unpublish this event? It will be hidden from Discover.')) {
-                                                                try {
-                                                                    await unpublishEvent(nextEvent.id)
-                                                                    toast.success('Event Unpublished')
-                                                                    fetchData()
-                                                                } catch (e) {
-                                                                    toast.error('Failed to unpublish event')
-                                                                }
-                                                            }
-                                                        } else {
-                                                            if (confirm('Are you ready to publish this event?')) {
-                                                                try {
-                                                                    await publishEvent(nextEvent.id)
-                                                                    toast.success('Event Published!')
-                                                                    fetchData()
-                                                                } catch (e) {
-                                                                    toast.error('Failed to publish event')
-                                                                }
-                                                            }
-                                                        }
-                                                    }}
-                                                    className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                                    </svg>
-                                                    {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
-                                                </button>
-                                            )}
-                                        </>
+                                        </section>
                                     )}
                                 </div>
                             )}
-                        </div>
+                            {activeTab === 'invitations' && (
+                                <div className="space-y-6 animate-fadeIn">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                        </div>
+                                        <h2 className="text-3xl font-black text-zinc-900">Invitations</h2>
+                                    </div>
+                                    <DashboardInvitationList
+                                        requests={requests}
+                                        onRespond={handleRespond}
+                                        processingReq={processingReq}
+                                    />
+                                </div>
+                            )}
 
-                        {/* Event Card Or Empty State */}
-                        {nextEvent ? (
-                            <div className="w-full animate-fadeIn pb-12">
-                                <DashboardHeroCard
-                                    event={nextEvent}
-                                    onPreview={() => setIsPreviewOpen(true)}
-                                    canEditCover={user?.user_id === nextEvent.organizer_id || role === 'committee'}
-                                    phase={currentPhase}
-                                    onCoverUpdated={() => fetchEventDetails(selectedEventId!)}
-                                />
+                            {activeTab === 'schedule' && (
+                                <div className="space-y-6 animate-fadeIn">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        </div>
+                                        <h2 className="text-3xl font-black text-zinc-900">My Schedule</h2>
+                                    </div>
+                                    <DashboardEventList
+                                        events={events}
+                                        user={user}
+                                        me={me}
+                                        onSelect={(e) => setSelectedEventId(e.event_id)}
+                                        onCreate={() => router.push('/events/create')}
+                                        onProUpgrade={fetchData}
+                                        mode="schedule"
+                                    />
+                                </div>
+                            )}
 
-                                <DashboardTabs
-                                    event={nextEvent}
-                                    user={user}
-                                    role={role}
-                                    phase={currentPhase}
-                                    onUpdate={() => fetchEventDetails(selectedEventId!)}
-                                    onDelete={() => {
-                                        setSelectedEventId(null)
-                                        setNextEvent(null)
-                                        setView('list')
-                                        fetchData()
-                                    }}
-                                />
+                            {activeTab === 'organized' && (
+                                <div className="space-y-6 animate-fadeIn">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                        </div>
+                                        <h2 className="text-3xl font-black text-zinc-900">Organized Events</h2>
+                                    </div>
+                                    <DashboardEventList
+                                        events={events}
+                                        user={user}
+                                        me={me}
+                                        onSelect={(e) => setSelectedEventId(e.event_id)}
+                                        onCreate={() => router.push('/events/create')}
+                                        onProUpgrade={fetchData}
+                                        mode="organized"
+                                    />
+                                </div>
+                            )}
+                        </>
+                    ) : (
+
+                        // DETAIL VIEW (Existing Logic)
+                        <>
+                            {/* Header Section */}
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 w-full animate-fadeIn">
+                                <div>
+                                    {/* Back Button - Available to everyone */}
+                                    <button
+                                        onClick={handleBack}
+                                        className="mb-4 text-sm font-bold text-zinc-500 hover:text-zinc-900 flex items-center gap-1 transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                        Back to {activeTab}
+                                    </button>
+                                </div>
+
+                                {/* Participant Actions (Review) */}
+                                {currentPhase === EventPhase.POST_EVENT && user?.user_id !== nextEvent?.organizer_id && role !== 'committee' && (
+                                    <div>
+                                        {checkingReview ? (
+                                            <div className="w-8 h-8 animate-spin rounded-full border-b-2 border-zinc-300"></div>
+                                        ) : !hasReviewed ? (
+                                            <button
+                                                onClick={() => setIsReviewOpen(true)}
+                                                className="px-6 py-2.5 bg-gradient-to-r from-yellow-400 to-orange-400 text-zinc-900 font-black rounded-xl hover:from-yellow-500 hover:to-orange-500 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                                </svg>
+                                                Write a Review
+                                            </button>
+                                        ) : (
+                                            <div className="px-6 py-2.5 bg-green-100 text-green-700 font-bold rounded-xl flex items-center gap-2 border border-green-200">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                You reviewed this event
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {(user?.user_id === nextEvent?.organizer_id || role === 'committee') && (
+                                    <div className="flex items-center gap-3">
+                                        {/* Show different controls based on event phase */}
+                                        {(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) ? (
+                                            <>
+                                                {/* Event Day/Ongoing Mode: Attendance Stats + Scan Button */}
+                                                {attendanceStats && (
+                                                    <div className="px-6 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                                <div className="text-sm">
+                                                                    <span className="font-black text-green-700 text-lg">{attendanceStats.attended_total}</span>
+                                                                    <span className="text-zinc-500 font-medium mx-1">/</span>
+                                                                    <span className="font-bold text-zinc-700">{attendanceStats.total_participants}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-xs font-bold text-green-700 uppercase tracking-wider">
+                                                                Attended
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <Link
+                                                    href={`/attendance/scan?eventId=${nextEvent?.id || ''}`}
+                                                    className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                                    </svg>
+                                                    Scan Attendance
+                                                </Link>
+                                            </>
+                                        ) : currentPhase === EventPhase.POST_EVENT ? (
+                                            <>
+                                                {/* Post-Event Mode: Export & Analytics */}
+                                                <div className="px-6 py-2.5 bg-zinc-100 border-2 border-zinc-300 rounded-xl">
+                                                    <div className="text-sm font-bold text-zinc-700">
+                                                        ✅ Event Completed
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {/* Draft/Pre-Event Mode: Preview + Publish/Unpublish */}
+                                                <button
+                                                    onClick={() => setIsPreviewOpen(true)}
+                                                    className="px-6 py-2.5 bg-white border-2 border-zinc-200 text-zinc-700 font-bold rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-all shadow-sm"
+                                                >
+                                                    Preview
+                                                </button>
+                                                {user?.user_id === nextEvent?.organizer_id && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!nextEvent) return
+                                                            if (nextEvent.status === 'published') {
+                                                                if (confirm('Unpublish this event? It will be hidden from Discover.')) {
+                                                                    try {
+                                                                        await unpublishEvent(nextEvent.id)
+                                                                        toast.success('Event Unpublished')
+                                                                        fetchData()
+                                                                    } catch (e) {
+                                                                        toast.error('Failed to unpublish event')
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                if (confirm('Are you ready to publish this event?')) {
+                                                                    try {
+                                                                        await publishEvent(nextEvent.id)
+                                                                        toast.success('Event Published!')
+                                                                        fetchData()
+                                                                    } catch (e) {
+                                                                        toast.error('Failed to publish event')
+                                                                    }
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                        </svg>
+                                                        {nextEvent?.status === 'published' ? 'Unpublish' : 'Publish'}
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <div className="w-full max-w-2xl text-center py-12">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
-                            </div>
-                        )}
-                    </>
-                )}
+
+                            {/* Event Card Or Empty State */}
+                            {nextEvent ? (
+                                <div className="w-full animate-fadeIn pb-12">
+                                    <DashboardHeroCard
+                                        event={nextEvent}
+                                        onPreview={() => setIsPreviewOpen(true)}
+                                        canEditCover={user?.user_id === nextEvent.organizer_id || role === 'committee'}
+                                        phase={currentPhase}
+                                        onCoverUpdated={() => fetchEventDetails(selectedEventId!)}
+                                    />
+
+                                    <DashboardTabs
+                                        event={nextEvent}
+                                        user={user}
+                                        role={role}
+                                        phase={currentPhase}
+                                        onUpdate={() => fetchEventDetails(selectedEventId!)}
+                                        onDelete={() => {
+                                            setSelectedEventId(null)
+                                            setNextEvent(null)
+                                            setView('list')
+                                            fetchData()
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="w-full max-w-2xl text-center py-12">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto"></div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </main>
 
                 <EventPreviewModal
                     isOpen={isPreviewOpen}
@@ -480,7 +623,7 @@ function DashboardPageInner() {
                 />
 
             </div>
-        </div>
+        </div >
     )
 }
 
