@@ -113,8 +113,8 @@ export function StreamChatWindow({
         );
     }
 
-    // No client/channel state
-    if (!client || !channel) {
+    // No channel state
+    if (!channel) {
         return (
             <div className="flex-1 flex items-center justify-center bg-zinc-50/30 p-8">
                 <div className="text-center max-w-md">
