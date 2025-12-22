@@ -470,17 +470,9 @@ def create_event(
     db.refresh(db_event)
 
     try:
+        from app.services.ai_service import upsert_event_embedding
         src = f"{db_event.title}\n{db_event.description or ''}\nformat:{db_event.format} type:{db_event.type}"
-        vec = generate_text_embedding(src)
-        if vec:
-            emb = _vec_to_pg(vec)
-            up = text("""
-                INSERT INTO event_embeddings(event_id, embedding, source_text)
-                VALUES (:eid, CAST(:emb AS vector), :src)
-                ON CONFLICT (event_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
-            """)
-            db.execute(up, {"eid": db_event.id, "emb": emb, "src": src})
-            db.commit()
+        upsert_event_embedding(db, db_event.id, src)
     except Exception:
         pass
 
@@ -558,17 +550,9 @@ def publish_event(
     db.commit()
     db.refresh(event)
     try:
+        from app.services.ai_service import upsert_event_embedding
         src = f"{event.title}\n{event.description or ''}\nformat:{event.format} type:{event.type}"
-        vec = generate_text_embedding(src)
-        if vec:
-            emb = _vec_to_pg(vec)
-            up = text("""
-                INSERT INTO event_embeddings(event_id, embedding, source_text)
-                VALUES (:eid, CAST(:emb AS vector), :src)
-                ON CONFLICT (event_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
-            """)
-            db.execute(up, {"eid": event.id, "emb": emb, "src": src})
-            db.commit()
+        upsert_event_embedding(db, event.id, src)
     except Exception:
         db.rollback()
     log_admin_action(db, current_user.id, "event.publish", "event", event.id)

@@ -503,34 +503,48 @@ export default function OnboardingPage() {
 
 
                     <div>
-                      <label className="block text-sm font-bold text-black mb-2">Preferred Speaking Time</label>
-                      <div className="block w-full px-4 py-3 rounded-xl border border-zinc-200 bg-zinc-50">
+                      <label className="block text-sm font-bold text-black mb-2 flex items-center gap-2">
+                        <ClockIcon className="w-4 h-4 text-zinc-500" />
+                        Availability & Preferred Time
+                      </label>
+                      <p className="text-xs text-zinc-500 mb-3">
+                        Describe when you are free. Our AI uses this to match you with event organizers.
+                      </p>
+                      
+                      <div className="space-y-3">
+                        <textarea
+                          value={form.availability || ''}
+                          onChange={(e) => updateField('availability', e.target.value)}
+                          placeholder="e.g. I am usually available on Weekdays after 6pm. I can also do weekends if booked in advance."
+                          className="block w-full px-4 py-3 rounded-xl border-zinc-200 bg-zinc-50 text-black focus:bg-white focus:ring-2 focus:ring-yellow-400/50 outline-none min-h-[100px] resize-none text-sm border"
+                        />
+                        
                         <div className="flex flex-wrap gap-2">
-                          {['Prefer Weekend', 'Weekdays after 6pm', 'Flexible', 'TBD (To be Discussed)'].map(opt => {
-                            const isSelected = form.availability?.includes(opt);
+                          {['Prefer Weekend', 'Weekdays after 6pm', 'Flexible', 'Remote Only', 'TBD'].map(opt => {
+                            const isIncluded = form.availability?.includes(opt);
                             return (
-                              <span
+                              <button
                                 key={opt}
+                                type="button"
                                 onClick={() => {
                                   let current = form.availability || '';
-                                  if (isSelected) {
-                                    // Remove
-                                    current = current.replace(opt, '').replace(', ,', ',').replace(/^, /, '').replace(/, $/, '');
+                                  if (isIncluded) {
+                                     // Simple remove attempt: remove text and cleanup commas
+                                     current = current.replace(opt, '').replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
                                   } else {
-                                    // Add
-                                    current = current ? current + ', ' + opt : opt;
+                                     current = current.trim() ? `${current}, ${opt}` : opt;
                                   }
                                   updateField('availability', current);
                                 }}
-                                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs cursor-pointer border transition-colors select-none ${isSelected
-                                  ? 'bg-yellow-100 border-yellow-400 text-yellow-800'
-                                  : 'bg-white border-zinc-200 text-zinc-600 hover:border-yellow-400 hover:text-yellow-600'
-                                  }`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                                  isIncluded
+                                    ? 'bg-yellow-100 border-yellow-400 text-yellow-900'
+                                    : 'bg-white border-zinc-200 text-zinc-600 hover:border-yellow-300'
+                                }`}
                               >
-                                {isSelected ? <CheckIcon className="w-3 h-3" /> : <span className="text-lg leading-none">+</span>}
-                                {opt}
-                              </span>
-                            );
+                                {isIncluded ? <CheckIcon className="w-3 h-3" /> : <span>+</span>} {opt}
+                              </button>
+                            )
                           })}
                         </div>
                       </div>

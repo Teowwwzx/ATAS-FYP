@@ -3,6 +3,9 @@ import json
 from typing import Dict, Any, Optional
 import requests
 
+# Trigger reload for new dependency
+
+
 
 def _normalize_sections(sections: Optional[list[str]]) -> list[str]:
     default = ["title", "short_intro", "value_points", "logistics", "closing", "email_subjects"]
@@ -173,7 +176,7 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
     return _stub_generate(event, expert, options)
 
 
-def generate_text_embedding(query: str) -> Optional[list[float]]:
+def generate_text_embedding(query: str, is_document: bool = False) -> Optional[list[float]]:
     provider = settings.AI_PROVIDER.lower()
     if os.getenv("TESTING") == "1":
         return [0.0] * 768
@@ -203,7 +206,8 @@ def generate_text_embedding(query: str) -> Optional[list[float]]:
                 return None
             genai.configure(api_key=api_key)
             try:
-                res = genai.embed_content(model="text-embedding-004", content=query)
+                task = "retrieval_document" if is_document else "retrieval_query"
+                res = genai.embed_content(model="text-embedding-004", content=query, task_type=task)
                 # SDK may return dict-like with 'embedding' or object with .embedding.values
                 if isinstance(res, dict):
                     emb = res.get("embedding")
@@ -227,5 +231,69 @@ def generate_text_embedding(query: str) -> Optional[list[float]]:
     return None
 
 
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+import uuid
+
 def _vec_to_pg(v: list[float]) -> str:
     return "[" + ",".join(f"{x:.6f}" for x in v) + "]"
+
+def upsert_expert_embedding(db: Session, user_id: uuid.UUID, source_text: str) -> bool:
+    try:
+        vec = generate_text_embedding(source_text, is_document=True)
+        if not vec:
+            return False
+            
+        emb = _vec_to_pg(vec)
+        # Use raw SQL for upsert as SQLAlchemy ORM upsert support varies by dialect version/drivers
+        # and pgvector casting is cleaner this way.
+        # However, we can use the model table name reference if we want, but raw SQL is safe here.
+        sql = text(
+            """
+            INSERT INTO expert_embeddings(user_id, embedding, source_text)
+            VALUES (:uid, CAST(:emb AS vector), :src)
+            ON CONFLICT (user_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+            """
+        )
+        db.execute(sql, {"uid": user_id, "emb": emb, "src": source_text})
+        return True
+    except Exception as e:
+        print(f"Error upserting expert embedding: {e}")
+        return False
+
+def upsert_event_embedding(db: Session, event_id: uuid.UUID, source_text: str) -> bool:
+    try:
+        vec = generate_text_embedding(source_text, is_document=True)
+        if not vec:
+            return False
+            
+        emb = _vec_to_pg(vec)
+        sql = text(
+            """
+            INSERT INTO event_embeddings(event_id, embedding, source_text)
+            VALUES (:eid, CAST(:emb AS vector), :src)
+            ON CONFLICT (event_id) DO UPDATE SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+            """
+        )
+        db.execute(sql, {"eid": event_id, "emb": emb, "src": source_text})
+        return True
+    except Exception as e:
+        print(f"Error upserting event embedding: {e}")
+        return False
+
+def search_similar_experts(db: Session, query_text: str, top_k: int = 20) -> list[uuid.UUID]:
+    try:
+        vec = generate_text_embedding(query_text)
+        if not vec:
+            return []
+            
+        emb = _vec_to_pg(vec)
+        sql = text(
+            "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k"
+        )
+        rows = db.execute(sql, {"emb": emb, "k": top_k}).fetchall()
+        return [r[0] for r in rows]
+    except Exception as e:
+        print(f"Error searching experts: {e}")
+        return []
+

@@ -85,6 +85,7 @@ class ProfileResponse(ProfileBase):
     intents: Optional[List[str]] = None
     today_status: Optional[str] = None
     email: Optional[str] = None # Added for UI display
+    distance: Optional[float] = None # Debugging field for semantic search
 
     model_config = ConfigDict(from_attributes=True)
 

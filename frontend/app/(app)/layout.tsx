@@ -1,5 +1,6 @@
 import React from 'react'
 import { AppNavbar } from '@/components/ui/AppNavbar'
+import { AiAssistantFab } from '@/components/ai/AiAssistantFab'
 
 export default function AppLayout({
     children,
@@ -14,6 +15,7 @@ export default function AppLayout({
                     {children}
                 </div>
             </main>
+            <AiAssistantFab />
         </div>
     )
 }

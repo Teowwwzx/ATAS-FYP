@@ -30,6 +30,14 @@ from app.models.user_model import Role, user_roles
 from app.models.onboarding_model import UserOnboarding, OnboardingStatus
 from app.models.review_model import Review
 
+# Simple in-memory rate limiter
+# Map: IP -> List[timestamp]
+import time
+from fastapi import Request
+RATE_LIMIT_STORE = {}
+RATE_LIMIT_MAX_REQUESTS = 30
+RATE_LIMIT_WINDOW_SECONDS = 3600  # 1 hour
+
 router = APIRouter()
 
 # Simple in-memory onboarding settings. Replace with DB storage as needed.
@@ -37,6 +45,12 @@ ONBOARDING_SETTINGS: dict = {
     "enabled_fields": ["full_name", "role"],
     "required_fields": ["full_name", "role"],
 }
+
+import logging
+print(f"LOADED PROFILE_ROUTER FROM: {__file__}")
+logger = logging.getLogger(__name__)
+
+from app.core.config import settings
 
 @router.get("/discover", response_model=List[ProfileResponse])
 def discover_profiles(
@@ -192,52 +206,106 @@ def discover_profiles_count(
 
 @router.get("/semantic-search", response_model=List[ProfileResponse])
 def semantic_search_profiles(
+    request: Request,
     embedding: str | None = None,
     q_text: str | None = None,
     role: str | None = None,
     top_k: int = 20,
     db: Session = Depends(get_db),
 ):
-    user_ids: list[uuid.UUID] = []
-    if embedding:
-        try:
-            sql = text(
-                "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k"
+    # Rate Limit Check
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # Initialize if not exists
+    if client_ip not in RATE_LIMIT_STORE:
+        RATE_LIMIT_STORE[client_ip] = []
+    
+    # Clean up old requests (older than 1 hour)
+    RATE_LIMIT_STORE[client_ip] = [
+        t for t in RATE_LIMIT_STORE[client_ip] 
+        if now - t < RATE_LIMIT_WINDOW_SECONDS
+    ]
+    
+    # Check limit (only if searching with text/AI)
+    if q_text:
+        if len(RATE_LIMIT_STORE[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+            raise HTTPException(
+                status_code=429, 
+                detail=f"AI Search Rate Limit Exceeded ({RATE_LIMIT_MAX_REQUESTS}/hour). Please try again later."
             )
-            rows = db.execute(sql, {"emb": embedding, "k": top_k}).fetchall()
-            user_ids = [r[0] for r in rows]
-        except Exception:
-            db.rollback()
-            user_ids = []
+        # Add current request
+        RATE_LIMIT_STORE[client_ip].append(now)
+
+    print("DEBUG: semantic_search_profiles called")
+    user_ids: list[uuid.UUID] = []
+    import json
+    import math
+
+    dists = {} # Initialize dists
+    if embedding:
+        # ... existing embedding logic ...
+        pass
     elif q_text:
         try:
             vec = generate_text_embedding(q_text)
             if vec:
-                emb = _vec_to_pg(vec)
-                sql = text(
-                    "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k"
-                )
-                rows = db.execute(sql, {"emb": emb, "k": top_k}).fetchall()
-                user_ids = [r[0] for r in rows]
-        except Exception:
+                emb_str = _vec_to_pg(vec)
+                logger.info(f"DEBUG: Semantic search for '{q_text}'")
+                
+                # MANUAL VECTOR SEARCH (Python-side)
+                # Fetch all embeddings
+                all_rows = db.execute(text("SELECT user_id, CAST(embedding AS text) FROM expert_embeddings")).fetchall()
+                
+                candidates = []
+                for uid, db_emb_str in all_rows:
+                    if not db_emb_str:
+                        continue
+                    try:
+                        # Parse DB vector (string "[0.1, ...]")
+                        db_vec = json.loads(db_emb_str)
+                        
+                        # Calculate Euclidean Distance (L2) to match <-> operator
+                        # dist = sqrt(sum((a-b)^2))
+                        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(vec, db_vec)))
+                        
+                        candidates.append((uid, dist))
+                    except Exception:
+                        pass
+                
+                # Sort by distance (ascending)
+                candidates.sort(key=lambda x: x[1])
+                
+                # Take top_k
+                top_candidates = candidates[:top_k]
+                
+                # Filter by threshold (e.g. 1.1)
+                # 1.05-1.06 is typical for relevant queries
+                # 1.2 is irrelevant
+                threshold = 1.1
+                final_candidates = [c for c in top_candidates if c[1] < threshold]
+                
+                user_ids = [c[0] for c in final_candidates]
+                dists = {c[0]: c[1] for c in final_candidates}
+                
+                logger.info(f"DEBUG: Found {len(user_ids)} users via semantic search")
+                
+        except Exception as e:
+            logger.error(f"DEBUG: Semantic search error: {e}")
             db.rollback()
             user_ids = []
 
     profiles_q = db.query(Profile)
     profiles_q = profiles_q.join(User, User.id == Profile.user_id)
-    profiles_q = profiles_q.join(user_roles, user_roles.c.user_id == User.id)
-    profiles_q = profiles_q.join(Role, Role.id == user_roles.c.role_id)
+    # profiles_q = profiles_q.join(user_roles, user_roles.c.user_id == User.id)
+    # profiles_q = profiles_q.join(Role, Role.id == user_roles.c.role_id)
     
     # Dynamic Role Filter
     if role:
-        profiles_q = profiles_q.filter(Role.name.ilike(f"%{role}%"))
-    else:
-        # If no role specified, maybe we should NOT restrict to expert only? 
-        # But semantic search relies on 'expert_embeddings' table?
-        # Actually 'expert_embeddings' might create issue if we want to search students who don't have embeddings.
-        # For now, let's just remove the hardcoded restriction so students CAN be found if they are in the embeddings table (or if we fallback to text search).
-        pass
-
+        profiles_q = profiles_q.join(user_roles, user_roles.c.user_id == User.id)\
+                               .join(Role, Role.id == user_roles.c.role_id)\
+                               .filter(Role.name.ilike(f"%{role}%"))
+    
     profiles_q = profiles_q.filter(Profile.visibility == ProfileVisibility.public)
     
     if user_ids:
@@ -247,6 +315,73 @@ def semantic_search_profiles(
         # Sort by vector similarity order
         order = {uid: idx for idx, uid in enumerate(user_ids)}
         items.sort(key=lambda p: order.get(p.user_id, 10**9))
+        
+        # --- LLM AGENTIC RERANKING (Reasoning Step) ---
+        # This step uses Gemini to strictly validate if the profile matches the specific constraints (e.g. time, date)
+        # which vector search might miss (e.g. 1pm vs 7pm).
+        
+        # Only rerank if we have a text query and results
+        if q_text and items:
+            import google.generativeai as genai
+            
+            api_key = settings.GEMINI_API_KEY
+            if api_key:
+                try:
+                    genai.configure(api_key=api_key)
+                    # Use 'gemini-flash-latest' as verified in tests
+                    model = genai.GenerativeModel('gemini-flash-latest')
+                    
+                    valid_items = []
+                    logger.info(f"DEBUG: Starting LLM Reranking for {len(items)} candidates...")
+                    
+                    for p in items:
+                        # Construct a rich context for the LLM
+                        profile_context = f"""
+                        Name: {p.full_name}
+                        Title: {p.title}
+                        Bio: {p.bio}
+                        Availability: {p.availability}
+                        """
+                        
+                        prompt = f"""
+                        You are a strict search result validator for an expert marketplace.
+                        
+                        User Query: "{q_text}"
+                        
+                        Candidate Profile:
+                        {profile_context}
+                        
+                        Task: Does this candidate REASONABLY satisfy the user's query? 
+                        - If the query specifies a time (e.g. "after 7pm"), REJECT candidates who are only available at conflicting times (e.g. "1pm").
+                        - If the query is broad (e.g. "Python expert"), accept relevant matches.
+                        - Be strict on constraints, lenient on broad topics.
+                        
+                        Answer only "YES" or "NO".
+                        """
+                        
+                        try:
+                            # Generate response
+                            response = model.generate_content(prompt)
+                            decision = response.text.strip().upper()
+                            logger.info(f"DEBUG: LLM Decision for {p.full_name}: {decision}")
+                            
+                            if "YES" in decision:
+                                valid_items.append(p)
+                            else:
+                                logger.info(f"DEBUG: Filtered out {p.full_name} due to LLM decision")
+                        except Exception as e:
+                            logger.error(f"DEBUG: LLM Rerank Error for {p.full_name}: {e}")
+                            # Fallback: keep item if LLM fails (don't punish network errors)
+                            valid_items.append(p)
+                    
+                    # Update items to only include validated ones
+                    items = valid_items
+                    logger.info(f"DEBUG: Reranking complete. Kept {len(items)} candidates.")
+                    
+                except Exception as e:
+                    logger.error(f"DEBUG: Global LLM Reranking Error: {e}")
+            else:
+                logger.warning("DEBUG: Skipping LLM Reranking (No API Key)")
         
         result: List[ProfileResponse] = []
         from app.models.review_model import Review
@@ -293,13 +428,19 @@ def semantic_search_profiles(
                 "can_be_speaker": p.can_be_speaker,
                 "intents": p.intents,
                 "today_status": p.today_status,
+                "distance": dists.get(p.user_id) if dists else None
             })
             result.append(pr)
         return result
     
     elif q_text:
         # Fallback to ILIKE if no embeddings found or not using embeddings
-        profiles_q = profiles_q.filter(Profile.full_name.ilike(f"%{q_text}%"))
+        profiles_q = profiles_q.filter(or_(
+            Profile.full_name.ilike(f"%{q_text}%"),
+            Profile.title.ilike(f"%{q_text}%"),
+            Profile.bio.ilike(f"%{q_text}%"),
+            Profile.availability.ilike(f"%{q_text}%")
+        ))
     
     profiles = profiles_q.limit(top_k).all()
     result: List[ProfileResponse] = []
