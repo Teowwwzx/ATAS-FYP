@@ -214,7 +214,7 @@ function DashboardPageInner() {
                                 : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'} ${!isSidebarExpanded && 'justify-center'}`}
                         >
                             <svg className="w-6 h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'Overview' : ''}</span>}
+                            <span className={`font-bold truncate animate-fadeIn ${isSidebarExpanded ? 'block' : 'block lg:hidden'}`}>Overview</span>
                         </button>
                         <button
                             onClick={() => { setActiveTab('invitations'); setView('list'); }}
@@ -231,7 +231,7 @@ function DashboardPageInner() {
                                     </span>
                                 )}
                             </div>
-                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'Invitations' : ''}</span>}
+                            <span className={`font-bold truncate animate-fadeIn ${isSidebarExpanded ? 'block' : 'block lg:hidden'}`}>Invitations</span>
                             {isSidebarExpanded && requests.length > 0 && (
                                 <span className="absolute right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
                                     {requests.length}
@@ -253,7 +253,7 @@ function DashboardPageInner() {
                                     </span>
                                 )}
                             </div>
-                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'My Schedule' : ''}</span>}
+                            <span className={`font-bold truncate animate-fadeIn ${isSidebarExpanded ? 'block' : 'block lg:hidden'}`}>My Schedule</span>
                             {isSidebarExpanded && scheduleCount > 0 && (
                                 <span className="absolute right-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
                                     {scheduleCount}
@@ -275,7 +275,7 @@ function DashboardPageInner() {
                                     </span>
                                 )}
                             </div>
-                            {(isSidebarExpanded || window.innerWidth < 1024) && <span className="font-bold truncate lg:hidden xl:block">{isSidebarExpanded ? 'Organized' : ''}</span>}
+                            <span className={`font-bold truncate animate-fadeIn ${isSidebarExpanded ? 'block' : 'block lg:hidden'}`}>Organized Events</span>
                             {isSidebarExpanded && organizedCount > 0 && (
                                 <span className="absolute right-2 flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
                                     {organizedCount}

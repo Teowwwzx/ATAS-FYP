@@ -655,6 +655,17 @@ export const deleteEvent = async (eventId: string) => {
   return response.data
 }
 
+export const uploadPaymentProof = async (eventId: string, file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  const response = await api.put<EventParticipantDetails>(
+    `/events/${eventId}/participants/me/payment`,
+    fd,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+  return response.data
+}
+
 // --- AI Service ---
 
 export const generateProposal = async (data: import('./api.types').ProposalSuggestRequest) => {
@@ -697,6 +708,14 @@ export const openRegistration = async (eventId: string) => {
 
 export const closeRegistration = async (eventId: string) => {
   const response = await api.put<EventDetails>(`/events/${eventId}/registration/close`)
+  return response.data
+}
+
+export const verifyParticipantPayment = async (eventId: string, participantId: string, status: 'accepted' | 'rejected') => {
+  const response = await api.put<EventParticipantDetails>(
+    `/events/${eventId}/participants/${participantId}/payment`,
+    { status }
+  )
   return response.data
 }
 

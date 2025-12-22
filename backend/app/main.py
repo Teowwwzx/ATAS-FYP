@@ -12,7 +12,7 @@ try:
     _has_org_router = hasattr(organization_router, "router")
 except ImportError:
     _has_org_router = False
-from app.database.database import get_db, Base
+from app.database.database import get_db, Base, engine
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -20,6 +20,10 @@ app = FastAPI(
     title="ATAS API",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup_db():
+    Base.metadata.create_all(bind=engine)
 
 # CORS Middleware
 app.add_middleware(

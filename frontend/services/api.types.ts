@@ -228,6 +228,11 @@ export interface EventDetails extends EventCreate {
     category?: { id: string; name: string }
     created_at: string
     updated_at?: string | null
+    // View-specific fields (often joined)
+    my_role?: EventParticipantRole | null
+    my_status?: EventParticipantStatus | null
+    payment_proof_url?: string | null
+    payment_status?: string | null
 }
 
 // --- Participant Types ---
@@ -261,6 +266,8 @@ export interface EventParticipantDetails {
     updated_at?: string
     conversation_id?: string
     proposal_id?: string
+    payment_proof_url?: string | null
+    payment_status?: string | null
 }
 
 export interface EventParticipationSummary {
@@ -395,7 +402,8 @@ export interface CategoryResponse {
 export interface EventChecklistItemCreate {
     title: string
     description?: string | null
-    assigned_user_id?: string | null
+    assigned_user_id?: string | null // Deprecated
+    assigned_user_ids?: string[]
     due_datetime?: string | null
 }
 
@@ -403,7 +411,8 @@ export interface EventChecklistItemUpdate {
     title?: string | null
     description?: string | null
     is_completed?: boolean | null
-    assigned_user_id?: string | null
+    assigned_user_id?: string | null // Deprecated
+    assigned_user_ids?: string[]
     sort_order?: number | null
     due_datetime?: string | null
 }
@@ -436,6 +445,7 @@ export interface EventChecklistItemResponse {
     description?: string | null
     is_completed: boolean
     assigned_user_id?: string | null
+    assigned_user_ids: string[]
     sort_order: number
     due_datetime?: string | null
     created_by_user_id: string

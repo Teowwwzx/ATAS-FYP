@@ -4,6 +4,10 @@ import { updateEvent, openRegistration, closeRegistration, deleteEvent, uploadEv
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { DeleteEventModal } from '@/components/modals/DeleteEventModal'
+import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
+import { useLoadScript } from '@react-google-maps/api'
+
+const libraries: ("places")[] = ["places"]
 
 interface DashboardTabSettingsProps {
     event: EventDetails
@@ -19,9 +23,42 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
     const [qrFile, setQrFile] = useState<File | null>(null)
     const [isUploadingQR, setIsUploadingQR] = useState(false)
 
+    const { isLoaded } = useLoadScript({
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        libraries,
+    })
 
-    // We can remove form state for title/desc if this tab no longer edits them.
-    // Keeping simple state for toggles or direct API calls.
+    // Configuration Form State
+    const [configForm, setConfigForm] = useState({
+        start_datetime: event.start_datetime.slice(0, 16),
+        end_datetime: event.end_datetime.slice(0, 16),
+        venue_remark: event.venue_remark || '',
+        venue_place_id: event.venue_place_id || '',
+        max_participant: event.max_participant || 0,
+        registration_type: event.registration_type || 'free',
+        format: event.format || 'workshop',
+        type: event.type || 'offline',
+    })
+
+    const handleConfigUpdate = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        try {
+            await updateEvent(event.id, {
+                ...configForm,
+                max_participant: configForm.max_participant > 0 ? configForm.max_participant : null,
+                start_datetime: new Date(configForm.start_datetime).toISOString(),
+                end_datetime: new Date(configForm.end_datetime).toISOString(),
+            })
+            toast.success('Event configuration updated')
+            onUpdate()
+        } catch (error) {
+            console.error(error)
+            toast.error('Failed to update configuration')
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const toggleVisibility = async () => {
         setLoading(true)
@@ -119,43 +156,154 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                 </div>
             </section>
 
-            {/* Participant Limit Settings */}
+            {/* Logistics & Configuration */}
             <section>
-                <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm flex items-center justify-between">
-                    <div>
-                        <h4 className="text-lg font-bold text-zinc-900 mb-1">
-                            Max Participants
-                        </h4>
+                <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm">
+                    <div className="mb-8">
+                        <h4 className="text-xl font-bold text-zinc-900 mb-2">Event Configuration</h4>
                         <p className="text-zinc-500 text-sm font-medium">
-                            Limit the number of attendees (0 for unlimited).
+                            Manage critical logistics. Changing these may affect existing registrations.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <input
-                            type="number"
-                            min="0"
-                            placeholder="Unlimited"
-                            className="w-32 px-4 py-2 border border-zinc-200 rounded-xl font-bold text-center focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none transition-all"
-                            defaultValue={event.max_participant || ''}
-                            onBlur={async (e) => {
-                                const val = parseInt(e.target.value)
-                                const newMax = isNaN(val) || val <= 0 ? null : val
-                                if (newMax === event.max_participant) return
+                    <form onSubmit={handleConfigUpdate} className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Start Date</label>
+                                <input
+                                    type="datetime-local"
+                                    value={configForm.start_datetime}
+                                    onChange={(e) => setConfigForm({ ...configForm, start_datetime: e.target.value })}
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">End Date</label>
+                                <input
+                                    type="datetime-local"
+                                    value={configForm.end_datetime}
+                                    onChange={(e) => setConfigForm({ ...configForm, end_datetime: e.target.value })}
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900 text-sm"
+                                />
+                            </div>
+                        </div>
 
-                                setLoading(true)
-                                try {
-                                    await updateEvent(event.id, { max_participant: newMax })
-                                    toast.success('Limit updated')
-                                    onUpdate()
-                                } catch (error) {
-                                    toast.error('Failed to update limit')
-                                } finally {
-                                    setLoading(false)
-                                }
-                            }}
-                        />
-                    </div>
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Venue</label>
+                            {isLoaded ? (
+                                <PlacesAutocomplete
+                                    value={configForm.venue_remark}
+                                    onChange={(address) => setConfigForm({ ...configForm, venue_remark: address })}
+                                    onSelect={async (address) => {
+                                        setConfigForm(prev => ({ ...prev, venue_remark: address }))
+                                        try {
+                                            const results = await geocodeByAddress(address)
+                                            const placeId = results[0].place_id
+                                            setConfigForm(prev => ({ ...prev, venue_place_id: placeId }))
+                                        } catch (error) {
+                                            console.error('Error selecting place', error)
+                                        }
+                                    }}
+                                >
+                                    {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
+                                        <div className="relative">
+                                            <input
+                                                {...getInputProps({
+                                                    placeholder: 'Search for a location...',
+                                                    className: "block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
+                                                })}
+                                            />
+                                            {suggestions.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-zinc-100 overflow-hidden">
+                                                    {loading && <div className="p-3 text-sm text-zinc-500">Loading...</div>}
+                                                    {suggestions.map((suggestion) => {
+                                                        const className = suggestion.active
+                                                            ? 'px-4 py-3 bg-yellow-50 cursor-pointer'
+                                                            : 'px-4 py-3 bg-white cursor-pointer hover:bg-gray-50';
+                                                        const { key, ...optionProps } = getSuggestionItemProps(suggestion, { className });
+                                                        return (
+                                                            <div key={suggestion.placeId} {...optionProps}>
+                                                                <div className="font-bold text-zinc-900 text-sm">{suggestion.formattedSuggestion.mainText}</div>
+                                                                <div className="text-xs text-zinc-500">{suggestion.formattedSuggestion.secondaryText}</div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </PlacesAutocomplete>
+                            ) : (
+                                <div className="block w-full rounded-2xl border-zinc-200 bg-zinc-100 py-3 px-4 text-zinc-400">Loading Maps...</div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Max Participants</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={configForm.max_participant}
+                                    onChange={(e) => setConfigForm({ ...configForm, max_participant: parseInt(e.target.value) || 0 })}
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
+                                />
+                                <p className="text-[10px] text-zinc-400 mt-2 font-medium">Set to 0 for unlimited.</p>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Registration Type</label>
+                                <select
+                                    value={configForm.registration_type}
+                                    onChange={(e) => setConfigForm({ ...configForm, registration_type: e.target.value as any })}
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900"
+                                >
+                                    <option value="free">Free</option>
+                                    <option value="paid">Paid</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Event Format</label>
+                                <select
+                                    value={configForm.format}
+                                    onChange={(e) => setConfigForm({ ...configForm, format: e.target.value as any })}
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-900 capitalize"
+                                >
+                                    <option value="workshop">Workshop</option>
+                                    <option value="seminar">Seminar</option>
+                                    <option value="webinar">Webinar</option>
+                                    <option value="panel_discussion">Panel Discussion</option>
+                                    <option value="club_event">Club Event</option>
+                                    <option value="conference">Conference</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Event Type</label>
+                                <select
+                                    value={configForm.type}
+                                    onChange={(e) => setConfigForm({ ...configForm, type: e.target.value as any })}
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-900 capitalize"
+                                >
+                                    <option value="offline">Offline (Physical)</option>
+                                    <option value="online">Online</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="px-8 py-3 bg-zinc-900 text-white rounded-xl font-bold shadow-lg hover:bg-zinc-800 transition-all disabled:opacity-50"
+                            >
+                                {loading ? 'Saving...' : 'Update Configuration'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </section>
 

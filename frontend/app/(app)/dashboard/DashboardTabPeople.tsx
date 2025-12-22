@@ -1,6 +1,7 @@
 import React, { useState, useEffect, Fragment } from 'react'
+import Link from 'next/link'
 import { EventDetails, EventParticipantDetails, ProfileResponse } from '@/services/api.types'
-import { getEventParticipants, getProfileByUserId, removeEventParticipant } from '@/services/api'
+import { getEventParticipants, getProfileByUserId, removeEventParticipant, verifyParticipantPayment } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
@@ -9,15 +10,16 @@ import { EventPhase } from '@/lib/eventPhases'
 interface DashboardTabPeopleProps {
     event: EventDetails
     user: ProfileResponse | null
-    phase: EventPhase // Add phase prop
+    phase: EventPhase
     onInvite?: () => void
 }
 
 export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTabPeopleProps) {
     const [participants, setParticipants] = useState<(EventParticipantDetails & { profile?: ProfileResponse })[]>([])
     const [loading, setLoading] = useState(true)
-    const [filter, setFilter] = useState<'all' | 'speaker' | 'audience' | 'staff'>('all')
+    const [filter, setFilter] = useState<'all' | 'speaker' | 'audience' | 'staff' | 'pending_payment'>('all')
     const [chatParticipant, setChatParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
+    const [receiptParticipant, setReceiptParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
 
     const fetchParticipants = async () => {
         try {
@@ -46,6 +48,27 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
         fetchParticipants()
     }, [event.id])
 
+    const handleVerifyParams = async (id: string, status: 'accepted' | 'rejected') => {
+        if (!confirm(`Are you sure you want to ${status} this payment?`)) return
+        try {
+            await verifyParticipantPayment(event.id, id, status);
+            toast.success(`Payment ${status}`)
+            setParticipants(prev => prev.map(p => {
+                if (p.id === id) {
+                    return {
+                        ...p,
+                        status: status === 'accepted' ? 'accepted' : 'rejected',
+                        payment_status: status === 'accepted' ? 'verified' : 'rejected'
+                    }
+                }
+                return p
+            }))
+            if (receiptParticipant?.id === id) setReceiptParticipant(null);
+        } catch (e) {
+            toast.error('Failed to update status')
+        }
+    }
+
     const handleRemove = async (participantId: string) => {
         if (!confirm('Remove this person from the event?')) return
         try {
@@ -63,6 +86,7 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
         if (filter === 'speaker') return p.role === 'speaker'
         if (filter === 'audience') return p.role === 'audience' || p.role === 'student'
         if (filter === 'staff') return p.role === 'organizer' || p.role === 'committee'
+        if (filter === 'pending_payment') return p.payment_proof_url && (p.status === 'pending' || p.payment_status === 'pending')
         return true
     })
 
@@ -99,16 +123,18 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                     { key: 'speaker', label: 'Speakers' },
                     { key: 'staff', label: 'Committee' },
                     { key: 'audience', label: 'Attendees' },
+                    { key: 'pending_payment', label: 'Pending Payment', count: participants.filter(p => p.payment_proof_url && (p.status === 'pending' || p.payment_status === 'pending')).length },
                 ].map((f) => (
                     <button
                         key={f.key}
                         onClick={() => setFilter(f.key as any)}
-                        className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition-all ${filter === f.key
+                        className={`px-4 py-2 text-sm font-bold rounded-lg whitespace-nowrap transition-all flex items-center gap-2 ${filter === f.key
                             ? 'bg-zinc-900 text-white shadow-md'
                             : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
                             }`}
                     >
                         {f.label}
+                        {f.count ? <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{f.count}</span> : null}
                     </button>
                 ))}
             </div>
@@ -136,23 +162,31 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                             {filtered.map((item) => (
                                 <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors group">
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center gap-4">
+                                        <Link href={`/profile/${item.user_id}`} className="flex items-center gap-4 hover:opacity-75 transition-opacity group/link">
                                             {item.profile?.avatar_url ? (
                                                 <img
                                                     src={item.profile.avatar_url}
                                                     alt={item.profile.full_name}
-                                                    className="w-10 h-10 rounded-full object-cover ring-2 ring-zinc-50"
+                                                    className="w-10 h-10 rounded-full object-cover ring-2 ring-zinc-50 group-hover/link:ring-yellow-400 transition-all"
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold">
+                                                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold group-hover/link:bg-yellow-100 group-hover/link:text-yellow-600 transition-colors">
                                                     {item.profile?.full_name?.charAt(0) || '?'}
                                                 </div>
                                             )}
                                             <div>
-                                                <div className="font-bold text-zinc-900">{item.profile?.full_name || 'Unknown User'}</div>
+                                                <div className="font-bold text-zinc-900 group-hover/link:text-yellow-600 transition-colors">{item.profile?.full_name || 'Unknown User'}</div>
                                                 <div className="text-xs text-zinc-500">{item.profile?.email || 'No email'}</div>
+                                                {/* Payment Status Label */}
+                                                {item.payment_proof_url && (
+                                                    <div className="mt-1">
+                                                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase transition-colors hover:bg-blue-100 cursor-help" title={item.payment_status || 'Submitted'}>
+                                                            Receipt Submitted
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
+                                        </Link>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="text-sm font-medium text-zinc-700 capitalize block px-2 py-1 rounded-md bg-zinc-100 w-fit">
@@ -166,6 +200,16 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         <div className="flex items-center justify-end gap-2">
+                                            {/* Review Payment Button */}
+                                            {item.payment_proof_url && (item.status === 'pending' || item.payment_status === 'pending') && (
+                                                <button
+                                                    onClick={() => setReceiptParticipant(item)}
+                                                    className="text-blue-600 hover:text-blue-700 font-bold text-xs bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100"
+                                                >
+                                                    Verify Payment
+                                                </button>
+                                            )}
+
                                             {/* Chat Button */}
                                             {item.conversation_id && (
                                                 <button
@@ -199,6 +243,63 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                     </table>
                 </div>
             )}
+
+            {/* Receipt Review Modal */}
+            <Transition appear show={!!receiptParticipant} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setReceiptParticipant(null)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+                                <div className="p-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <Dialog.Title as="h3" className="text-xl font-bold text-zinc-900">
+                                            Manage Payment
+                                        </Dialog.Title>
+                                        <button onClick={() => setReceiptParticipant(null)} className="text-zinc-400 hover:text-zinc-600">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+
+                                    <div className="mb-6 bg-zinc-100 rounded-xl overflow-hidden border border-zinc-200 max-h-[60vh] flex items-center justify-center">
+                                        {receiptParticipant?.payment_proof_url ? (
+                                            <img src={receiptParticipant.payment_proof_url} alt="Receipt" className="max-w-full max-h-full object-contain" />
+                                        ) : (
+                                            <div className="p-12 text-zinc-400">No image available</div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => handleVerifyParams(receiptParticipant?.id!, 'rejected')}
+                                            className="flex-1 py-3 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+                                        >
+                                            Reject
+                                        </button>
+                                        <button
+                                            onClick={() => handleVerifyParams(receiptParticipant?.id!, 'accepted')}
+                                            className="flex-1 py-3 text-white font-bold bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-lg shadow-green-200"
+                                        >
+                                            Approve & Accept
+                                        </button>
+                                    </div>
+                                </div>
+                            </Dialog.Panel>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
 
             {/* Chat Modal */}
             <Transition appear show={!!chatParticipant} as={Fragment}>

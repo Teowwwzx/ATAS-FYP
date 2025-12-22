@@ -96,6 +96,9 @@ class EventParticipantDetails(BaseModel):
     updated_at: datetime | None = None
     conversation_id: uuid.UUID | None = None
     proposal_id: uuid.UUID | None = None
+    
+    payment_proof_url: str | None = None
+    payment_status: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -204,7 +207,8 @@ class EventAttendanceStats(BaseModel):
 class EventChecklistItemCreate(BaseModel):
     title: str
     description: str | None = None
-    assigned_user_id: uuid.UUID | None = None
+    assigned_user_id: uuid.UUID | None = None # Deprecated, use below
+    assigned_user_ids: list[uuid.UUID] = []
     due_datetime: datetime | None = None
 
     @field_validator("assigned_user_id", "due_datetime", mode="before")
@@ -220,7 +224,8 @@ class EventChecklistItemUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     is_completed: bool | None = None
-    assigned_user_id: uuid.UUID | None = None
+    assigned_user_id: uuid.UUID | None = None # Deprecated
+    assigned_user_ids: list[uuid.UUID] | None = None
     sort_order: int | None = None
     due_datetime: datetime | None = None
 
@@ -240,6 +245,7 @@ class EventChecklistItemResponse(BaseModel):
     description: str | None = None
     is_completed: bool
     assigned_user_id: uuid.UUID | None = None
+    assigned_user_ids: list[uuid.UUID] = [] # Population handled in router or property
     sort_order: int
     due_datetime: datetime | None = None
     created_by_user_id: uuid.UUID

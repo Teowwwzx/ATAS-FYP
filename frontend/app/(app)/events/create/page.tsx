@@ -111,6 +111,23 @@ export default function CreateEventPage() {
         }
     }, [formData.format])
 
+    // Fix: Auto-fetch Place ID for default venue
+    useEffect(() => {
+        const fetchDefaultPlaceId = async () => {
+            if (formData.venue_remark === 'Asia Pacific University' && !formData.venue_place_id && isLoaded) {
+                try {
+                    const results = await geocodeByAddress('Asia Pacific University of Technology & Innovation (APU)')
+                    if (results && results[0]) {
+                        setFormData(prev => ({ ...prev, venue_place_id: results[0].place_id, venue_remark: results[0].formatted_address }))
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch default place ID', error)
+                }
+            }
+        }
+        fetchDefaultPlaceId()
+    }, [isLoaded, formData.venue_remark])
+
     return (
         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-sm border border-yellow-100">
             <div className="mb-10 text-center">

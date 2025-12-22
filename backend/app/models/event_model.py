@@ -51,6 +51,11 @@ class EventParticipantRole(enum.Enum):
     student = "student"
     teacher = "teacher"
 
+class EventPaymentStatus(enum.Enum):
+    pending = "pending"
+    verified = "verified"
+    rejected = "rejected"
+
 class EventParticipantStatus(enum.Enum):
     pending = "pending"
     accepted = "accepted"
@@ -123,6 +128,10 @@ class EventParticipant(Base):
     description = Column(String, nullable=True)
     join_method = Column(String, nullable=True)
     status = Column(Enum(EventParticipantStatus), nullable=False, default=EventParticipantStatus.pending)
+    
+    # Validation / Payment fields
+    payment_status = Column(Enum(EventPaymentStatus), nullable=True, default=None)
+    payment_proof_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -172,6 +181,19 @@ class EventChecklistItem(Base):
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    assigned_users = relationship("User", secondary="event_checklist_assignments", backref="assigned_checklist_items")
+
+    @property
+    def assigned_user_ids(self):
+        return [u.id for u in self.assigned_users]
+
+class EventChecklistAssignment(Base):
+    __tablename__ = "event_checklist_assignments"
+    
+    checklist_item_id = Column(UUID(as_uuid=True), ForeignKey("event_checklist_items.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    assigned_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class EventProposal(Base):
     __tablename__ = "event_proposals"

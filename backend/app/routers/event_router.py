@@ -868,15 +868,24 @@ def join_public_event(
         if event.auto_accept_registration and accepted_count >= event.max_participant:
             raise HTTPException(status_code=400, detail="Event is full")
 
-    # Determine initial status based on auto_accept_registration and capacity
+    # Determine initial status
     initial_status = EventParticipantStatus.accepted
-    if event.max_participant is not None:
-        if not event.auto_accept_registration:
-            initial_status = EventParticipantStatus.pending
-        else:
-            # double-check capacity when auto-accept enabled
-            if accepted_count >= event.max_participant:
+    initial_payment_status = None
+
+    # Handle Paid Events
+    from app.models.event_model import EventRegistrationType, EventPaymentStatus
+    if event.registration_type == EventRegistrationType.paid:
+        initial_status = EventParticipantStatus.pending
+        initial_payment_status = EventPaymentStatus.pending
+    else:
+        # Free event logic
+        if event.max_participant is not None:
+            if not event.auto_accept_registration:
                 initial_status = EventParticipantStatus.pending
+            else:
+                # double-check capacity when auto-accept enabled
+                if accepted_count >= event.max_participant:
+                    initial_status = EventParticipantStatus.pending
 
     participant = EventParticipant(
         event_id=event.id,
@@ -885,6 +894,7 @@ def join_public_event(
         description=None,
         join_method="pre_registered",
         status=initial_status,
+        payment_status=initial_payment_status,
     )
     db.add(participant)
 
@@ -1094,6 +1104,66 @@ def respond_event_invitation(
     return participant
 
 
+@router.put("/events/{event_id}/participants/me/payment", response_model=EventParticipantDetails)
+def upload_payment_proof(
+    event_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Participant uploads payment proof for a paid event.
+    Updates status to 'pending' (if not already) and payment_status to 'pending' or 'verified' logic? 
+    Usually sets payment_status='pending' (verification needed) and status='pending'.
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    participant = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
+        .first()
+    )
+    if participant is None:
+         raise HTTPException(status_code=404, detail="You are not a participant")
+
+    # Upload file
+    from app.services import cloudinary_service
+    try:
+        url = cloudinary_service.upload_file(file, "payment_proofs")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    participant.payment_proof_url = url
+    # If currently rejected or something, maybe reset?
+    # Usually we want payment_status to be 'pending' so organizer sees it needs review.
+    from app.models.event_model import EventPaymentStatus
+    participant.payment_status = EventPaymentStatus.pending
+    
+    # If they were rejected for payment reasons, we might want to set main status to pending too?
+    # Only if not already accepted. If accepted, they are fine.
+    if participant.status == EventParticipantStatus.rejected:
+        participant.status = EventParticipantStatus.pending
+        
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    
+    # Notify organizer
+    notif = Notification(
+        recipient_id=event.organizer_id,
+        actor_id=current_user.id,
+        type=NotificationType.event,
+        content=f"Participant {current_user.full_name} uploaded payment proof for '{event.title}'",
+        link_url=f"/main/events/{event.id}?tab=participants&filter=pending",
+    )
+    db.add(notif)
+    db.commit()
+
+    return participant
+
+
 @router.post("/events/{event_id}/participants/bulk", response_model=List[EventParticipantDetails])
 def invite_event_participants_bulk(
     event_id: uuid.UUID,
@@ -1293,6 +1363,61 @@ def organizer_update_participant_status(
     )
     db.add(notif)
     db.commit()
+    return participant
+
+@router.put("/events/{event_id}/participants/{participant_id}/payment", response_model=EventParticipantDetails)
+def update_participant_payment_status(
+    event_id: uuid.UUID,
+    participant_id: uuid.UUID,
+    body: EventParticipantResponseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Organizer manually verifies payment.
+    If status is 'accepted', we set payment_status='verified' and participant.status='accepted'.
+    If status is 'rejected', we set payment_status='rejected' and participant.status='rejected' (or 'pending'?).
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only organizer can verify payments")
+        
+    participant = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.id == participant_id, EventParticipant.event_id == event.id)
+        .first()
+    )
+    if participant is None:
+        raise HTTPException(status_code=404, detail="Participant not found")
+        
+    from app.models.event_model import EventPaymentStatus
+    
+    if body.status == EventParticipantStatus.accepted:
+        participant.payment_status = EventPaymentStatus.verified
+        participant.status = EventParticipantStatus.accepted
+    elif body.status == EventParticipantStatus.rejected:
+        participant.payment_status = EventPaymentStatus.rejected
+        # Should we kick them out or just mark payment rejected?
+        # Usually payment rejected means they are not accepted yet.
+        participant.status = EventParticipantStatus.rejected
+        
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    
+    # Notify
+    notif = Notification(
+        recipient_id=participant.user_id,
+        actor_id=current_user.id,
+        type=NotificationType.event,
+        content=f"Your payment for '{event.title}' has been {participant.payment_status.value}. Status: {participant.status.value}",
+        link_url=f"/main/events/{event.id}",
+    )
+    db.add(notif)
+    db.commit()
+    
     return participant
 
 @router.delete("/events/{event_id}/participants/{participant_id}")
@@ -2609,10 +2734,19 @@ def create_event_checklist_item(
         is_completed=False,
         sort_order=0,
     )
-    if body.assigned_user_id is not None:
+    
+    # Handle Assignments
+    if body.assigned_user_ids:
+        users = db.query(User).filter(User.id.in_(body.assigned_user_ids)).all()
+        item.assigned_users = users
+        if users:
+            item.assigned_user_id = users[0].id # Sync legacy
+    elif body.assigned_user_id is not None:
         assigned = db.query(User).filter(User.id == body.assigned_user_id).first()
         if assigned is None:
             raise HTTPException(status_code=400, detail="Assigned user not found")
+        item.assigned_users = [assigned]
+        
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -2658,14 +2792,28 @@ def update_event_checklist_item(
         item.description = body.description
     if body.is_completed is not None:
         item.is_completed = body.is_completed
-    # Explicitly clear assignment if provided as null
-    if "assigned_user_id" in body.model_fields_set and body.assigned_user_id is None:
-        item.assigned_user_id = None
-    if body.assigned_user_id is not None:
-        assigned = db.query(User).filter(User.id == body.assigned_user_id).first()
-        if assigned is None:
-            raise HTTPException(status_code=400, detail="Assigned user not found")
-        item.assigned_user_id = body.assigned_user_id
+    if body.is_completed is not None:
+        item.is_completed = body.is_completed
+
+    # Handle Assignments (New Field)
+    if body.assigned_user_ids is not None:
+        users = db.query(User).filter(User.id.in_(body.assigned_user_ids)).all()
+        item.assigned_users = users
+        # Sync legacy field
+        item.assigned_user_id = users[0].id if users else None
+
+    # Handle Assignments (Legacy Field) - Only if new field not provided
+    elif "assigned_user_id" in body.model_fields_set:
+        if body.assigned_user_id is None:
+            item.assigned_user_id = None
+            item.assigned_users = []
+        else:
+            assigned = db.query(User).filter(User.id == body.assigned_user_id).first()
+            if assigned is None:
+                raise HTTPException(status_code=400, detail="Assigned user not found")
+            item.assigned_user_id = body.assigned_user_id
+            item.assigned_users = [assigned]
+
     if body.sort_order is not None:
         item.sort_order = body.sort_order
     # Explicitly clear due date if provided as null
