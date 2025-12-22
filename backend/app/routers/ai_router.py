@@ -1,9 +1,30 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 from app.schemas.ai_schema import ProposalRequest, ProposalResponse
 from app.dependencies import get_current_user
 from app.models.user_model import User
+from app.services.ai_service import generate_simple_content
+from pydantic import BaseModel
 
 router = APIRouter()
+
+class TextGenerationRequest(BaseModel):
+    prompt: str
+    context: str | None = None
+
+class TextGenerationResponse(BaseModel):
+    result: str
+
+@router.post("/generate-text", response_model=TextGenerationResponse)
+def generate_ai_text(
+    req: TextGenerationRequest, 
+    current_user: User = Depends(get_current_user)
+):
+    full_prompt = req.prompt
+    if req.context:
+        full_prompt += f"\n\nContext:\n{req.context}"
+    
+    result = generate_simple_content(full_prompt)
+    return TextGenerationResponse(result=result)
 
 @router.post("/generate-proposal", response_model=ProposalResponse)
 def generate_proposal(req: ProposalRequest, current_user: User = Depends(get_current_user)):

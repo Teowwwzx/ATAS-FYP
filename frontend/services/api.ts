@@ -163,10 +163,20 @@ api.interceptors.request.use(
 )
 
 
+export const generateAiText = async (prompt: string, context?: string) => {
+  const response = await api.post<{ result: string }>('/ai/generate-text', { prompt, context })
+  return response.data
+}
+
 // --- Events Service ---
 
 export const createEvent = async (data: EventCreate) => {
   const response = await api.post<EventDetails>('/events', data)
+  return response.data
+}
+
+export const createEventProposal = async (eventId: string, data: EventProposalCreate) => {
+  const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, data)
   return response.data
 }
 
@@ -523,11 +533,6 @@ export const leaveOrganization = async (id: string) => {
 
 export const getEventProposals = async (eventId: string) => {
   const response = await api.get<EventProposalResponse[]>(`/events/${eventId}/proposals`)
-  return response.data
-}
-
-export const createEventProposal = async (eventId: string, data: EventProposalCreate) => {
-  const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, data)
   return response.data
 }
 

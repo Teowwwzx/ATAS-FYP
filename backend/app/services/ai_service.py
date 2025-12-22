@@ -176,6 +176,31 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
     return _stub_generate(event, expert, options)
 
 
+def generate_simple_content(prompt: str) -> str:
+    if os.getenv("TESTING") == "1":
+        return "Stub response for: " + prompt[:20]
+
+    provider = settings.AI_PROVIDER.lower()
+    
+    if provider == "gemini":
+        import google.generativeai as genai
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            return "Error: No API Key"
+        
+        try:
+            genai.configure(api_key=api_key)
+            model_name = "gemini-1.5-flash"
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            print(f"Gemini simple content error: {e}")
+            return "Error generating content"
+            
+    # Fallback to stub if not gemini (for now)
+    return "AI generation only supported for Gemini currently."
+
 def generate_text_embedding(query: str, is_document: bool = False) -> Optional[list[float]]:
     provider = settings.AI_PROVIDER.lower()
     if os.getenv("TESTING") == "1":

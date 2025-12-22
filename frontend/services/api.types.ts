@@ -285,6 +285,7 @@ export interface EventParticipantCreate {
     user_id: string
     role: EventParticipantRole
     description?: string | null
+    proposal_id?: string
 }
 
 export interface EventParticipantBulkCreate {
@@ -638,35 +639,14 @@ export interface ChatConversation {
 
 export interface EventInvitationResponse {
     id: string
-    event: import('./api.types').EventDetails
+    event: EventDetails
     role: string
     status: string
     created_at: string
     description?: string
     conversation_id?: string
     proposal_id?: string
-    proposal?: import('./api.types').EventProposalResponse
-}
-
-export interface EventParticipantCreate {
-    user_id: string
-    role: EventParticipantRole
-    description?: string | null
-    proposal_id?: string
-}
-
-export interface EventParticipantDetails {
-    id: string
-    event_id: string
-    user_id: string
-    role: EventParticipantRole
-    description?: string | null
-    join_method?: string
-    status: 'pending' | 'accepted' | 'rejected'
-    created_at: string
-    updated_at?: string
-    conversation_id?: string
-    proposal_id?: string
+    proposal?: EventProposalResponse
 }
 
 
