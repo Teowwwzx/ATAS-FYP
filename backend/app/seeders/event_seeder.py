@@ -18,6 +18,7 @@ from app.models.event_model import (
     EventPicture,
 )
 from app.models.user_model import User
+from app.models.review_model import Review
 from faker import Faker
 import uuid
 import random
@@ -301,3 +302,161 @@ def seed_events(db, num_events=20):
 
     print(f"Successfully seeded {num_events} events with participants, categories, and proposals")
     print(f"Successfully seeded {num_events} events")
+
+def seed_event_lifecycle(db, num_scenarios=5):
+    print(f"Seeding {num_scenarios} lifecycle scenarios...")
+    users = db.query(User).all()
+    if not users:
+        print("No users found. Please seed users first.")
+        return
+    categories = list(db.query(Category).all())
+    for i in range(num_scenarios):
+        start_time = datetime.now(timezone.utc) - timedelta(days=random.randint(5, 30))
+        end_time = start_time + timedelta(hours=random.randint(1, 4))
+        organizer = random.choice(users)
+        event = Event(
+            id=uuid.uuid4(),
+            organizer_id=organizer.id,
+            title="Lifecycle Simulation Event",
+            description=fake.paragraph(nb_sentences=4),
+            format=random.choice(list(EventFormat)),
+            type=random.choice(list(EventType)),
+            start_datetime=start_time,
+            end_datetime=end_time,
+            registration_type=random.choice(list(EventRegistrationType)),
+            status=EventStatus.ended,
+            visibility=random.choice(list(EventVisibility)),
+            registration_status=EventRegistrationStatus.closed,
+            auto_accept_registration=True,
+            max_participant=random.randint(20, 80),
+            logo_url=random.choice(EVENT_LOGO_IMAGES),
+            cover_url=random.choice(EVENT_COVER_IMAGES),
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        db.add(event)
+        db.flush()
+        db.add(EventPicture(event_id=event.id, url=random.choice(EVENT_PICTURE_IMAGES), caption=fake.sentence(nb_words=6), sort_order=0))
+        if categories:
+            for cat in random.sample(categories, k=min(2, len(categories))):
+                db.add(EventCategory(event_id=event.id, category_id=cat.id))
+        db.add(EventParticipant(event_id=event.id, user_id=organizer.id, role=EventParticipantRole.organizer, status=EventParticipantStatus.accepted, join_method="seed"))
+        pool = [u for u in users if u.id != organizer.id]
+        if not pool:
+            continue
+        speaker = random.choice(pool)
+        db.add(EventParticipant(event_id=event.id, user_id=speaker.id, role=EventParticipantRole.speaker, status=EventParticipantStatus.attended, description=fake.sentence(), join_method="invitation"))
+        committees = random.sample([u for u in pool if u.id != speaker.id], k=min(2, max(0, len(pool) - 1)))
+        for cm in committees:
+            db.add(EventParticipant(event_id=event.id, user_id=cm.id, role=EventParticipantRole.committee, status=EventParticipantStatus.attended, join_method="registration"))
+        audience_pool = [u for u in pool if u.id not in [speaker.id] + [c.id for c in committees]]
+        picked_audience = random.sample(audience_pool, k=min(random.randint(5, 15), len(audience_pool))) if audience_pool else []
+        for a in picked_audience:
+            st = random.choices([EventParticipantStatus.attended, EventParticipantStatus.absent], weights=[85, 15], k=1)[0]
+            db.add(EventParticipant(event_id=event.id, user_id=a.id, role=EventParticipantRole.audience, status=st, join_method="registration"))
+        db.flush()
+        proposal = EventProposal(event_id=event.id, created_by_user_id=speaker.id, title=fake.sentence(nb_words=4), description=fake.paragraph(nb_sentences=3))
+        db.add(proposal)
+        db.flush()
+        sp = db.query(EventParticipant).filter(EventParticipant.event_id == event.id, EventParticipant.user_id == speaker.id, EventParticipant.role == EventParticipantRole.speaker).first()
+        if sp:
+            sp.proposal_id = proposal.id
+            db.add(sp)
+        db.add(EventProposalComment(proposal_id=proposal.id, user_id=organizer.id, content=fake.sentence()))
+        assigned_targets = [speaker] + committees
+        for idx2 in range(random.randint(2, 5)):
+            due_dt = start_time - timedelta(days=random.randint(1, 7))
+            assigned_user = random.choice(assigned_targets).id if assigned_targets else organizer.id
+            db.add(EventChecklistItem(event_id=event.id, title=fake.sentence(nb_words=3), description=fake.sentence(), is_completed=random.random() < 0.6, assigned_user_id=assigned_user, sort_order=idx2, due_datetime=due_dt, created_by_user_id=organizer.id))
+        participants = db.query(EventParticipant).filter(EventParticipant.event_id == event.id).all()
+        participant_ids = [p.user_id for p in participants]
+        targets = [speaker.id] + [organizer.id]
+        for t in targets:
+            for r in random.sample(participant_ids, k=min(2, len(participant_ids))):
+                if r == t:
+                    continue
+                rating = random.choices([3, 4, 5], weights=[15, 35, 50], k=1)[0]
+                db.add(Review(event_id=event.id, org_id=None, reviewer_id=r, reviewee_id=t, rating=rating, comment=fake.sentence() if random.random() > 0.3 else None))
+    print(f"Successfully seeded {num_scenarios} lifecycle scenarios")
+
+def seed_proposal_invitation_for_student1(db):
+    """Seed a specific pending invitation with proposal for student1"""
+    print("Seeding proposal invitation for student1...")
+    
+    # 1. Find student1
+    student = db.query(User).filter(User.email == "student1@gmail.com").first()
+    if not student:
+        print("student1@gmail.com not found. Skipping.")
+        return
+
+    # 2. Find an organizer (e.g. teacher1)
+    organizer = db.query(User).filter(User.email == "teacher1@gmail.com").first()
+    if not organizer:
+        # Fallback to any user who is not student1
+        organizer = db.query(User).filter(User.id != student.id).first()
+    
+    if not organizer:
+        print("No organizer found. Skipping.")
+        return
+
+    # 3. Create a future event
+    start_time = datetime.now(timezone.utc) + timedelta(days=14)
+    end_time = start_time + timedelta(hours=2)
+    
+    event = Event(
+        id=uuid.uuid4(),
+        organizer_id=organizer.id,
+        title="Keynote: The Future of AI in Education",
+        description="An exclusive session discussing how AI is transforming the educational landscape. You have been invited to present your proposal.",
+        format=EventFormat.seminar,
+        type=EventType.offline,
+        start_datetime=start_time,
+        end_datetime=end_time,
+        registration_type=EventRegistrationType.free,
+        status=EventStatus.published,
+        visibility=EventVisibility.public,
+        registration_status=EventRegistrationStatus.opened,
+        auto_accept_registration=True,
+        max_participant=200,
+        logo_url="https://ui-avatars.com/api/?name=AI+Ed&background=0D9488&color=fff&size=200&bold=true",
+        cover_url="https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=1200&h=600&fit=crop",
+        venue_place_id="ChIJr7mC9fN5zDERSrD1wGg7oYQ",
+        venue_remark="Grand Hall, Main Campus",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    )
+    db.add(event)
+    db.flush()
+
+    # 4. Create a proposal for student1
+    proposal = EventProposal(
+        event_id=event.id,
+        created_by_user_id=student.id,
+        title="AI-Driven Personalized Learning Paths",
+        description="This proposal outlines a framework for using machine learning to adapt curriculum to individual student needs in real-time.",
+        file_url="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    )
+    db.add(proposal)
+    db.flush()
+
+    # 5. Create invitation (EventParticipant) linked to the proposal
+    invitation = EventParticipant(
+        event_id=event.id,
+        user_id=student.id,
+        role=EventParticipantRole.speaker,
+        status=EventParticipantStatus.pending,
+        join_method="invitation",
+        proposal_id=proposal.id
+    )
+    db.add(invitation)
+    
+    # Add organizer as accepted participant
+    db.add(EventParticipant(
+        event_id=event.id,
+        user_id=organizer.id,
+        role=EventParticipantRole.organizer,
+        status=EventParticipantStatus.accepted,
+        join_method="seed"
+    ))
+
+    print("Successfully seeded proposal invitation for student1")

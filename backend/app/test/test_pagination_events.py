@@ -37,6 +37,8 @@ def test_events_pagination(client: TestClient, db: Session):
         }
         cr = client.post("/api/v1/events", json=body, headers=headers)
         assert cr.status_code == 200, cr.text
+        eid = cr.json()["id"]
+        client.put(f"/api/v1/events/{eid}/publish", headers=headers)
 
     l1 = client.get("/api/v1/events", params={"upcoming": True, "page": 1, "page_size": 3})
     assert l1.status_code == 200

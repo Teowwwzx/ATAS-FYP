@@ -11,6 +11,7 @@ from app.services.user_service import (
     assign_role_to_user,
     remove_role_from_user,
 )
+from app.services.audit_service import log_admin_action
 
 router = APIRouter()
 
@@ -178,6 +179,7 @@ def admin_suspend_user(
         raise HTTPException(status_code=404, detail="User not found")
     u.status = UserStatus.suspended
     db.commit()
+    log_admin_action(db, current_user.id, "user.suspend", "user", u.id, "User suspended by admin")
     return {"user_id": str(u.id), "status": u.status.value}
 
 
@@ -196,6 +198,7 @@ def admin_activate_user(
         raise HTTPException(status_code=404, detail="User not found")
     u.status = UserStatus.active
     db.commit()
+    log_admin_action(db, current_user.id, "user.activate", "user", u.id, "User activated by admin")
     return {"user_id": str(u.id), "status": u.status.value}
 
 
@@ -215,6 +218,7 @@ def admin_assign_role(
         raise HTTPException(status_code=404, detail="User not found")
     assign_role_to_user(db, u, role_name.strip().lower())
     db.commit()
+    log_admin_action(db, current_user.id, "user.role.assign", "user", u.id, f"Role {role_name} assigned")
     return {"user_id": str(u.id), "roles": [r.name for r in u.roles]}
 
 
@@ -234,6 +238,7 @@ def admin_remove_role(
         raise HTTPException(status_code=404, detail="User not found")
     remove_role_from_user(db, u, role_name.strip().lower())
     db.commit()
+    log_admin_action(db, current_user.id, "user.role.remove", "user", u.id, f"Role {role_name} removed")
     return {"user_id": str(u.id), "roles": [r.name for r in u.roles]}
 
 

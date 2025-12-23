@@ -75,6 +75,8 @@ def test_list_my_reminders_and_checklist(client: TestClient):
         assert len(lm.json()) >= 1
 
         lc = client.get("/api/v1/events/checklist/me", headers=headers)
+        if lc.status_code != 200:
+            print(f"Error 422 Body: {lc.text}")
         assert lc.status_code == 200
         items = lc.json()
         assert any(i["title"] == "Prepare slides" for i in items)

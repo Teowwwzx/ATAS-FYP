@@ -17,7 +17,7 @@ from app.models.chat_model import Conversation, ConversationParticipant, Message
 
 # Import seeders
 from app.seeders.user_seeder import seed_users
-from app.seeders.event_seeder import seed_events
+from app.seeders.event_seeder import seed_events, seed_event_lifecycle
 from app.seeders.skill_seeder import seed_skills
 from app.seeders.profile_seeder import seed_profiles
 from app.seeders.tag_seeder import seed_tags
@@ -100,6 +100,10 @@ def run_seeders():
         
         print("\n=== Seeding Events ===")
         seed_events(db, 20)
+        db.commit()
+        
+        print("\n=== Seeding Event Lifecycles ===")
+        seed_event_lifecycle(db, 5)
         db.commit()
         
         print("\n=== Seeding Onboarding ===")

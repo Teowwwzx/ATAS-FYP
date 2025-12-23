@@ -484,16 +484,14 @@ export default function EventDetailsPage() {
                                 <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-70 pointer-events-none"></div>
 
                                 <div className="relative z-10">
-                                    <div className="mb-6">
-                                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Ticket Price</p>
-                                        <div className="flex items-baseline gap-1">
-                                            {event.registration_type === 'paid' ? (
+                                    {event.registration_type === 'paid' && (
+                                        <div className="mb-6">
+                                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Ticket Price</p>
+                                            <div className="flex items-baseline gap-1">
                                                 <span className="text-4xl font-black text-zinc-900">$$$</span>
-                                            ) : (
-                                                <span className="text-4xl font-black text-zinc-900">Free</span>
-                                            )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* Action Buttons */}
                                     {isOrganizer ? (
@@ -530,8 +528,8 @@ export default function EventDetailsPage() {
                                                                 : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
                                                                 }`}
                                                         >
-                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-                                                            {isAttendanceOpen ? 'Show Attendance QR' : 'QR Available on Event Day'}
+                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                                                            {isAttendanceOpen ? 'Show Attendance QR' : 'QR Available 24h Before Event'}
                                                         </button>
                                                     )}
 
@@ -549,7 +547,7 @@ export default function EventDetailsPage() {
                                                     disabled={registering || !isRegistrationOpen}
                                                     className="block w-full py-4 bg-yellow-400 text-zinc-900 rounded-2xl font-bold text-center text-lg hover:bg-yellow-300 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 disabled:opacity-50 disabled:transform-none"
                                                 >
-                                                    {registering ? 'Registering...' : isRegistrationOpen ? 'Get Tickets' : 'Registration Closed'}
+                                                    {registering ? 'Registering...' : isRegistrationOpen ? 'Join' : 'Registration Closed'}
                                                 </button>
                                             )}
                                         </div>

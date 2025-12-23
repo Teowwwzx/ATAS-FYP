@@ -863,6 +863,19 @@ def run_due_event_reminders(
     return processed
 
 
+@router.get("/events/checklist/me", response_model=list[EventChecklistItemResponse])
+def list_my_checklist_items(
+    only_open: bool = Query(True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = db.query(EventChecklistItem).filter(EventChecklistItem.assigned_user_id == current_user.id)
+    if only_open:
+        q = q.filter(EventChecklistItem.is_completed == False)
+    items = q.order_by(EventChecklistItem.due_datetime.asc(), EventChecklistItem.sort_order.asc()).all()
+    return items
+
+
 @router.get("/events/{event_id}", response_model=EventDetails)
 def get_event_details(
     event_id: uuid.UUID,
@@ -1185,7 +1198,9 @@ def invite_event_participant(
             recipient = db.query(User).filter(User.id == body.user_id).first()
             if recipient and recipient.email:
                 send_event_role_update_email(email=recipient.email, event=event, new_role=role_enum)
-        return existing
+            return existing
+        else:
+            raise HTTPException(status_code=409, detail="User is already a participant of this event")
     participant = EventParticipant(
         event_id=event.id,
         user_id=body.user_id,
@@ -1820,7 +1835,7 @@ async def create_event_proposal(
             )
             .first()
         )
-        if my_participation is None or my_participation.role not in (EventParticipantRole.committee,):
+        if my_participation is None or my_participation.role not in (EventParticipantRole.committee, EventParticipantRole.speaker):
             raise HTTPException(status_code=403, detail="Not allowed to create proposals")
 
     content_type = request.headers.get("content-type", "")
@@ -2672,6 +2687,8 @@ def run_event_scheduler(
 
 # --- Event Checklist (Organizer/Committee) ---
 
+
+
 @router.get("/events/{event_id}/checklist", response_model=list[EventChecklistItemResponse])
 def list_event_checklist(
     event_id: uuid.UUID,
@@ -2701,18 +2718,6 @@ def list_event_checklist(
         .order_by(EventChecklistItem.sort_order.asc(), EventChecklistItem.created_at.asc())
         .all()
     )
-    return items
-
-@router.get("/events/checklist/me", response_model=list[EventChecklistItemResponse])
-def list_my_checklist_items(
-    only_open: bool = Query(True),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    q = db.query(EventChecklistItem).filter(EventChecklistItem.assigned_user_id == current_user.id)
-    if only_open:
-        q = q.filter(EventChecklistItem.is_completed == False)
-    items = q.order_by(EventChecklistItem.due_datetime.asc(), EventChecklistItem.sort_order.asc()).all()
     return items
 
 

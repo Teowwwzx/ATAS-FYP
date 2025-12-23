@@ -91,6 +91,8 @@ def test_events_and_organizations_filters(client: TestClient, db: Session):
         }
         re = client.post("/api/v1/events", json=body, headers=hu)
         assert re.status_code == 200, re.text
+        eid = re.json()["id"]
+        client.put(f"/api/v1/events/{eid}/publish", headers=hu)
 
         # Filter events by q_text
         le = client.get("/api/v1/events", params={"q_text": "Workshop", "upcoming": True})

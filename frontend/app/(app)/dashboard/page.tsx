@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, Suspense } from 'react'
-import { getMyEvents, getMyProfile, getMe, getMyChecklistItems, getMyRequests, respondInvitationMe } from '@/services/api'
+import { getMyEvents, getMyProfile, getMe, getMyChecklistItems, getMyRequests } from '@/services/api'
 import { ProfileResponse, UserMeResponse, EventInvitationResponse, MyEventItem } from '@/services/api.types'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -19,7 +19,6 @@ function DashboardPageInner() {
     const [loading, setLoading] = useState(true)
     const [events, setEvents] = useState<MyEventItem[]>([])
     const [requests, setRequests] = useState<EventInvitationResponse[]>([])
-    const [processingReq, setProcessingReq] = useState<string | null>(null)
     const [view, setView] = useState<'list'>('list') // Only list view now
     const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
     const [layoutView, setLayoutView] = useState<'grid' | 'list'>('grid')
@@ -67,22 +66,6 @@ function DashboardPageInner() {
             toast.error('Failed to load dashboard')
         } finally {
             setLoading(false)
-        }
-    }
-
-    const handleRespond = async (invitationId: string, eventId: string, status: 'accepted' | 'rejected') => {
-        setProcessingReq(invitationId)
-        try {
-            // Using existing endpoint instead of generic request endpoint
-            await respondInvitationMe(eventId, { status })
-            toast.success(status === 'accepted' ? 'Invitation accepted!' : 'Invitation declined')
-            // Refresh data
-            fetchData()
-        } catch (error) {
-            console.error(error)
-            toast.error('Failed to respond to invitation')
-        } finally {
-            setProcessingReq(null)
         }
     }
 
@@ -279,8 +262,6 @@ function DashboardPageInner() {
                                     </div>
                                     <DashboardInvitationList
                                         requests={requests.slice(0, 4)}
-                                        onRespond={handleRespond}
-                                        processingReq={processingReq}
                                         layoutMode={layoutView}
                                     />
                                 </section>
@@ -429,8 +410,6 @@ function DashboardPageInner() {
                             </div>
                             <DashboardInvitationList
                                 requests={requests}
-                                onRespond={handleRespond}
-                                processingReq={processingReq}
                                 layoutMode={layoutView}
                             />
                         </div>

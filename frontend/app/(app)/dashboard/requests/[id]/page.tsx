@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { format, intervalToDuration, formatDuration } from 'date-fns'
-import { getRequestDetails, respondInvitationMe, getProfileByUserId, getEventById, getMe } from '@/services/api'
-import { EventInvitationResponse, ProfileResponse, EventDetails, UserMeResponse } from '@/services/api.types'
+import { getRequestDetails, respondInvitationMe, getProfileByUserId, getEventById, getMe, getEventProposals } from '@/services/api'
+import { EventInvitationResponse, ProfileResponse, EventDetails, UserMeResponse, EventProposalResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { StreamCommunicationLog } from '@/components/dashboard/StreamCommunicationLog'
+import { FilePreviewModal } from '@/components/ui/FilePreviewModal'
 
 export default function RequestDetailsPage() {
     const params = useParams()
@@ -20,6 +21,8 @@ export default function RequestDetailsPage() {
     const [currentUser, setCurrentUser] = useState<UserMeResponse | null>(null)
     const [loading, setLoading] = useState(true)
     const [processing, setProcessing] = useState(false)
+    const [proposal, setProposal] = useState<EventProposalResponse | null>(null)
+    const [previewFile, setPreviewFile] = useState<{ url: string, name: string } | null>(null)
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -33,10 +36,25 @@ export default function RequestDetailsPage() {
                 setRequest(reqData)
                 setCurrentUser(userData)
 
-                // Fetch organizer details using event.organizer_id
                 if (reqData.event?.organizer_id) {
-                    const orgProfile = await getProfileByUserId(reqData.event.organizer_id)
-                    setOrganizer(orgProfile)
+                    try {
+                        const orgProfile = await getProfileByUserId(reqData.event.organizer_id)
+                        setOrganizer(orgProfile)
+                    } catch {
+                        setOrganizer(null)
+                    }
+                }
+
+                if (reqData.proposal) {
+                    setProposal(reqData.proposal)
+                } else if (reqData.proposal_id && reqData.event?.id) {
+                    try {
+                        const proposals = await getEventProposals(reqData.event.id)
+                        const found = proposals.find(p => p.id === reqData.proposal_id) || null
+                        setProposal(found)
+                    } catch {
+                        setProposal(null)
+                    }
                 }
             } catch (error) {
                 console.error(error)
@@ -180,9 +198,17 @@ export default function RequestDetailsPage() {
                         {/* Event Topic & Details Grid */}
                         <div className="mb-8">
                             <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Event Topic</div>
-                            <h2 className="text-3xl font-black text-zinc-900 tracking-tight mb-8">
-                                {request.event.title}
-                            </h2>
+                            <Link 
+                                href={`/events/${request.event.id}`}
+                                className="group block w-fit"
+                            >
+                                <h2 className="text-3xl font-black text-zinc-900 tracking-tight mb-8 group-hover:underline decoration-zinc-900/30 underline-offset-8 decoration-4 transition-all flex items-center gap-3">
+                                    {request.event.title}
+                                    <svg className="w-6 h-6 text-zinc-400 group-hover:text-zinc-900 transition-colors opacity-0 group-hover:opacity-100 transform translate-y-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </h2>
+                            </Link>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
                                 {/* Date */}
@@ -236,30 +262,44 @@ export default function RequestDetailsPage() {
 
                             {/* Fallback to Event Description if needed (User asked to remove generic description but keeping as backup logic internally is safe, but based on image, just showing the message is key) */}
 
-                            {/* Linked Proposal Attachment */}
-                            {request.proposal && (
-                                <div className="mt-8 p-4 bg-white rounded-xl border border-zinc-200 shadow-sm hover:border-yellow-300 transition-colors group">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center">
-                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l4 4a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attached Proposal</div>
-                                                <div className="font-bold text-zinc-900 group-hover:text-yellow-600 transition-colors">{request.proposal.title}</div>
+                            {/* Linked Proposal */}
+                            {(proposal || request.proposal) && (
+                                <div className="mt-8 p-4 bg-white rounded-xl border border-zinc-200 shadow-sm hover:border-yellow-300 transition-colors group space-y-3">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l4 4a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attached Proposal</div>
+                                            <div className="font-bold text-zinc-900 group-hover:text-yellow-600 transition-colors">
+                                                {(proposal || request.proposal)?.title || 'Untitled Proposal'}
                                             </div>
                                         </div>
-                                        <a
-                                            href={request.proposal.file_url || '#'}
-                                            target="_blank"
-                                            download
-                                            className="px-4 py-2 bg-zinc-900 text-white font-bold text-sm rounded-lg hover:bg-zinc-800 transition-colors shadow-lg"
-                                        >
-                                            Download PDF
-                                        </a>
                                     </div>
+                                    {(proposal || request.proposal)?.description && (
+                                        <div className="text-zinc-700 whitespace-pre-wrap">
+                                            {(proposal || request.proposal)?.description}
+                                        </div>
+                                    )}
+                                    {(proposal || request.proposal)?.file_url ? (
+                                        <div className="flex justify-end">
+                                            <button
+                                                onClick={() => setPreviewFile({
+                                                    url: (proposal || request.proposal)?.file_url as string,
+                                                    name: (proposal || request.proposal)?.title || 'Proposal'
+                                                })}
+                                                className="px-4 py-2 bg-zinc-900 text-white font-bold text-sm rounded-lg hover:bg-zinc-800 transition-colors shadow-lg flex items-center gap-2"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                Preview Proposal
+                                            </button>
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
                         </div>
@@ -276,6 +316,13 @@ export default function RequestDetailsPage() {
                     />
                 </div>
             </div>
+
+            <FilePreviewModal 
+                isOpen={!!previewFile}
+                fileUrl={previewFile?.url || null}
+                fileName={previewFile?.name}
+                onClose={() => setPreviewFile(null)}
+            />
         </div>
     )
 }

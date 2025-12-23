@@ -58,8 +58,8 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
     
     # DEBUG LOGGING
     print(f"DEBUG: AI_PROVIDER={provider}")
-    print(f"DEBUG: GEMINI_KEY={settings.GEMINI_API_KEY[:5]}...")
-    print(f"DEBUG: GROQ_KEY={settings.GROQ_API_KEY[:5]}...")
+    print(f"DEBUG: GEMINI_KEY={(settings.GEMINI_API_KEY or '')[:5]}...")
+    print(f"DEBUG: GROQ_KEY={(settings.GROQ_API_KEY or '')[:5]}...")
 
     model = settings.AI_MODEL
     

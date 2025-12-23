@@ -6,12 +6,10 @@ import { useRouter } from 'next/navigation'
 
 interface DashboardInvitationListProps {
     requests: EventInvitationResponse[]
-    onRespond: (reqId: string, eventId: string, status: 'accepted' | 'rejected') => void
-    processingReq: string | null
     layoutMode?: 'list' | 'grid'
 }
 
-export function DashboardInvitationList({ requests, onRespond, processingReq, layoutMode = 'list' }: DashboardInvitationListProps) {
+export function DashboardInvitationList({ requests, layoutMode = 'list' }: DashboardInvitationListProps) {
     const router = useRouter()
     const [page, setPage] = useState(0)
 
@@ -73,6 +71,11 @@ export function DashboardInvitationList({ requests, onRespond, processingReq, la
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${typeColor}`}>
                                         {req.event.type}
                                     </span>
+                                    {(req.proposal_id || req.proposal) && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-yellow-100 text-yellow-700">
+                                            proposal attached
+                                        </span>
+                                    )}
                                 </div>
 
                                 <h3 className="text-lg font-black text-zinc-900 truncate cursor-pointer hover:underline" onClick={() => router.push(`/events/${req.event.id}`)}>
@@ -97,18 +100,10 @@ export function DashboardInvitationList({ requests, onRespond, processingReq, la
                         {/* Actions */}
                         <div className={`flex items-center gap-2 mt-2 md:mt-0 ${layoutMode === 'list' ? 'w-full md:w-auto' : 'w-full'}`}>
                             <button
-                                onClick={(e) => { e.stopPropagation(); onRespond(req.id, req.event.id, 'accepted'); }}
-                                disabled={processingReq === req.id}
-                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/requests/${req.id}`) }}
+                                className="flex-1 px-4 py-2 bg-zinc-900 text-white border border-zinc-900 rounded-lg font-bold text-sm hover:bg-zinc-800 transition-all active:scale-95 shadow-sm"
                             >
-                                {processingReq === req.id ? '...' : 'Accept'}
-                            </button>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onRespond(req.id, req.event.id, 'rejected'); }}
-                                disabled={processingReq === req.id}
-                                className="flex-1 px-4 py-2 bg-white border border-zinc-200 text-zinc-600 rounded-lg font-bold text-sm hover:bg-zinc-50 hover:text-red-600 hover:border-red-100 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                Decline
+                                View Request
                             </button>
                         </div>
                     </div>

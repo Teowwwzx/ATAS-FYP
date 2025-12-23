@@ -6,11 +6,15 @@ import json
 from app.services.ai_service import generate_proposal
 
 @patch("app.services.ai_service.os.getenv")
+@patch("app.services.ai_service.settings")
 @patch("google.generativeai.GenerativeModel")
 @patch("google.generativeai.configure")
-def test_generate_proposal_gemini_success(mock_configure, mock_model_cls, mock_getenv):
+def test_generate_proposal_gemini_success(mock_configure, mock_model_cls, mock_settings, mock_getenv):
     # Setup Mocks
-    mock_getenv.side_effect = lambda k, d=None: "gemini" if k == "AI_PROVIDER" else ("fake_key" if k == "GEMINI_API_KEY" else d)
+    mock_getenv.side_effect = lambda k, d=None: "0" if k == "TESTING" else d
+    mock_settings.AI_PROVIDER = "gemini"
+    mock_settings.GEMINI_API_KEY = "fake_key"
+    mock_settings.AI_MODEL = "gemini-pro"
     
     mock_model_instance = MagicMock()
     mock_model_cls.return_value = mock_model_instance
@@ -49,9 +53,12 @@ def test_generate_proposal_gemini_success(mock_configure, mock_model_cls, mock_g
     mock_model_instance.generate_content.assert_called_once()
 
 @patch("app.services.ai_service.os.getenv")
-def test_generate_proposal_fallback_no_key(mock_getenv):
+@patch("app.services.ai_service.settings")
+def test_generate_proposal_fallback_no_key(mock_settings, mock_getenv):
     # Setup Mocks to simulate missing key
-    mock_getenv.side_effect = lambda k, d=None: "gemini" if k == "AI_PROVIDER" else (None if k == "GEMINI_API_KEY" else d)
+    mock_getenv.side_effect = lambda k, d=None: "0" if k == "TESTING" else d
+    mock_settings.AI_PROVIDER = "gemini"
+    mock_settings.GEMINI_API_KEY = None
     
     event = {"title": "Test Event"}
     

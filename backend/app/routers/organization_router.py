@@ -166,6 +166,7 @@ def update_organization(
         
     db.commit()
     db.refresh(org)
+    log_admin_action(db, current_user.id, "organization.update", "organization", org.id, f"Organization updated by user {current_user.id}")
     return org
 
 

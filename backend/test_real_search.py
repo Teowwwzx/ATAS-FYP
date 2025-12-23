@@ -3,7 +3,7 @@ import os
 # Add the project root to the python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database.session import SessionLocal
+from app.database.database import SessionLocal
 from app.models.profile_model import Profile
 from app.models.ai_model import ExpertEmbedding
 from app.routers.profile_router import semantic_search_profiles
