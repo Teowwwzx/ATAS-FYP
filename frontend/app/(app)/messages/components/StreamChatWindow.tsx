@@ -133,7 +133,7 @@ export function StreamChatWindow({
     // Main chat UI
     return (
         <div className="flex-1 flex flex-col h-full">
-            <Chat client={client} theme="str-chat__theme-light">
+            <Chat client={client!} theme="str-chat__theme-light">
                 <Channel channel={channel}>
                     <Window>
                         {/* Custom Header */}
