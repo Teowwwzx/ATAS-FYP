@@ -74,6 +74,10 @@ class EventDetails(BaseModel):
     remark: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
+    organizer_name: str | None = None
+    organizer_avatar: str | None = None
+    participant_count: int = 0
+    meeting_url: str | None = None
 
     model_config = {"from_attributes": True}
 

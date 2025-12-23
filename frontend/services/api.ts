@@ -621,14 +621,18 @@ export const createCategory = async (body: CategoryCreate) => {
   return response.data
 }
 
+export const deleteEventReminder = async (eventId: string) => {
+  await api.delete(`/events/${eventId}/reminders`)
+}
+
 export const runEventScheduler = async (limit?: number) => {
   const url = limit ? `/events/scheduler/run?limit=${encodeURIComponent(limit)}` : `/events/scheduler/run`
   const response = await api.post<{ updated: number }>(url)
   return response.data
 }
 
-export const getMyReminders = async () => {
-  const response = await api.get<EventReminderResponse[]>(`/events/reminders/me`)
+export const getMyReminders = async (upcomingOnly: boolean = true) => {
+  const response = await api.get<EventReminderResponse[]>(`/events/reminders/me`, { params: { upcoming_only: upcomingOnly } })
   return response.data
 }
 

@@ -718,6 +718,167 @@ def list_my_events(
     return list(event_map.values())
 
 
+# --- Reminder Endpoints ---
+
+@router.post("/events/{event_id}/reminders", response_model=EventReminderResponse)
+def create_event_reminder(
+    event_id: uuid.UUID,
+    body: EventReminderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a reminder for a joined event. Options: one_week, three_days, one_day."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Must be organizer or a participant of the event
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None:
+            raise HTTPException(status_code=403, detail="You must join the event to set a reminder")
+
+    delta_map = {
+        "one_week": timedelta(days=7),
+        "three_days": timedelta(days=3),
+        "one_day": timedelta(days=1),
+    }
+    if body.option not in delta_map:
+        raise HTTPException(status_code=400, detail="Invalid reminder option. Use one_week, three_days, or one_day")
+
+    # Duplication guard: prevent creating multiple unsent reminders for the same (user, event, option)
+    existing_unsent = (
+        db.query(EventReminder)
+        .filter(
+            EventReminder.event_id == event.id,
+            EventReminder.user_id == current_user.id,
+            EventReminder.option == body.option,
+            EventReminder.is_sent == False,
+        )
+        .first()
+    )
+    if existing_unsent is not None:
+        raise HTTPException(status_code=409, detail="Reminder for this option already exists")
+
+    remind_at = event.start_datetime - delta_map[body.option]
+
+    reminder = EventReminder(
+        event_id=event.id,
+        user_id=current_user.id,
+        option=body.option,
+        remind_at=remind_at,
+        is_sent=False,
+    )
+    db.add(reminder)
+    db.commit()
+    db.refresh(reminder)
+    return reminder
+
+@router.delete("/events/{event_id}/reminders", status_code=204)
+def delete_my_event_reminder(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove pending reminders for the user and event."""
+    reminders = db.query(EventReminder).filter(
+        EventReminder.event_id == event_id,
+        EventReminder.user_id == current_user.id,
+        EventReminder.is_sent == False
+    ).all()
+
+    if not reminders:
+        # Idempotent success or 404? 404 is more informative for UI feedback
+        raise HTTPException(status_code=404, detail="No active reminder found")
+
+    for r in reminders:
+        db.delete(r)
+    db.commit()
+    return
+
+@router.get("/events/reminders/me", response_model=list[EventReminderResponse])
+def list_my_event_reminders(
+    upcoming_only: bool = Query(True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    now_utc = datetime.now(timezone.utc)
+    q = db.query(EventReminder).filter(EventReminder.user_id == current_user.id)
+    if upcoming_only:
+        q = q.filter(EventReminder.remind_at >= now_utc, EventReminder.is_sent == False)
+    items = q.order_by(EventReminder.remind_at.asc()).all()
+    return items
+
+
+@router.post("/events/reminders/run", response_model=list[EventReminderResponse])
+def run_due_event_reminders(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Process and send due reminders for the current user.
+    Sends both in-app notification and email (best-effort).
+    """
+    now = datetime.now(timezone.utc)
+    due = (
+        db.query(EventReminder)
+        .filter(
+            EventReminder.user_id == current_user.id,
+            EventReminder.is_sent == False,
+            EventReminder.remind_at <= now,
+        )
+        .order_by(EventReminder.remind_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+    processed: list[EventReminder] = []
+    for r in due:
+        event = db.query(Event).filter(Event.id == r.event_id).first()
+        if event is None:
+            # Skip invalid
+            r.is_sent = True
+            r.sent_at = now
+            db.add(r)
+            continue
+
+        # In-app notification
+        notif = Notification(
+            recipient_id=r.user_id,
+            actor_id=r.user_id,
+            type=NotificationType.event,
+            content=f"Reminder: '{event.title}' starts at {event.start_datetime}",
+            link_url=f"/main/events/{event.id}",
+        )
+        db.add(notif)
+
+        # Email best-effort
+        user = db.query(User).filter(User.id == r.user_id).first()
+        if user and user.email:
+            try:
+                send_event_reminder_email(email=user.email, event=event, when_label=r.option)
+            except Exception:
+                pass
+
+        r.is_sent = True
+        r.sent_at = now
+        db.add(r)
+        processed.append(r)
+
+    db.commit()
+    # Refresh processed reminders
+    for pr in processed:
+        db.refresh(pr)
+    return processed
+
+
 @router.get("/events/{event_id}", response_model=EventDetails)
 def get_event_details(
     event_id: uuid.UUID,
@@ -745,6 +906,27 @@ def get_event_details(
     # Hide payment QR unless organizer, participant, or admin
     if not (is_organizer or is_participant or is_admin):
         event.payment_qr_url = None
+
+    # Populate extra fields for EventDetails schema
+    organizer = db.query(User).filter(User.id == event.organizer_id).first()
+    if organizer:
+        event.organizer_name = organizer.full_name
+        event.organizer_avatar = organizer.avatar_url
+
+    event.participant_count = (
+        db.query(EventParticipant)
+        .filter(
+            EventParticipant.event_id == event.id,
+            EventParticipant.status.in_([
+                EventParticipantStatus.accepted,
+                EventParticipantStatus.attended,
+            ])
+        )
+        .count()
+    )
+    
+    if event.type == EventType.online:
+        event.meeting_url = event.venue_remark
 
     if event.visibility == EventVisibility.public:
         return event
@@ -2352,143 +2534,7 @@ def walk_in_event_attendance(
         return participant
 
 
-# --- Reminder Endpoints ---
 
-@router.post("/events/{event_id}/reminders", response_model=EventReminderResponse)
-def create_event_reminder(
-    event_id: uuid.UUID,
-    body: EventReminderCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Create a reminder for a joined event. Options: one_week, three_days, one_day."""
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    # Must be organizer or a participant of the event
-    if event.organizer_id != current_user.id:
-        my_participation = (
-            db.query(EventParticipant)
-            .filter(
-                EventParticipant.event_id == event.id,
-                EventParticipant.user_id == current_user.id,
-            )
-            .first()
-        )
-        if my_participation is None:
-            raise HTTPException(status_code=403, detail="You must join the event to set a reminder")
-
-    delta_map = {
-        "one_week": timedelta(days=7),
-        "three_days": timedelta(days=3),
-        "one_day": timedelta(days=1),
-    }
-    if body.option not in delta_map:
-        raise HTTPException(status_code=400, detail="Invalid reminder option. Use one_week, three_days, or one_day")
-
-    # Duplication guard: prevent creating multiple unsent reminders for the same (user, event, option)
-    existing_unsent = (
-        db.query(EventReminder)
-        .filter(
-            EventReminder.event_id == event.id,
-            EventReminder.user_id == current_user.id,
-            EventReminder.option == body.option,
-            EventReminder.is_sent == False,
-        )
-        .first()
-    )
-    if existing_unsent is not None:
-        raise HTTPException(status_code=409, detail="Reminder for this option already exists")
-
-    remind_at = event.start_datetime - delta_map[body.option]
-
-    reminder = EventReminder(
-        event_id=event.id,
-        user_id=current_user.id,
-        option=body.option,
-        remind_at=remind_at,
-        is_sent=False,
-    )
-    db.add(reminder)
-    db.commit()
-    db.refresh(reminder)
-    return reminder
-
-@router.get("/events/reminders/me", response_model=list[EventReminderResponse])
-def list_my_event_reminders(
-    upcoming_only: bool = True,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    now_utc = datetime.now(timezone.utc)
-    q = db.query(EventReminder).filter(EventReminder.user_id == current_user.id)
-    if upcoming_only:
-        q = q.filter(EventReminder.remind_at >= now_utc, EventReminder.is_sent == False)
-    items = q.order_by(EventReminder.remind_at.asc()).all()
-    return items
-
-
-@router.post("/events/reminders/run", response_model=list[EventReminderResponse])
-def run_due_event_reminders(
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Process and send due reminders for the current user.
-    Sends both in-app notification and email (best-effort).
-    """
-    now = datetime.now(timezone.utc)
-    due = (
-        db.query(EventReminder)
-        .filter(
-            EventReminder.user_id == current_user.id,
-            EventReminder.is_sent == False,
-            EventReminder.remind_at <= now,
-        )
-        .order_by(EventReminder.remind_at.asc())
-        .limit(limit)
-        .all()
-    )
-
-    processed: list[EventReminder] = []
-    for r in due:
-        event = db.query(Event).filter(Event.id == r.event_id).first()
-        if event is None:
-            # Skip invalid
-            r.is_sent = True
-            r.sent_at = now
-            db.add(r)
-            continue
-
-        # In-app notification
-        notif = Notification(
-            recipient_id=r.user_id,
-            actor_id=r.user_id,
-            type=NotificationType.event,
-            content=f"Reminder: '{event.title}' starts at {event.start_datetime}",
-            link_url=f"/main/events/{event.id}",
-        )
-        db.add(notif)
-
-        # Email best-effort
-        user = db.query(User).filter(User.id == r.user_id).first()
-        if user and user.email:
-            try:
-                send_event_reminder_email(email=user.email, event=event, when_label=r.option)
-            except Exception:
-                pass
-
-        r.is_sent = True
-        r.sent_at = now
-        db.add(r)
-        processed.append(r)
-
-    db.commit()
-    # Refresh processed reminders
-    for pr in processed:
-        db.refresh(pr)
-    return processed
 
 
 # --- Attendance Stats (Organizer/Committee) ---

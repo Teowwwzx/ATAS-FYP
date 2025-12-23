@@ -233,6 +233,11 @@ export interface EventDetails extends EventCreate {
     my_status?: EventParticipantStatus | null
     payment_proof_url?: string | null
     payment_status?: string | null
+    location?: string | null
+    organizer_name?: string | null
+    organizer_avatar?: string | null
+    participant_count?: number
+    meeting_url?: string | null
 }
 
 // --- Participant Types ---
