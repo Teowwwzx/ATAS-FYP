@@ -53,7 +53,7 @@ export function DashboardInvitationList({ requests, onRespond, processingReq, la
                         'bg-purple-100 text-purple-700'
 
                 return (
-                    <div key={req.id} onClick={() => router.push(`/dashboard/requests/${req.id}`)} className={`bg-white rounded-2xl border border-zinc-100 p-4 hover:border-yellow-400 hover:shadow-md transition-all group flex gap-4 cursor-pointer ${layoutMode === 'list' ? 'flex-col md:flex-row items-start md:items-center' : 'flex-col'}`}>
+                    <div key={req.id} onClick={() => router.push(`/events/${req.event.id}`)} className={`bg-white rounded-2xl border border-zinc-100 p-4 hover:border-yellow-400 hover:shadow-md transition-all group flex gap-4 cursor-pointer ${layoutMode === 'list' ? 'flex-col md:flex-row items-start md:items-center' : 'flex-col'}`}>
                         <div className="flex w-full gap-4">
                             {/* Date Box */}
                             <div className="flex-shrink-0 w-16 h-16 bg-zinc-50 rounded-xl flex flex-col items-center justify-center border border-zinc-100 text-zinc-900 font-bold group-hover:bg-yellow-50 group-hover:border-yellow-200 group-hover:text-yellow-700 transition-colors">
@@ -75,7 +75,7 @@ export function DashboardInvitationList({ requests, onRespond, processingReq, la
                                     </span>
                                 </div>
 
-                                <h3 className="text-lg font-black text-zinc-900 truncate cursor-pointer hover:underline" onClick={() => router.push(`/dashboard/requests/${req.id}`)}>
+                                <h3 className="text-lg font-black text-zinc-900 truncate cursor-pointer hover:underline" onClick={() => router.push(`/events/${req.event.id}`)}>
                                     {req.event.title}
                                 </h3>
 

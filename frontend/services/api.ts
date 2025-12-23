@@ -626,14 +626,18 @@ export const createCategory = async (body: CategoryCreate) => {
   return response.data
 }
 
+export const deleteEventReminder = async (eventId: string) => {
+  await api.delete(`/events/${eventId}/reminders`)
+}
+
 export const runEventScheduler = async (limit?: number) => {
   const url = limit ? `/events/scheduler/run?limit=${encodeURIComponent(limit)}` : `/events/scheduler/run`
   const response = await api.post<{ updated: number }>(url)
   return response.data
 }
 
-export const getMyReminders = async () => {
-  const response = await api.get<EventReminderResponse[]>(`/events/reminders/me`)
+export const getMyReminders = async (upcomingOnly: boolean = true) => {
+  const response = await api.get<EventReminderResponse[]>(`/events/reminders/me`, { params: { upcoming_only: upcomingOnly } })
   return response.data
 }
 
@@ -657,6 +661,17 @@ export const updateEventCover = async (eventId: string, file: File) => {
 
 export const deleteEvent = async (eventId: string) => {
   const response = await api.delete<void>(`/events/${eventId}`)
+  return response.data
+}
+
+export const uploadPaymentProof = async (eventId: string, file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  const response = await api.put<EventParticipantDetails>(
+    `/events/${eventId}/participants/me/payment`,
+    fd,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
   return response.data
 }
 
@@ -702,6 +717,14 @@ export const openRegistration = async (eventId: string) => {
 
 export const closeRegistration = async (eventId: string) => {
   const response = await api.put<EventDetails>(`/events/${eventId}/registration/close`)
+  return response.data
+}
+
+export const verifyParticipantPayment = async (eventId: string, participantId: string, status: 'accepted' | 'rejected') => {
+  const response = await api.put<EventParticipantDetails>(
+    `/events/${eventId}/participants/${participantId}/payment`,
+    { status }
+  )
   return response.data
 }
 

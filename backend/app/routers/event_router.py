@@ -702,6 +702,167 @@ def list_my_events(
     return list(event_map.values())
 
 
+# --- Reminder Endpoints ---
+
+@router.post("/events/{event_id}/reminders", response_model=EventReminderResponse)
+def create_event_reminder(
+    event_id: uuid.UUID,
+    body: EventReminderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a reminder for a joined event. Options: one_week, three_days, one_day."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Must be organizer or a participant of the event
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None:
+            raise HTTPException(status_code=403, detail="You must join the event to set a reminder")
+
+    delta_map = {
+        "one_week": timedelta(days=7),
+        "three_days": timedelta(days=3),
+        "one_day": timedelta(days=1),
+    }
+    if body.option not in delta_map:
+        raise HTTPException(status_code=400, detail="Invalid reminder option. Use one_week, three_days, or one_day")
+
+    # Duplication guard: prevent creating multiple unsent reminders for the same (user, event, option)
+    existing_unsent = (
+        db.query(EventReminder)
+        .filter(
+            EventReminder.event_id == event.id,
+            EventReminder.user_id == current_user.id,
+            EventReminder.option == body.option,
+            EventReminder.is_sent == False,
+        )
+        .first()
+    )
+    if existing_unsent is not None:
+        raise HTTPException(status_code=409, detail="Reminder for this option already exists")
+
+    remind_at = event.start_datetime - delta_map[body.option]
+
+    reminder = EventReminder(
+        event_id=event.id,
+        user_id=current_user.id,
+        option=body.option,
+        remind_at=remind_at,
+        is_sent=False,
+    )
+    db.add(reminder)
+    db.commit()
+    db.refresh(reminder)
+    return reminder
+
+@router.delete("/events/{event_id}/reminders", status_code=204)
+def delete_my_event_reminder(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove pending reminders for the user and event."""
+    reminders = db.query(EventReminder).filter(
+        EventReminder.event_id == event_id,
+        EventReminder.user_id == current_user.id,
+        EventReminder.is_sent == False
+    ).all()
+
+    if not reminders:
+        # Idempotent success or 404? 404 is more informative for UI feedback
+        raise HTTPException(status_code=404, detail="No active reminder found")
+
+    for r in reminders:
+        db.delete(r)
+    db.commit()
+    return
+
+@router.get("/events/reminders/me", response_model=list[EventReminderResponse])
+def list_my_event_reminders(
+    upcoming_only: bool = Query(True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    now_utc = datetime.now(timezone.utc)
+    q = db.query(EventReminder).filter(EventReminder.user_id == current_user.id)
+    if upcoming_only:
+        q = q.filter(EventReminder.remind_at >= now_utc, EventReminder.is_sent == False)
+    items = q.order_by(EventReminder.remind_at.asc()).all()
+    return items
+
+
+@router.post("/events/reminders/run", response_model=list[EventReminderResponse])
+def run_due_event_reminders(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Process and send due reminders for the current user.
+    Sends both in-app notification and email (best-effort).
+    """
+    now = datetime.now(timezone.utc)
+    due = (
+        db.query(EventReminder)
+        .filter(
+            EventReminder.user_id == current_user.id,
+            EventReminder.is_sent == False,
+            EventReminder.remind_at <= now,
+        )
+        .order_by(EventReminder.remind_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+    processed: list[EventReminder] = []
+    for r in due:
+        event = db.query(Event).filter(Event.id == r.event_id).first()
+        if event is None:
+            # Skip invalid
+            r.is_sent = True
+            r.sent_at = now
+            db.add(r)
+            continue
+
+        # In-app notification
+        notif = Notification(
+            recipient_id=r.user_id,
+            actor_id=r.user_id,
+            type=NotificationType.event,
+            content=f"Reminder: '{event.title}' starts at {event.start_datetime}",
+            link_url=f"/main/events/{event.id}",
+        )
+        db.add(notif)
+
+        # Email best-effort
+        user = db.query(User).filter(User.id == r.user_id).first()
+        if user and user.email:
+            try:
+                send_event_reminder_email(email=user.email, event=event, when_label=r.option)
+            except Exception:
+                pass
+
+        r.is_sent = True
+        r.sent_at = now
+        db.add(r)
+        processed.append(r)
+
+    db.commit()
+    # Refresh processed reminders
+    for pr in processed:
+        db.refresh(pr)
+    return processed
+
+
 @router.get("/events/{event_id}", response_model=EventDetails)
 def get_event_details(
     event_id: uuid.UUID,
@@ -729,6 +890,27 @@ def get_event_details(
     # Hide payment QR unless organizer, participant, or admin
     if not (is_organizer or is_participant or is_admin):
         event.payment_qr_url = None
+
+    # Populate extra fields for EventDetails schema
+    organizer = db.query(User).filter(User.id == event.organizer_id).first()
+    if organizer:
+        event.organizer_name = organizer.full_name
+        event.organizer_avatar = organizer.avatar_url
+
+    event.participant_count = (
+        db.query(EventParticipant)
+        .filter(
+            EventParticipant.event_id == event.id,
+            EventParticipant.status.in_([
+                EventParticipantStatus.accepted,
+                EventParticipantStatus.attended,
+            ])
+        )
+        .count()
+    )
+    
+    if event.type == EventType.online:
+        event.meeting_url = event.venue_remark
 
     if event.visibility == EventVisibility.public:
         return event
@@ -852,15 +1034,24 @@ def join_public_event(
         if event.auto_accept_registration and accepted_count >= event.max_participant:
             raise HTTPException(status_code=400, detail="Event is full")
 
-    # Determine initial status based on auto_accept_registration and capacity
+    # Determine initial status
     initial_status = EventParticipantStatus.accepted
-    if event.max_participant is not None:
-        if not event.auto_accept_registration:
-            initial_status = EventParticipantStatus.pending
-        else:
-            # double-check capacity when auto-accept enabled
-            if accepted_count >= event.max_participant:
+    initial_payment_status = None
+
+    # Handle Paid Events
+    from app.models.event_model import EventRegistrationType, EventPaymentStatus
+    if event.registration_type == EventRegistrationType.paid:
+        initial_status = EventParticipantStatus.pending
+        initial_payment_status = EventPaymentStatus.pending
+    else:
+        # Free event logic
+        if event.max_participant is not None:
+            if not event.auto_accept_registration:
                 initial_status = EventParticipantStatus.pending
+            else:
+                # double-check capacity when auto-accept enabled
+                if accepted_count >= event.max_participant:
+                    initial_status = EventParticipantStatus.pending
 
     participant = EventParticipant(
         event_id=event.id,
@@ -869,6 +1060,7 @@ def join_public_event(
         description=None,
         join_method="pre_registered",
         status=initial_status,
+        payment_status=initial_payment_status,
     )
     db.add(participant)
 
@@ -1078,6 +1270,66 @@ def respond_event_invitation(
     return participant
 
 
+@router.put("/events/{event_id}/participants/me/payment", response_model=EventParticipantDetails)
+def upload_payment_proof(
+    event_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Participant uploads payment proof for a paid event.
+    Updates status to 'pending' (if not already) and payment_status to 'pending' or 'verified' logic? 
+    Usually sets payment_status='pending' (verification needed) and status='pending'.
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    participant = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
+        .first()
+    )
+    if participant is None:
+         raise HTTPException(status_code=404, detail="You are not a participant")
+
+    # Upload file
+    from app.services import cloudinary_service
+    try:
+        url = cloudinary_service.upload_file(file, "payment_proofs")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    participant.payment_proof_url = url
+    # If currently rejected or something, maybe reset?
+    # Usually we want payment_status to be 'pending' so organizer sees it needs review.
+    from app.models.event_model import EventPaymentStatus
+    participant.payment_status = EventPaymentStatus.pending
+    
+    # If they were rejected for payment reasons, we might want to set main status to pending too?
+    # Only if not already accepted. If accepted, they are fine.
+    if participant.status == EventParticipantStatus.rejected:
+        participant.status = EventParticipantStatus.pending
+        
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    
+    # Notify organizer
+    notif = Notification(
+        recipient_id=event.organizer_id,
+        actor_id=current_user.id,
+        type=NotificationType.event,
+        content=f"Participant {current_user.full_name} uploaded payment proof for '{event.title}'",
+        link_url=f"/main/events/{event.id}?tab=participants&filter=pending",
+    )
+    db.add(notif)
+    db.commit()
+
+    return participant
+
+
 @router.post("/events/{event_id}/participants/bulk", response_model=List[EventParticipantDetails])
 def invite_event_participants_bulk(
     event_id: uuid.UUID,
@@ -1277,6 +1529,61 @@ def organizer_update_participant_status(
     )
     db.add(notif)
     db.commit()
+    return participant
+
+@router.put("/events/{event_id}/participants/{participant_id}/payment", response_model=EventParticipantDetails)
+def update_participant_payment_status(
+    event_id: uuid.UUID,
+    participant_id: uuid.UUID,
+    body: EventParticipantResponseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Organizer manually verifies payment.
+    If status is 'accepted', we set payment_status='verified' and participant.status='accepted'.
+    If status is 'rejected', we set payment_status='rejected' and participant.status='rejected' (or 'pending'?).
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only organizer can verify payments")
+        
+    participant = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.id == participant_id, EventParticipant.event_id == event.id)
+        .first()
+    )
+    if participant is None:
+        raise HTTPException(status_code=404, detail="Participant not found")
+        
+    from app.models.event_model import EventPaymentStatus
+    
+    if body.status == EventParticipantStatus.accepted:
+        participant.payment_status = EventPaymentStatus.verified
+        participant.status = EventParticipantStatus.accepted
+    elif body.status == EventParticipantStatus.rejected:
+        participant.payment_status = EventPaymentStatus.rejected
+        # Should we kick them out or just mark payment rejected?
+        # Usually payment rejected means they are not accepted yet.
+        participant.status = EventParticipantStatus.rejected
+        
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    
+    # Notify
+    notif = Notification(
+        recipient_id=participant.user_id,
+        actor_id=current_user.id,
+        type=NotificationType.event,
+        content=f"Your payment for '{event.title}' has been {participant.payment_status.value}. Status: {participant.status.value}",
+        link_url=f"/main/events/{event.id}",
+    )
+    db.add(notif)
+    db.commit()
+    
     return participant
 
 @router.delete("/events/{event_id}/participants/{participant_id}")
@@ -2211,143 +2518,7 @@ def walk_in_event_attendance(
         return participant
 
 
-# --- Reminder Endpoints ---
 
-@router.post("/events/{event_id}/reminders", response_model=EventReminderResponse)
-def create_event_reminder(
-    event_id: uuid.UUID,
-    body: EventReminderCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Create a reminder for a joined event. Options: one_week, three_days, one_day."""
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    # Must be organizer or a participant of the event
-    if event.organizer_id != current_user.id:
-        my_participation = (
-            db.query(EventParticipant)
-            .filter(
-                EventParticipant.event_id == event.id,
-                EventParticipant.user_id == current_user.id,
-            )
-            .first()
-        )
-        if my_participation is None:
-            raise HTTPException(status_code=403, detail="You must join the event to set a reminder")
-
-    delta_map = {
-        "one_week": timedelta(days=7),
-        "three_days": timedelta(days=3),
-        "one_day": timedelta(days=1),
-    }
-    if body.option not in delta_map:
-        raise HTTPException(status_code=400, detail="Invalid reminder option. Use one_week, three_days, or one_day")
-
-    # Duplication guard: prevent creating multiple unsent reminders for the same (user, event, option)
-    existing_unsent = (
-        db.query(EventReminder)
-        .filter(
-            EventReminder.event_id == event.id,
-            EventReminder.user_id == current_user.id,
-            EventReminder.option == body.option,
-            EventReminder.is_sent == False,
-        )
-        .first()
-    )
-    if existing_unsent is not None:
-        raise HTTPException(status_code=409, detail="Reminder for this option already exists")
-
-    remind_at = event.start_datetime - delta_map[body.option]
-
-    reminder = EventReminder(
-        event_id=event.id,
-        user_id=current_user.id,
-        option=body.option,
-        remind_at=remind_at,
-        is_sent=False,
-    )
-    db.add(reminder)
-    db.commit()
-    db.refresh(reminder)
-    return reminder
-
-@router.get("/events/reminders/me", response_model=list[EventReminderResponse])
-def list_my_event_reminders(
-    upcoming_only: bool = True,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    now_utc = datetime.now(timezone.utc)
-    q = db.query(EventReminder).filter(EventReminder.user_id == current_user.id)
-    if upcoming_only:
-        q = q.filter(EventReminder.remind_at >= now_utc, EventReminder.is_sent == False)
-    items = q.order_by(EventReminder.remind_at.asc()).all()
-    return items
-
-
-@router.post("/events/reminders/run", response_model=list[EventReminderResponse])
-def run_due_event_reminders(
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Process and send due reminders for the current user.
-    Sends both in-app notification and email (best-effort).
-    """
-    now = datetime.now(timezone.utc)
-    due = (
-        db.query(EventReminder)
-        .filter(
-            EventReminder.user_id == current_user.id,
-            EventReminder.is_sent == False,
-            EventReminder.remind_at <= now,
-        )
-        .order_by(EventReminder.remind_at.asc())
-        .limit(limit)
-        .all()
-    )
-
-    processed: list[EventReminder] = []
-    for r in due:
-        event = db.query(Event).filter(Event.id == r.event_id).first()
-        if event is None:
-            # Skip invalid
-            r.is_sent = True
-            r.sent_at = now
-            db.add(r)
-            continue
-
-        # In-app notification
-        notif = Notification(
-            recipient_id=r.user_id,
-            actor_id=r.user_id,
-            type=NotificationType.event,
-            content=f"Reminder: '{event.title}' starts at {event.start_datetime}",
-            link_url=f"/main/events/{event.id}",
-        )
-        db.add(notif)
-
-        # Email best-effort
-        user = db.query(User).filter(User.id == r.user_id).first()
-        if user and user.email:
-            try:
-                send_event_reminder_email(email=user.email, event=event, when_label=r.option)
-            except Exception:
-                pass
-
-        r.is_sent = True
-        r.sent_at = now
-        db.add(r)
-        processed.append(r)
-
-    db.commit()
-    # Refresh processed reminders
-    for pr in processed:
-        db.refresh(pr)
-    return processed
 
 
 # --- Attendance Stats (Organizer/Committee) ---
@@ -2593,10 +2764,19 @@ def create_event_checklist_item(
         is_completed=False,
         sort_order=0,
     )
-    if body.assigned_user_id is not None:
+    
+    # Handle Assignments
+    if body.assigned_user_ids:
+        users = db.query(User).filter(User.id.in_(body.assigned_user_ids)).all()
+        item.assigned_users = users
+        if users:
+            item.assigned_user_id = users[0].id # Sync legacy
+    elif body.assigned_user_id is not None:
         assigned = db.query(User).filter(User.id == body.assigned_user_id).first()
         if assigned is None:
             raise HTTPException(status_code=400, detail="Assigned user not found")
+        item.assigned_users = [assigned]
+        
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -2642,14 +2822,28 @@ def update_event_checklist_item(
         item.description = body.description
     if body.is_completed is not None:
         item.is_completed = body.is_completed
-    # Explicitly clear assignment if provided as null
-    if "assigned_user_id" in body.model_fields_set and body.assigned_user_id is None:
-        item.assigned_user_id = None
-    if body.assigned_user_id is not None:
-        assigned = db.query(User).filter(User.id == body.assigned_user_id).first()
-        if assigned is None:
-            raise HTTPException(status_code=400, detail="Assigned user not found")
-        item.assigned_user_id = body.assigned_user_id
+    if body.is_completed is not None:
+        item.is_completed = body.is_completed
+
+    # Handle Assignments (New Field)
+    if body.assigned_user_ids is not None:
+        users = db.query(User).filter(User.id.in_(body.assigned_user_ids)).all()
+        item.assigned_users = users
+        # Sync legacy field
+        item.assigned_user_id = users[0].id if users else None
+
+    # Handle Assignments (Legacy Field) - Only if new field not provided
+    elif "assigned_user_id" in body.model_fields_set:
+        if body.assigned_user_id is None:
+            item.assigned_user_id = None
+            item.assigned_users = []
+        else:
+            assigned = db.query(User).filter(User.id == body.assigned_user_id).first()
+            if assigned is None:
+                raise HTTPException(status_code=400, detail="Assigned user not found")
+            item.assigned_user_id = body.assigned_user_id
+            item.assigned_users = [assigned]
+
     if body.sort_order is not None:
         item.sort_order = body.sort_order
     # Explicitly clear due date if provided as null
