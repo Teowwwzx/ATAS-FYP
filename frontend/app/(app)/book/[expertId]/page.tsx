@@ -220,7 +220,7 @@ export default function BookingPage() {
                     <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-4">You Are Booking</p>
                     <div className="flex items-center gap-4 mb-6">
                         <img
-                            src={`https://ui-avatars.com/api/?name=${expert.full_name}&background=random&size=128`}
+                            src={`https://placehold.co/128x128/png?text=${encodeURIComponent(expert.full_name)}`}
                             alt="Profile"
                             className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                         />

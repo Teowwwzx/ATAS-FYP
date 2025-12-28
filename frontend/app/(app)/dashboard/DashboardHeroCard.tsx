@@ -21,14 +21,14 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
     const eventId = 'id' in event ? event.id : event.event_id
 
     const startDate = new Date(event.start_datetime)
-    const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
+    const allowedHosts = new Set(['res.cloudinary.com', 'picsum.photos', 'placehold.co'])
     const pickCover = () => {
         const url = event.cover_url || ''
         try {
             const u = new URL(url)
             if (allowedHosts.has(u.hostname)) return url
         } catch { }
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=800`
+        return `https://placehold.co/800x400/png?text=${encodeURIComponent(event.title)}`
     }
     const coverUrl = pickCover()
     const fileRef = useRef<HTMLInputElement>(null)
@@ -57,10 +57,12 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
         >
             {/* Background Image - with zoom and slight brightness reduction */}
             <div className="absolute inset-0 overflow-hidden">
-                <img
+                <Image
                     src={coverUrl}
                     alt={event.title}
-                    className="w-full h-full object-cover opacity-90"
+                    fill
+                    className="object-cover opacity-90"
+                    unoptimized={false}
                 />
             </div>
 

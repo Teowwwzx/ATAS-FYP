@@ -68,7 +68,7 @@ def seed_chat_test_scenario(db: Session):
         registration_status=EventRegistrationStatus.opened,
         auto_accept_registration=False,  # Manual approval needed
         max_participant=50,
-        logo_url="https://ui-avatars.com/api/?name=Chat+Test&background=EF4444&color=fff&size=200&bold=true",
+        logo_url="https://placehold.co/200x200/EF4444/fff.png?text=Chat+Test",
         cover_url="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=600&fit=crop",
         venue_remark="Tech Hub Auditorium (Hybrid Event)",
         remark="Test event for GetStream chat functionality",

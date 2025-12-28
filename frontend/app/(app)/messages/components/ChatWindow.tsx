@@ -22,7 +22,7 @@ export function ChatWindow({ conversation, currentUserId, onMessageSent, onBack 
     // Identify Other Participant
     const other = conversation.participants.find(p => p.user_id !== currentUserId)
     const otherName = other?.full_name || 'Unknown'
-    const otherAvatar = other?.avatar_url || `https://ui-avatars.com/api/?name=${otherName}&background=random`
+    const otherAvatar = other?.avatar_url || `https://placehold.co/200x200/png?text=${encodeURIComponent(otherName)}`
 
     const fetchMessages = async () => {
         try {

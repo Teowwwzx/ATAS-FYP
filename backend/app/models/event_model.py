@@ -128,7 +128,9 @@ class EventParticipant(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
     role = Column(Enum(EventParticipantRole), nullable=False)
     description = Column(String, nullable=True)
     join_method = Column(String, nullable=True)

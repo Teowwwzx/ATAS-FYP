@@ -42,7 +42,7 @@ export function ConversationList({ conversations, selectedId, currentUserId, onS
                 // Find other participant
                 const other = conv.participants.find(p => p.user_id !== currentUserId) || conv.participants[0]
                 const name = other?.full_name || 'Unknown User'
-                const avatar = other?.avatar_url || `https://ui-avatars.com/api/?name=${name}&background=random`
+                const avatar = other?.avatar_url || `https://placehold.co/200x200/png?text=${encodeURIComponent(name)}`
                 const isSelected = selectedId === conv.id
 
                 return (

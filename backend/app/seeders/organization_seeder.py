@@ -22,13 +22,13 @@ ORG_COVER_IMAGES = [
 ]
 
 def get_org_logo_url(org_name: str) -> str:
-    """Generate a logo URL based on organization name using UI Avatars"""
+    """Generate a logo URL based on organization name using Placehold.co"""
     # Extract initials from organization name
     words = org_name.split()[:2]
     initials = ''.join([word[0].upper() for word in words if word])
     # Create URL with organization initials
     encoded_name = urllib.parse.quote(initials)
-    return f"https://ui-avatars.com/api/?name={encoded_name}&background=random&size=200&bold=true"
+    return f"https://placehold.co/200x200.png?text={encoded_name}"
 
 def seed_organizations(db: Session, num_organizations: int):
     """Seed organizations table with fake data"""

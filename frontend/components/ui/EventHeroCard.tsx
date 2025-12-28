@@ -12,14 +12,14 @@ interface EventHeroCardProps {
 
 export function EventHeroCard({ event, enableImagePreview }: EventHeroCardProps) {
     const startDate = new Date(event.start_datetime)
-    const allowedHosts = new Set(['res.cloudinary.com', 'ui-avatars.com', 'picsum.photos'])
+    const allowedHosts = new Set(['res.cloudinary.com', 'picsum.photos', 'placehold.co'])
     const pickCover = () => {
         const url = event.cover_url || ''
         try {
             const u = new URL(url)
             if (allowedHosts.has(u.hostname)) return url
         } catch { }
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(event.title)}&background=random&size=1200`
+        return `https://placehold.co/1200x600/png?text=${encodeURIComponent(event.title)}`
     }
     const coverUrl = pickCover()
     const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -27,6 +27,21 @@ export function EventHeroCard({ event, enableImagePreview }: EventHeroCardProps)
     const handlePreview = () => {
         if (enableImagePreview && coverUrl) setPreviewImage(coverUrl)
     }
+
+    // Determine if we need to use Next/Image unoptimized if it's an SVG from ui-avatars
+    // However, here we are using standard <img> tag. 
+    // The error says <Image> so it must be used somewhere else or Next.js converts it? 
+    // Actually, line 4 imports Image from 'next/image' but it's not used in this file except imported?
+    // Wait, in line 33 it uses <img>.
+    // The error is explicit about <Image>. 
+    
+    // Let's check imports.
+    // Line 4: import Image from 'next/image' -> unused?
+    // Wait, the file content I read shows:
+    // 33: <img ... />
+    
+    // Ah, maybe the user is using an older version of the file or another component?
+    // The grep found DashboardHeroCard.tsx too. Let's check that.
 
     return (
         <div className="w-full relative h-[420px] rounded-[2.5rem] overflow-hidden">

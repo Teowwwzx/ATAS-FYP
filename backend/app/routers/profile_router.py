@@ -75,6 +75,10 @@ def discover_profiles(
     if current_user:
         q = q.filter(Profile.user_id != current_user.id)
 
+    # Exclude admins from public discovery
+    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    q = q.filter(Profile.user_id.notin_(admin_subquery))
+
     if role:
         q = q.join(user_roles, user_roles.c.user_id == User.id)\
              .join(Role, Role.id == user_roles.c.role_id)\
@@ -184,6 +188,11 @@ def discover_profiles_count(
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
         
     q = q.join(User, User.id == Profile.user_id)
+    
+    # Exclude admins from public discovery
+    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    q = q.filter(Profile.user_id.notin_(admin_subquery))
+
     if role:
         q = q.join(user_roles, user_roles.c.user_id == User.id)\
              .join(Role, Role.id == user_roles.c.role_id)\

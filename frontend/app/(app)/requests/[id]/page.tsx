@@ -124,7 +124,7 @@ export default function RequestDetailsPage() {
                             {/* Requestor Profile */}
                             <div className="flex items-center gap-4 border-b border-slate-100 pb-8 mb-8">
                                 <img
-                                    src={`https://ui-avatars.com/api/?name=${organizer?.user_id || 'Organizer'}&background=random&size=128`}
+                                    src={`https://placehold.co/128x128/png?text=${encodeURIComponent(organizer?.user_id || 'Organizer')}`}
                                     alt="Profile"
                                     className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-md"
                                 />

@@ -114,7 +114,9 @@ class EventParticipantDetails(BaseModel):
 
 
 class EventParticipantCreate(BaseModel):
-    user_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    name: str | None = None
+    email: str | None = None
     role: str = "audience"
     description: str | None = None
     proposal_id: uuid.UUID | None = None

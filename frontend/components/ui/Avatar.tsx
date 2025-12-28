@@ -29,6 +29,18 @@ export function Avatar({ src, alt, fallback, size = 'md', className }: AvatarPro
     // 3. Else use '?'
     const fallbackText = fallback || (alt ? alt.charAt(0).toUpperCase() : '?')
 
+    // Handle legacy ui-avatars.com URLs from database
+    let finalSrc = src
+    if (src?.includes('ui-avatars.com')) {
+        try {
+            const url = new URL(src)
+            const name = url.searchParams.get('name') || alt || 'Avatar'
+            finalSrc = `https://placehold.co/200x200/png?text=${encodeURIComponent(name)}`
+        } catch {
+            finalSrc = null
+        }
+    }
+
     return (
         <div
             className={cn(
@@ -37,9 +49,9 @@ export function Avatar({ src, alt, fallback, size = 'md', className }: AvatarPro
                 className
             )}
         >
-            {src && !imgError ? (
+            {finalSrc && !imgError ? (
                 <Image
-                    src={src}
+                    src={finalSrc}
                     alt={alt || "Avatar"}
                     fill
                     className="object-cover"

@@ -43,14 +43,14 @@ EVENT_COVER_IMAGES = [
 
 # Real event logo images
 EVENT_LOGO_IMAGES = [
-    "https://ui-avatars.com/api/?name=Event+Logo&background=4F46E5&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Tech+Talk&background=EF4444&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Workshop&background=10B981&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Hackathon&background=F59E0B&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Seminar&background=8B5CF6&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Meetup&background=EC4899&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Conference&background=06B6D4&color=fff&size=200&bold=true",
-    "https://ui-avatars.com/api/?name=Summit&background=14B8A6&color=fff&size=200&bold=true",
+    "https://placehold.co/200x200/4F46E5/fff.png?text=Event+Logo",
+    "https://placehold.co/200x200/EF4444/fff.png?text=Tech+Talk",
+    "https://placehold.co/200x200/10B981/fff.png?text=Workshop",
+    "https://placehold.co/200x200/F59E0B/fff.png?text=Hackathon",
+    "https://placehold.co/200x200/8B5CF6/fff.png?text=Seminar",
+    "https://placehold.co/200x200/EC4899/fff.png?text=Meetup",
+    "https://placehold.co/200x200/06B6D4/fff.png?text=Conference",
+    "https://placehold.co/200x200/14B8A6/fff.png?text=Summit",
 ]
 
 # Real event picture images
@@ -418,7 +418,7 @@ def seed_proposal_invitation_for_student1(db):
         registration_status=EventRegistrationStatus.opened,
         auto_accept_registration=True,
         max_participant=200,
-        logo_url="https://ui-avatars.com/api/?name=AI+Ed&background=0D9488&color=fff&size=200&bold=true",
+        logo_url="https://placehold.co/200x200/0D9488/fff.png?text=AI+Ed",
         cover_url="https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=1200&h=600&fit=crop",
         venue_place_id="ChIJr7mC9fN5zDERSrD1wGg7oYQ",
         venue_remark="Grand Hall, Main Campus",
