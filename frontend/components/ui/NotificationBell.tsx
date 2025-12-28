@@ -7,11 +7,15 @@ import { Popover, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'react-hot-toast'
+import { useNotificationStream } from '@/hooks/useNotificationStream'
 
 export function NotificationBell() {
     const [notifications, setNotifications] = useState<NotificationItem[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const router = useRouter()
+
+    // Real-time notification stream
+    const { latestNotification, isConnected } = useNotificationStream()
 
     const loadNotifications = useCallback(async () => {
         try {
@@ -23,13 +27,24 @@ export function NotificationBell() {
         }
     }, [])
 
+    // Load initial notifications
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadNotifications()
-        // Poll every minute
-        const interval = setInterval(loadNotifications, 60000)
-        return () => clearInterval(interval)
     }, [loadNotifications])
+
+    // Listen for new notifications from SSE stream
+    useEffect(() => {
+        if (latestNotification) {
+            // Reload notifications when a new one arrives
+            loadNotifications()
+
+            // Show toast notification
+            toast.success('New notification received!', {
+                duration: 3000,
+                icon: '🔔',
+            })
+        }
+    }, [latestNotification, loadNotifications])
 
     const handleNotificationClick = async (notification: NotificationItem, close: () => void) => {
         close()

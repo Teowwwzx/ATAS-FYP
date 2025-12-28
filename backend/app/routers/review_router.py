@@ -33,43 +33,83 @@ def create_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    event = db.query(Event).filter(Event.id == body.event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
+    if body.event_id:
+        # --- Event Review Logic ---
+        event = db.query(Event).filter(Event.id == body.event_id).first()
+        if event is None:
+            raise HTTPException(status_code=404, detail="Event not found")
 
-    # Only allow reviews after event has ended
-    now_utc = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
-    end_dt = event.end_datetime
-    if end_dt.tzinfo is None:
-        end_dt = end_dt.replace(tzinfo=__import__("datetime").timezone.utc)
-    if now_utc < end_dt:
-        raise HTTPException(status_code=400, detail="Event has not ended yet")
+        # Only allow reviews after event has ended
+        now_utc = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        end_dt = event.end_datetime
+        if end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=__import__("datetime").timezone.utc)
+        if now_utc < end_dt:
+            raise HTTPException(status_code=400, detail="Event has not ended yet")
 
-    # Must be organizer or a participant to review
-    if event.organizer_id != current_user.id:
-        link = (
-            db.query(EventParticipant)
-            .filter(
-                EventParticipant.event_id == event.id,
-                EventParticipant.user_id == current_user.id,
+        # Must be organizer or a participant to review
+        if event.organizer_id != current_user.id:
+            link = (
+                db.query(EventParticipant)
+                .filter(
+                    EventParticipant.event_id == event.id,
+                    EventParticipant.user_id == current_user.id,
+                )
+                .first()
             )
-            .first()
-        )
-        if link is None:
-            raise HTTPException(status_code=403, detail="Join the event before reviewing")
+            if link is None:
+                raise HTTPException(status_code=403, detail="Join the event before reviewing")
+        
+        # Determine reviewee if not provided? (Original logic trusted body.reviewee_id)
+        # We'll use body logic but now it's optional in schema, so must be present for event review?
+        if not body.reviewee_id:
+             raise HTTPException(status_code=400, detail="Reviewee ID is required for event reviews")
 
-    review = Review(
-        event_id=event.id,
-        reviewer_id=current_user.id,
-        reviewee_id=body.reviewee_id,
-        rating=body.rating,
-        comment=body.comment,
-    )
-    db.add(review)
-    db.commit()
-    db.refresh(review)
-    _update_profile_rating(db, review.reviewee_id)
-    return review
+        review = Review(
+            event_id=event.id,
+            reviewer_id=current_user.id,
+            reviewee_id=body.reviewee_id,
+            rating=body.rating,
+            comment=body.comment,
+        )
+        db.add(review)
+        db.commit()
+        db.refresh(review)
+        if review.reviewee_id:
+            _update_profile_rating(db, review.reviewee_id)
+        return review
+
+    elif body.org_id:
+        # --- Organization Review Logic ---
+        from app.models.organization_model import Organization
+        org = db.query(Organization).filter(Organization.id == body.org_id).first()
+        if not org:
+             raise HTTPException(status_code=404, detail="Organization not found")
+        
+        # Check if already reviewed? (Optional restrict 1 review per user per org?)
+        # For now, let's allow multiple or maybe restrict. 
+        # Typically 1 review per user.
+        existing = db.query(Review).filter(
+            Review.org_id == body.org_id, 
+            Review.reviewer_id == current_user.id,
+            Review.deleted_at.is_(None)
+        ).first()
+        if existing:
+             raise HTTPException(status_code=400, detail="You have already reviewed this organization")
+
+        review = Review(
+            org_id=org.id,
+            reviewer_id=current_user.id,
+            rating=body.rating,
+            comment=body.comment,
+        )
+        db.add(review)
+        db.commit()
+        db.refresh(review)
+        # No profile rating update for Org yet
+        return review
+    else:
+        raise HTTPException(status_code=400, detail="Must provide event_id or org_id")
 
 @router.get("/reviews/by-user/{user_id}", response_model=List[ReviewResponse])
 def list_reviews_by_user(
@@ -84,21 +124,38 @@ def list_reviews_by_user(
     )
     return items
 
+@router.get("/reviews/by-org/{org_id}", response_model=List[ReviewResponse])
+def list_reviews_by_org(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    items = (
+        db.query(Review)
+        .filter(Review.org_id == org_id, Review.deleted_at.is_(None))
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+    return items
+
 @router.get("/reviews/me", response_model=ReviewResponse | None)
 def get_my_review_for_event(
-    event_id: uuid.UUID,
+    event_id: uuid.UUID | None = None,
+    org_id: uuid.UUID | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    review = (
-        db.query(Review)
-        .filter(
-            Review.reviewer_id == current_user.id,
-            Review.event_id == event_id,
-            Review.deleted_at.is_(None)
-        )
-        .first()
+    query = db.query(Review).filter(
+        Review.reviewer_id == current_user.id,
+        Review.deleted_at.is_(None)
     )
+    if event_id:
+        query = query.filter(Review.event_id == event_id)
+    elif org_id:
+        query = query.filter(Review.org_id == org_id)
+    else:
+        raise HTTPException(status_code=400, detail="Provide event_id or org_id")
+        
+    review = query.first()
     return review
 
 @router.get("/reviews", response_model=List[ReviewResponse])
