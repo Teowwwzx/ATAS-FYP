@@ -466,6 +466,7 @@ export interface EventChecklistItemResponse {
 export interface UserMeResponse {
     id: string
     email: string
+    full_name?: string | null
     roles: string[]
     is_dashboard_pro: boolean
 }
