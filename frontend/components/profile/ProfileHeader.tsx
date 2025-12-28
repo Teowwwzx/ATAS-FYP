@@ -14,6 +14,7 @@ interface ProfileHeaderProps {
     followingCount: number
     onViewFollowers: () => void
     onViewFollowing: () => void
+    customActions?: React.ReactNode
 }
 
 export function ProfileHeader({
@@ -28,7 +29,8 @@ export function ProfileHeader({
     followersCount,
     followingCount,
     onViewFollowers,
-    onViewFollowing
+    onViewFollowing,
+    customActions
 }: ProfileHeaderProps) {
     return (
         <div className="relative mb-8">
@@ -151,18 +153,22 @@ export function ProfileHeader({
                         </div>
                     </div>
 
-                    {/* Edit Profile Button - Moved to Right Side of Info, Below Cover */}
-                    {isOwnProfile && (
-                        <button
-                            onClick={onEdit}
-                            className="mt-6 md:mt-0 px-8 py-3 bg-zinc-900 text-yellow-400 rounded-xl shadow-lg font-bold hover:bg-zinc-800 hover:scale-105 transition-all duration-200 flex items-center gap-2"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                            Edit Profile
-                        </button>
-                    )}
+                    {/* Actions: Edit Profile (Own) or Custom Actions (Public) */}
+                    <div className="mt-6 md:mt-0 flex flex-col items-center md:items-end gap-3">
+                        {isOwnProfile ? (
+                            <button
+                                onClick={onEdit}
+                                className="px-8 py-3 bg-zinc-900 text-yellow-400 rounded-xl shadow-lg font-bold hover:bg-zinc-800 hover:scale-105 transition-all duration-200 flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Edit Profile
+                            </button>
+                        ) : (
+                            customActions
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ProfileResponse, UserMeResponse, MyEventItem, OrganizationResponse } from '@/services/api.types'
+import { ProfileResponse, UserMeResponse, MyEventItem, OrganizationResponse, ReviewResponse } from '@/services/api.types'
 import { getReviewsByEvent } from '@/services/api'
 
 interface ProfileViewProps {
@@ -10,6 +10,7 @@ interface ProfileViewProps {
     historyEvents?: any[]
     followers: any[]
     following: any[]
+    reviews?: ReviewResponse[]
     isOwnProfile: boolean
     onEdit: () => void
     orgsById: Record<string, OrganizationResponse>
@@ -24,6 +25,7 @@ export function ProfileView({
     historyEvents = [],
     followers,
     following,
+    reviews,
     isOwnProfile,
     onEdit,
     orgsById,
@@ -174,10 +176,82 @@ export function ProfileView({
                     {/* About */}
                     <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
                         <h3 className="font-black text-xl text-zinc-900 mb-4">About</h3>
-                        <p className="text-zinc-600 font-medium leading-relaxed whitespace-pre-wrap">
+                        <p className="text-zinc-600 font-medium leading-relaxed whitespace-pre-wrap mb-6">
                             {profile.bio || <span className="text-zinc-400 italic">No bio added yet.</span>}
                         </p>
+
+                        {/* Snapshot Stats */}
+                        <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-50">
+                            {profile.can_be_speaker && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-bold">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    </svg>
+                                    Open to Speaking
+                                </div>
+                            )}
+                            {(profile.city || profile.country) && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 text-zinc-600 rounded-lg text-sm font-bold">
+                                    <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    {[profile.city, profile.country].filter(Boolean).join(', ')}
+                                </div>
+                            )}
+                            {profile.origin_country && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 text-zinc-600 rounded-lg text-sm font-bold">
+                                    <span className="text-zinc-400 text-xs uppercase font-bold tracking-wider">From</span>
+                                    {profile.origin_country}
+                                </div>
+                            )}
+                            {profile.availability && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-sm font-bold">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {profile.availability}
+                                </div>
+                            )}
+                        </div>
                     </div>
+
+                    {/* Reviews */}
+                    {reviews && (
+                        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900">Reviews</h3>
+                                    <p className="text-sm text-zinc-500">Ratings and comments from events</p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-black text-yellow-500">
+                                        {reviews.length > 0 ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) : '—'}
+                                    </div>
+                                    <div className="text-xs text-zinc-500">{reviews.length} review(s)</div>
+                                </div>
+                            </div>
+                            {reviews.length === 0 ? (
+                                <div className="p-6 text-zinc-500">No reviews yet.</div>
+                            ) : (
+                                <ul className="divide-y divide-gray-100">
+                                    {reviews.map(r => (
+                                        <li key={r.id} className="px-6 py-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="h-10 w-10 rounded-full bg-yellow-50 flex items-center justify-center text-zinc-900 font-bold">
+                                                    {r.rating}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm text-zinc-700">{r.comment || 'No comment provided.'}</p>
+                                                    <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0, 8)}… • By: {r.reviewer_id.slice(0, 8)}… • {new Date(r.created_at).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
 
                     {/* Events History (ENHANCED) */}
                     <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
