@@ -14,6 +14,10 @@ import { format } from 'date-fns'
 import { getProfileByUserId } from '@/services/api'
 import { adminService } from '@/services/admin.service'
 
+// ... (previous imports)
+import { EditUserModal } from './modals/EditUserModal'
+import { Pencil1Icon } from '@radix-ui/react-icons'
+
 interface UsersTableProps {
     users: UserResponse[]
     onSuspend: (userId: string) => void
@@ -24,15 +28,17 @@ interface UsersTableProps {
     onRejectPending?: (userId: string) => void
     onAssignRole?: (userId: string, roleName: string) => void
     onRemoveRole?: (userId: string, roleName: string) => void
+    onUserUpdated?: () => void
 }
 
-export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVerifyExpert, onRevokeExpert: _onRevokeExpert, onApprovePending, onRejectPending, onAssignRole, onRemoveRole }: UsersTableProps) {
+export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVerifyExpert, onRevokeExpert: _onRevokeExpert, onApprovePending, onRejectPending, onAssignRole, onRemoveRole, onUserUpdated }: UsersTableProps) {
     const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
     const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({})
     const [suspendUserId, setSuspendUserId] = useState<string | null>(null)
     const [rejectPendingUserId, setRejectPendingUserId] = useState<string | null>(null)
     const [activateUserId, setActivateUserId] = useState<string | null>(null)
     const [removeRoleTarget, setRemoveRoleTarget] = useState<{ userId: string; role: string } | null>(null)
+    const [editingUser, setEditingUser] = useState<UserResponse | null>(null)
 
     const [profiles, setProfiles] = useState<Record<string, import('@/services/api.types').ProfileResponse>>({})
     const [onboardingSettings, setOnboardingSettings] = useState<{ enabled_fields: string[]; required_fields: string[] } | null>(null)
@@ -60,7 +66,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
         if (next) fetchProfile(next)
     }
 
-    const computeCompleteness = (p?: import('@/services/api.types').ProfileResponse) => {
+    const computeCompleteness = (p?: import('@/services/api.types').ProfileResponse, user?: UserResponse) => {
         if (!p || !onboardingSettings) return { percent: 0, missing: [] as string[] }
         const map: Record<string, unknown> = {
             full_name: p.full_name,
@@ -70,12 +76,18 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
             instagram_url: p.instagram_url,
             twitter_url: p.twitter_url,
             website_url: p.website_url,
+            role: user?.roles && user.roles.length > 0 ? 'present' : undefined // Check user roles for 'role' requirement
         }
         const enabled = onboardingSettings.enabled_fields || []
         const required = onboardingSettings.required_fields || []
+
+        // Calculate based on enabled fields
         const filledCount = enabled.reduce((acc, key) => acc + (map[key] ? 1 : 0), 0)
         const percent = enabled.length > 0 ? Math.round((filledCount / enabled.length) * 100) : 0
+
+        // Missing required fields
         const missing = required.filter((key) => !map[key])
+
         return { percent, missing }
     }
 
@@ -121,7 +133,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     {Array.isArray(user.roles)
-                                        ? (user.roles.map((r) => typeof r === 'string' ? r : r.name).filter(Boolean).join(', ') || '-')
+                                        ? Array.from(new Set(user.roles.map((r) => typeof r === 'string' ? r : r.name))).filter(Boolean).join(', ') || '-'
                                         : '-'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -140,17 +152,25 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => setEditingUser(user)}
+                                            className="text-gray-400 hover:text-blue-600 p-1 hover:bg-blue-50 rounded transition-colors"
+                                            title="Edit User"
+                                        >
+                                            <Pencil1Icon className="w-4 h-4" />
+                                        </button>
+
                                         {user.status === 'active' ? (
                                             <button
                                                 onClick={() => setSuspendUserId(user.id)}
-                                                className="text-red-600 hover:text-red-900 font-medium"
+                                                className="text-red-600 hover:text-red-900 font-medium ml-2"
                                             >
                                                 Suspend
                                             </button>
                                         ) : (
                                             <button
                                                 onClick={() => setActivateUserId(user.id)}
-                                                className="text-green-600 hover:text-green-900 font-medium"
+                                                className="text-green-600 hover:text-green-900 font-medium ml-2"
                                             >
                                                 Activate
                                             </button>
@@ -162,17 +182,17 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                 {onApprovePending && (
                                                     <button
                                                         onClick={() => onApprovePending(user.id)}
-                                                        className="text-blue-600 hover:text-blue-900 font-medium"
+                                                        className="text-blue-600 hover:text-blue-900 font-medium ml-2"
                                                     >
-                                                        Approve Pending
+                                                        Approve
                                                     </button>
                                                 )}
                                                 {onRejectPending && (
                                                     <button
                                                         onClick={() => setRejectPendingUserId(user.id)}
-                                                        className="text-orange-600 hover:text-orange-900 font-medium"
+                                                        className="text-orange-600 hover:text-orange-900 font-medium ml-2"
                                                     >
-                                                        Reject Pending
+                                                        Reject
                                                     </button>
                                                 )}
                                             </>
@@ -182,15 +202,12 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                             </tr>
                             {expandedUserId === user.id && (
                                 <tr className="bg-gray-50">
+                                    {/* ... (existing expanded details content) */}
                                     <td colSpan={6} className="px-6 py-4">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                                             <div>
                                                 <h4 className="font-semibold text-gray-900 mb-2">User Details</h4>
                                                 <div className="space-y-2">
-                                                    <div>
-                                                        <span className="text-gray-500">User ID:</span>
-                                                        <span className="ml-2 font-mono text-xs text-gray-700">{user.id}</span>
-                                                    </div>
                                                     <div>
                                                         <span className="text-gray-500">Joined:</span>
                                                         <span className="ml-2 text-gray-700">
@@ -203,15 +220,11 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                 <h4 className="font-semibold text-gray-900 mb-2">Roles & Permissions</h4>
                                                 <div className="flex flex-wrap gap-2">
                                                     {Array.isArray(user.roles) && user.roles.length > 0 ? (
-                                                        user.roles.map((r) => {
-                                                            const name = typeof r === 'string' ? r : r.name
-                                                            const key = typeof r === 'string' ? r : (r.id || r.name)
-                                                            return (
-                                                                <span key={key} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs border border-blue-100">
-                                                                    {name}
-                                                                </span>
-                                                            )
-                                                        })
+                                                        Array.from(new Set(user.roles.map(r => typeof r === 'string' ? r : r.name))).map((name, idx) => (
+                                                            <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs border border-blue-100">
+                                                                {name}
+                                                            </span>
+                                                        ))
                                                     ) : (
                                                         <span className="text-gray-500">No roles assigned</span>
                                                     )}
@@ -221,10 +234,10 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                         <select
                                                             value={selectedRoles[user.id] || ''}
                                                             onChange={(e) => setSelectedRoles((prev) => ({ ...prev, [user.id]: e.target.value }))}
-                                                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm transition-all outline-none focus:ring-2 focus:ring-blue-500/20"
                                                         >
                                                             <option value="">Select role</option>
-                                                            <option value="admin">admin</option>
+                                                            {/* Removed 'admin' to prevent accidental assignment */}
                                                             <option value="student">student</option>
                                                             <option value="expert">expert</option>
                                                             <option value="organizer">organizer</option>
@@ -239,18 +252,18 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                                     const role = selectedRoles[user.id]
                                                                     if (role) onAssignRole(user.id, role)
                                                                 }}
-                                                                className="px-3 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                                                                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
                                                             >
-                                                                Assign Role
+                                                                Assign
                                                             </button>
                                                             <button
                                                                 onClick={() => {
                                                                     const role = selectedRoles[user.id]
                                                                     if (role) setRemoveRoleTarget({ userId: user.id, role })
                                                                 }}
-                                                                className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50"
+                                                                className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-all"
                                                             >
-                                                                Remove Role
+                                                                Remove
                                                             </button>
                                                         </div>
                                                     </div>
@@ -260,13 +273,13 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                 <h4 className="font-semibold text-gray-900 mb-2">Onboarding Completeness</h4>
                                                 {(() => {
                                                     const p = profiles[user.id]
-                                                    const { percent, missing } = computeCompleteness(p)
+                                                    const { percent, missing } = computeCompleteness(p, user)
                                                     return (
                                                         <div className="space-y-3">
                                                             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                                                                <div className="h-full bg-green-500" style={{ width: `${percent}%` }}></div>
+                                                                <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${percent}%` }}></div>
                                                             </div>
-                                                            <div className="text-gray-700 font-medium">{percent}% complete</div>
+                                                            <div className="text-gray-700 font-medium text-sm">{percent}% complete</div>
                                                             {missing.length > 0 && (
                                                                 <div>
                                                                     <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Missing Required</div>
@@ -329,8 +342,20 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                 cancelText="Cancel"
                 variant="danger"
             />
+
+            {editingUser && (
+                <EditUserModal
+                    isOpen={!!editingUser}
+                    onClose={() => setEditingUser(null)}
+                    user={editingUser}
+                    onSuccess={() => {
+                        if (onUserUpdated) onUserUpdated()
+                    }}
+                />
+            )}
         </div>
     )
 }
+
 
 const 片 = ({ children }: { children: React.ReactNode }) => <>{children}</>

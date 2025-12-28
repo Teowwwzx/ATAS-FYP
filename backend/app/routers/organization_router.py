@@ -18,6 +18,10 @@ router = APIRouter()
 def _is_testing() -> bool:
     return os.getenv("TESTING") == "1"
 
+def _is_admin(db: Session, user: User) -> bool:
+    # Check if user has admin role using ORM relationship
+    return any(role.name == "admin" for role in user.roles)
+
 @router.get("/organizations", response_model=List[OrganizationResponse])
 def get_all_organizations(
     db: Session = Depends(get_db),
@@ -160,7 +164,13 @@ def update_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
         
-    if org.owner_id != current_user.id:
+    print(f"DEBUG: Update Org {org.id}, Owner: {org.owner_id}, User: {current_user.id}")
+    print(f"DEBUG: User Roles: {[r.name for r in current_user.roles]}")
+    is_admin = _is_admin(db, current_user)
+    print(f"DEBUG: Is Admin? {is_admin}")
+
+    if org.owner_id != current_user.id and not is_admin:
+        print("DEBUG: 403 Raised")
         raise HTTPException(status_code=403, detail="Not authorized to update this organization")
         
     for key, value in body.dict(exclude_unset=True).items():
@@ -170,12 +180,6 @@ def update_organization(
     db.refresh(org)
     log_admin_action(db, current_user.id, "organization.update", "organization", org.id, f"Organization updated by user {current_user.id}")
     return org
-
-
-def _is_admin(db: Session, user: User) -> bool:
-    from app.models.user_model import Role, user_roles
-    roles = db.query(Role).join(user_roles, Role.id == user_roles.c.role_id).filter(user_roles.c.user_id == user.id).all()
-    return any(r.name == "admin" for r in roles)
 
 @router.post("/organizations/{org_id}/members")
 def add_member(

@@ -17,6 +17,7 @@ class UserResponse(UserBase):
     id: uuid.UUID
     is_verified: bool
     status: UserStatus
+    created_at: __import__("datetime").datetime | None = None
 
 class UserMeResponse(BaseModel):
     id: uuid.UUID

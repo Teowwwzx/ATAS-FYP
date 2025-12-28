@@ -230,6 +230,7 @@ export default function UsersPage() {
                     onRejectPending={handleRejectPending}
                     onAssignRole={handleAssignRole}
                     onRemoveRole={handleRemoveRole}
+                    onUserUpdated={() => mutate()}
                 />
                 <Pagination
                     currentPage={page}

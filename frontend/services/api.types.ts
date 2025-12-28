@@ -137,6 +137,9 @@ export interface ProfileResponse {
     bio?: string
     avatar_url?: string
     cover_url?: string
+    phone_number?: string
+    date_of_birth?: string
+    gender?: string
     linkedin_url?: string
     github_url?: string
     instagram_url?: string

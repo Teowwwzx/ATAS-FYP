@@ -7,6 +7,12 @@ import { toast } from 'react-hot-toast'
 
 const PAGE_SIZE = 10
 
+// ... imports
+import { EditReviewModal } from '@/components/admin/modals/EditReviewModal'
+import { Pencil1Icon, TrashIcon } from '@radix-ui/react-icons'
+
+// ... existing code
+
 export default function ReviewsPage() {
     const [page, setPage] = useState(1)
     const [reviewerEmail, setReviewerEmail] = useState('')
@@ -18,6 +24,9 @@ export default function ReviewsPage() {
     const [endBefore, setEndBefore] = useState('')
     const [debounced, setDebounced] = useState<{ reviewerEmail: string; revieweeEmail: string; eventId: string; minRating: number | ''; maxRating: number | ''; startAfter: string; endBefore: string }>({ reviewerEmail: '', revieweeEmail: '', eventId: '', minRating: '', maxRating: '', startAfter: '', endBefore: '' })
     const [deleteReason, setDeleteReason] = useState('')
+    const [editingReview, setEditingReview] = useState<import('@/services/api.types').ReviewResponse | null>(null)
+
+    // ... existing useEffect and useMemo and useSWR
 
     useEffect(() => {
         const t = setTimeout(() => setDebounced({ reviewerEmail, revieweeEmail, eventId, minRating, maxRating, startAfter, endBefore }), 300)
@@ -116,7 +125,22 @@ export default function ReviewsPage() {
                                     <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.reviewee_id ? r.reviewee_id.slice(0, 8) : 'N/A'}...</td>
                                     <td className="px-6 py-3 font-mono text-xs text-gray-500">{r.event_id ? r.event_id.slice(0, 8) : 'N/A'}...</td>
                                     <td className="px-6 py-3 text-right">
-                                        <button onClick={() => handleDelete(r.id)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg">Remove</button>
+                                        <div className="flex justify-end space-x-2">
+                                            <button
+                                                onClick={() => setEditingReview(r)}
+                                                className="px-3 py-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Pencil1Icon className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(r.id)}
+                                                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Remove"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -136,6 +160,15 @@ export default function ReviewsPage() {
                     </div>
                 </div>
             </div>
+
+            {editingReview && (
+                <EditReviewModal
+                    isOpen={!!editingReview}
+                    onClose={() => setEditingReview(null)}
+                    review={editingReview}
+                    onSuccess={() => mutate()}
+                />
+            )}
         </div>
     )
 }

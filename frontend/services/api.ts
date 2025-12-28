@@ -704,8 +704,19 @@ api.interceptors.response.use(
       try {
         localStorage.removeItem('atas_token')
       } catch { }
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login'
+
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname
+        // Don't redirect if already on login pages
+        if (path !== '/login' && path !== '/admin/login') {
+          // If on admin routes, redirect to admin login
+          if (path.startsWith('/admin')) {
+            window.location.href = '/admin/login'
+          } else {
+            // Otherwise redirect to main login
+            window.location.href = '/login'
+          }
+        }
       }
     }
     return Promise.reject(error)
