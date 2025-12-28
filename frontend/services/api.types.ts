@@ -507,6 +507,7 @@ export interface OrganizationResponse {
     location?: string
     visibility: OrganizationVisibility
     status: OrganizationStatus
+    created_at?: string
 }
 
 // --- Audit Log Types ---
