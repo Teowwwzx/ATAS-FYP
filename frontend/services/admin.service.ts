@@ -377,7 +377,7 @@ export const adminService = {
 
     updateUserAvatar: async (userId: string, file: File) => {
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('avatar', file)
         const response = await api.put(`/admin/users/${userId}/avatar`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
@@ -386,7 +386,7 @@ export const adminService = {
 
     updateUserCover: async (userId: string, file: File) => {
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('cover', file)
         const response = await api.put(`/admin/users/${userId}/cover`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
@@ -395,7 +395,7 @@ export const adminService = {
 
     updateOrganizationLogo: async (orgId: string, file: File) => {
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('logo', file)
         const response = await api.put(`/admin/organizations/${orgId}/logo`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
@@ -404,7 +404,7 @@ export const adminService = {
 
     updateOrganizationCover: async (orgId: string, file: File) => {
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('cover', file)
         const response = await api.put(`/admin/organizations/${orgId}/cover`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
