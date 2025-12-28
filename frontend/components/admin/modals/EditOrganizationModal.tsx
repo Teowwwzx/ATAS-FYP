@@ -1,0 +1,249 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { Cross2Icon } from '@radix-ui/react-icons'
+import { OrganizationResponse, OrganizationType, OrganizationVisibility } from '@/services/api.types'
+import { adminService } from '@/services/admin.service'
+import { toast } from 'react-hot-toast'
+
+interface EditOrganizationModalProps {
+    isOpen: boolean
+    onClose: () => void
+    organization: OrganizationResponse
+    onSuccess: () => void
+}
+
+export function EditOrganizationModal({ isOpen, onClose, organization, onSuccess }: EditOrganizationModalProps) {
+    const [isLoading, setIsLoading] = useState(false)
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+        website_url: '',
+        location: '',
+        type: 'community' as OrganizationType,
+        visibility: 'public' as OrganizationVisibility,
+        logo_url: '',
+        cover_url: ''
+    })
+
+    useEffect(() => {
+        if (isOpen && organization) {
+            setFormData({
+                name: organization.name || '',
+                description: organization.description || '',
+                website_url: organization.website_url || '',
+                location: organization.location || '',
+                type: organization.type || 'community',
+                visibility: organization.visibility || 'public',
+                logo_url: organization.logo_url || '',
+                cover_url: organization.cover_url || ''
+            })
+        }
+    }, [isOpen, organization])
+
+    const [files, setFiles] = useState<{ logo: File | null; cover: File | null }>({ logo: null, cover: null })
+
+    // Refs to clear file inputs
+    const logoInputRef = import('react').then(React => React.useRef<HTMLInputElement>(null)).catch(() => ({ current: null })) as any // Hacking inline import is bad, let's fix imports first
+    // Actually I need to add useRef to imports. Can I do that in a separate chunk?
+    // Let's assume I will add useRef import in another chunk. Or I can do it right here if I replace the whole block or file imports.
+    // The previous view showed imports at line 3: `import { useState, useEffect } from 'react'`
+    // I need to add `useRef`.
+
+    // I will replace the imports first in a separate call then come back here? No, let's do imports first or try to use proper multiple replacement.
+
+    const logoRef = useRef<HTMLInputElement>(null)
+    const coverRef = useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'cover') => {
+        if (e.target.files && e.target.files[0]) {
+            setFiles(prev => ({ ...prev, [type]: e.target.files![0] }))
+        }
+    }
+
+    const handleClearFile = (type: 'logo' | 'cover') => {
+        setFiles(prev => ({ ...prev, [type]: null }))
+        if (type === 'logo' && logoRef.current) logoRef.current.value = ''
+        if (type === 'cover' && coverRef.current) coverRef.current.value = ''
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setIsLoading(true)
+        try {
+            await adminService.updateOrganization(organization.id, formData)
+
+            // Parallel uploads
+            const uploadPromises = []
+            if (files.logo) {
+                uploadPromises.push(adminService.updateOrganizationLogo(organization.id, files.logo)
+                    .catch((e: any) => { console.error('Logo upload failed', e); toast.error('Logo upload failed'); }))
+            }
+            if (files.cover) {
+                uploadPromises.push(adminService.updateOrganizationCover(organization.id, files.cover)
+                    .catch((e: any) => { console.error('Cover upload failed', e); toast.error('Cover upload failed'); }))
+            }
+
+            await Promise.all(uploadPromises)
+
+            toast.success('Organization updated successfully')
+            onSuccess()
+            onClose()
+        } catch (error) {
+            toast.error('Failed to update organization')
+            console.error(error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return (
+        <Dialog.Root open={isOpen} onOpenChange={onClose}>
+            <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm" />
+                <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-2xl z-50 w-full max-w-lg outline-none max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                        <Dialog.Title className="text-xl font-bold text-gray-900">Edit Organization</Dialog.Title>
+                        <Dialog.Close className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                            <Cross2Icon className="w-5 h-5 text-gray-500" />
+                        </Dialog.Close>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                            <input
+                                value={formData.name}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <textarea
+                                value={formData.description}
+                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-24 resize-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Website URL</label>
+                            <input
+                                type="url"
+                                value={formData.website_url}
+                                onChange={e => setFormData({ ...formData, website_url: e.target.value })}
+                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                placeholder="https://example.com"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                            <input
+                                value={formData.location}
+                                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Update Logo</label>
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        ref={logoRef}
+                                        onChange={e => handleFileChange(e, 'logo')}
+                                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
+                                    {files.logo && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleClearFile('logo')}
+                                            className="text-red-500 hover:text-red-700"
+                                            title="Remove file"
+                                        >
+                                            <Cross2Icon className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Update Cover</label>
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        ref={coverRef}
+                                        onChange={e => handleFileChange(e, 'cover')}
+                                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
+                                    {files.cover && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleClearFile('cover')}
+                                            className="text-red-500 hover:text-red-700"
+                                            title="Remove file"
+                                        >
+                                            <Cross2Icon className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <select
+                                    value={formData.type}
+                                    onChange={e => setFormData({ ...formData, type: e.target.value as OrganizationType })}
+                                    className="text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                >
+                                    <option value="company">Company</option>
+                                    <option value="university">University</option>
+                                    <option value="community">Community</option>
+                                    <option value="nonprofit">Nonprofit</option>
+                                    <option value="government">Government</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+                                <select
+                                    value={formData.visibility}
+                                    onChange={e => setFormData({ ...formData, visibility: e.target.value as OrganizationVisibility })}
+                                    className="text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                >
+                                    <option value="public">Public</option>
+                                    <option value="private">Private</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isLoading ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </form>
+                </Dialog.Content>
+            </Dialog.Portal>
+        </Dialog.Root>
+    )
+}

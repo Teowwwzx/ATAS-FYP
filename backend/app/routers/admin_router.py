@@ -470,3 +470,73 @@ def list_pending_roles(db: Session = Depends(get_db), current_user: User = Depen
     names = [r.name for r in roles if isinstance(r.name, str) and r.name.endswith("_pending")]
     # Return unique sorted list
     return sorted(set(names))
+
+
+# --- Admin Media Upload Endpoints ---
+
+from fastapi import UploadFile, File
+from app.services import profile_service, cloudinary_service
+
+@router.put("/users/{user_id}/avatar")
+def admin_update_user_avatar(
+    user_id: uuid.UUID,
+    avatar: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    # Using profile_service.update_avatar logic but for specific user_id
+    # profile_service.update_avatar expects owner logic, let's reuse update_profile logic or direct service call
+    # Ideally profile_service.update_avatar(db, user_id, avatar) works for any user_id if we pass it
+    p = profile_service.update_avatar(db, user_id, avatar)
+    if not p:
+        # Try creating profile if missing? Or just 404
+        raise HTTPException(status_code=404, detail="User profile not found")
+    return p
+
+@router.put("/users/{user_id}/cover")
+def admin_update_user_cover(
+    user_id: uuid.UUID,
+    cover: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    p = profile_service.update_cover_picture(db, user_id, cover)
+    if not p:
+        raise HTTPException(status_code=404, detail="User profile not found")
+    return p
+
+@router.put("/organizations/{org_id}/logo")
+def admin_update_org_logo(
+    org_id: uuid.UUID,
+    logo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    url = cloudinary_service.upload_file(logo, "org_logos")
+    org.logo_url = url
+    db.commit()
+    db.refresh(org)
+    log_admin_action(db, current_user.id, "organization.update_logo", "organization", org.id)
+    return org
+
+@router.put("/organizations/{org_id}/cover")
+def admin_update_org_cover(
+    org_id: uuid.UUID,
+    cover: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    url = cloudinary_service.upload_file(cover, "org_covers")
+    org.cover_url = url
+    db.commit()
+    db.refresh(org)
+    log_admin_action(db, current_user.id, "organization.update_cover", "organization", org.id)
+    return org

@@ -72,6 +72,11 @@ export const adminService = {
         return response.data
     },
 
+    updateUserProfile: async (userId: string, data: any) => {
+        const response = await api.patch<import('./api.types').ProfileResponse>(`/admin/users/${userId}/profile`, data)
+        return response.data
+    },
+
     // --- Users ---
     getUsers: async (params?: {
         page?: number
@@ -171,6 +176,11 @@ export const adminService = {
         return response.data
     },
 
+    updateOrganization: async (orgId: string, data: Partial<import('./api.types').OrganizationUpdate>) => {
+        const response = await api.put<OrganizationResponse>(`/organizations/${orgId}`, data)
+        return response.data
+    },
+
     deleteOrganization: async (orgId: string) => {
         const response = await api.delete(`/organizations/${orgId}`)
         return response.data
@@ -214,6 +224,11 @@ export const adminService = {
         end_before?: string
     }) => {
         const response = await api.get<EventDetails[]>('/events', { params })
+        return response.data
+    },
+
+    updateEvent: async (eventId: string, data: any) => {
+        const response = await api.put<import('./api.types').EventDetails>(`/events/${eventId}`, data)
         return response.data
     },
 
@@ -350,8 +365,49 @@ export const adminService = {
         return response.data.total_count
     },
 
+    updateReview: async (reviewId: string, data: Partial<import('./api.types').ReviewCreate>) => {
+        const response = await api.put<import('./api.types').ReviewResponse>(`/reviews/${reviewId}`, data)
+        return response.data
+    },
+
     deleteReview: async (reviewId: string, reason?: string) => {
         const response = await api.delete<import('./api.types').ReviewResponse>(`/reviews/${reviewId}`, { data: { reason } })
+        return response.data
+    },
+
+    updateUserAvatar: async (userId: string, file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.put(`/admin/users/${userId}/avatar`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+    },
+
+    updateUserCover: async (userId: string, file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.put(`/admin/users/${userId}/cover`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+    },
+
+    updateOrganizationLogo: async (orgId: string, file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.put(`/admin/organizations/${orgId}/logo`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+    },
+
+    updateOrganizationCover: async (orgId: string, file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.put(`/admin/organizations/${orgId}/cover`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
         return response.data
     },
 

@@ -249,10 +249,6 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                             <h4 className="font-semibold text-gray-900 mb-1">Visibility</h4>
                                                             <p className="text-gray-600 capitalize">{event.visibility}</p>
                                                         </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Full ID</h4>
-                                                            <p className="font-mono text-xs text-gray-500">{event.id}</p>
-                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>

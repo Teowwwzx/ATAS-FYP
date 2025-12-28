@@ -33,7 +33,7 @@ const menuItems = [
 
 export function AdminSidebar() {
     const pathname = usePathname()
-    const router = useRouter()
+    // const router = useRouter() // Not used directly, using Link and window.location
     const [user, setUser] = useState<UserMeResponse | null>(null)
 
     useEffect(() => {
@@ -45,45 +45,62 @@ export function AdminSidebar() {
     const userRoles = user.roles || []
 
     return (
-        <div className="w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col">
-            <div className="p-6 border-b border-gray-100">
-                <h1 className="text-xl font-bold text-gray-900">ATAS Admin</h1>
-                <div className="mt-2 text-xs font-medium text-gray-500 px-2 py-1 bg-gray-100 rounded-full inline-block">
-                    {userRoles.includes('admin') ? 'Administrator' :
-                        userRoles.includes('customer_support') ? 'Support Agent' :
-                            userRoles.includes('content_moderator') ? 'Moderator' : 'Staff'}
+        <div className="w-72 bg-white border-r border-gray-100 min-h-screen flex flex-col sticky top-0 h-screen font-sans">
+            <div className="p-8 pb-6">
+                <div className="flex items-center gap-3 px-2">
+                    <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-sm">
+                        <span className="font-black text-xl text-zinc-900">A</span>
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none">ATAS</h1>
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin Panel</span>
+                    </div>
                 </div>
             </div>
 
-            <nav className="flex-1 p-4 space-y-1">
+            <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+                <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Menu</div>
                 {menuItems.filter(item => item.roles.some(r => userRoles.includes(r))).map((item) => {
                     const isActive = pathname === item.href
                     return (
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
-                                ? 'bg-gray-900 text-white'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            className={`group flex items-center px-4 py-3.5 text-sm font-medium rounded-2xl transition-all duration-200 ${isActive
+                                ? 'bg-zinc-900 text-white shadow-md shadow-zinc-900/10'
+                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                                 }`}
                         >
-                            <item.icon className={`w-5 h-5 mr-3 ${isActive ? 'text-gray-400' : 'text-gray-400'}`} />
+                            <item.icon className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}`} />
                             {item.name}
                         </Link>
                     )
                 })}
             </nav>
 
-            <div className="p-4 border-t border-gray-100">
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-3 px-4 py-3 mb-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                        {user.email.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{user.full_name || 'Admin User'}</p>
+                        <p className="text-xs text-gray-500 truncate capitalize">
+                            {userRoles.includes('admin') ? 'Administrator' :
+                                userRoles.includes('customer_support') ? 'Support Agent' :
+                                    userRoles.includes('content_moderator') ? 'Moderator' : 'Staff'}
+                        </p>
+                    </div>
+                </div>
 
                 <button
                     onClick={async () => {
                         localStorage.removeItem('atas_token')
                         window.location.href = '/admin/login'
                     }}
-                    className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 hover:text-red-900 mt-2"
+                    className="w-full flex items-center justify-center px-4 py-3 text-sm font-bold text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors"
                 >
-                    <ExitIcon className="w-5 h-5 mr-3 text-red-400" />
+                    <ExitIcon className="w-4 h-4 mr-2" />
                     Logout
                 </button>
             </div>

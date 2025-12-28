@@ -43,7 +43,7 @@ import {
 
 // 1. Create an Axios instance
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.2:8000') + '/api/v1',
+  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -704,8 +704,19 @@ api.interceptors.response.use(
       try {
         localStorage.removeItem('atas_token')
       } catch { }
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login'
+
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname
+        // Don't redirect if already on login pages
+        if (path !== '/login' && path !== '/admin/login') {
+          // If on admin routes, redirect to admin login
+          if (path.startsWith('/admin')) {
+            window.location.href = '/admin/login'
+          } else {
+            // Otherwise redirect to main login
+            window.location.href = '/login'
+          }
+        }
       }
     }
     return Promise.reject(error)

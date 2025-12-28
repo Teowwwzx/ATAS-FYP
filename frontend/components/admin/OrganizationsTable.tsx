@@ -16,17 +16,23 @@ import * as Dialog from '@radix-ui/react-dialog'
 import Image from 'next/image'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
+// ... imports
+import { EditOrganizationModal } from './modals/EditOrganizationModal'
+import { Pencil1Icon } from '@radix-ui/react-icons'
+
 interface OrganizationsTableProps {
     organizations: OrganizationResponse[]
     onDelete: (orgId: string) => void
     onApprove: (orgId: string) => void
     onReject: (orgId: string) => void
+    onUpdate: () => void
 }
 
-export function OrganizationsTable({ organizations, onDelete, onApprove, onReject }: OrganizationsTableProps) {
+export function OrganizationsTable({ organizations, onDelete, onApprove, onReject, onUpdate }: OrganizationsTableProps) {
     const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
     const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
+    const [editingOrg, setEditingOrg] = useState<OrganizationResponse | null>(null)
 
     const toggleExpand = (orgId: string) => {
         setExpandedOrgId(expandedOrgId === orgId ? null : orgId)
@@ -97,6 +103,14 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{org.status}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => setEditingOrg(org)}
+                                                className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Edit Organization"
+                                            >
+                                                <Pencil1Icon className="w-5 h-5" />
+                                            </button>
+
                                             {org.status === 'pending' && (
                                                 <>
                                                     <button
@@ -127,7 +141,7 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
                                 </tr>
                                 {expandedOrgId === org.id && (
                                     <tr className="bg-gray-50">
-                                        <td colSpan={5} className="px-6 py-4">
+                                        <td colSpan={6} className="px-6 py-4">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                                                 <div>
                                                     <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
@@ -174,14 +188,6 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
                                                         </h4>
                                                         <p className="text-gray-600">{org.location || 'Not provided'}</p>
                                                     </div>
-                                                    <div>
-                                                        <h4 className="font-semibold text-gray-900 mb-1">Organization ID</h4>
-                                                        <p className="font-mono text-xs text-gray-500">{org.id}</p>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-semibold text-gray-900 mb-1">Owner ID</h4>
-                                                        <p className="font-mono text-xs text-gray-500">{org.owner_id}</p>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -192,6 +198,15 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
                     </tbody>
                 </table>
             </div>
+
+            {editingOrg && (
+                <EditOrganizationModal
+                    isOpen={!!editingOrg}
+                    onClose={() => setEditingOrg(null)}
+                    organization={editingOrg}
+                    onSuccess={onUpdate}
+                />
+            )}
 
             <Dialog.Root open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
                 <Dialog.Portal>

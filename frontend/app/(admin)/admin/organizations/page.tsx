@@ -115,6 +115,7 @@ export default function OrganizationsPage() {
                     onDelete={handleDelete}
                     onApprove={handleApprove}
                     onReject={handleReject}
+                    onUpdate={() => mutate()}
                 />
                 <Pagination
                     currentPage={page}
