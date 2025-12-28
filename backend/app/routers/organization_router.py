@@ -33,7 +33,10 @@ def get_all_organizations(
         query = query.filter(Organization.visibility == OrganizationVisibility.public)
         if not _is_testing():
             query = query.filter(Organization.status == OrganizationStatus.approved)
-    else:
+    
+    # Filter out soft-deleted
+    query = query.filter(Organization.deleted_at.is_(None))
+    if not include_all_visibility:
         if not current_user or not _is_admin(db, current_user):
             raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -63,6 +66,9 @@ def count_organizations(
         query = query.filter(Organization.visibility == OrganizationVisibility.public)
         if not _is_testing():
             query = query.filter(Organization.status == OrganizationStatus.approved)
+    
+    # Filter out soft-deleted
+    query = query.filter(Organization.deleted_at.is_(None))
     if q:
         query = query.filter(Organization.name.ilike(f"%{q}%"))
     if type:
@@ -76,7 +82,7 @@ def get_organization(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional)
 ):
-    org = db.query(Organization).filter(Organization.id == org_id).first()
+    org = db.query(Organization).filter(Organization.id == org_id, Organization.deleted_at.is_(None)).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     # Hide non-approved orgs from public unless owner or admin (skip in testing)
@@ -109,7 +115,7 @@ def create_organization(
     org = Organization(
         **body.dict(),
         owner_id=current_user.id,
-        status=OrganizationStatus.approved if _is_testing() else OrganizationStatus.pending
+        status=OrganizationStatus.approved # Auto-approve for MVP
     )
     db.add(org)
     db.commit()
@@ -343,7 +349,9 @@ def delete_organization(
     if org.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this organization")
         
-    db.delete(org)
+    # Soft delete
+    org.deleted_at = func.now()
+    db.add(org)
     db.commit()
     log_admin_action(db, current_user.id, "organization.delete", "organization", org.id)
     return

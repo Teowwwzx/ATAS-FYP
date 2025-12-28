@@ -14,7 +14,7 @@ class Review(Base):
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=True)
     org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    reviewee_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reviewee_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     rating = Column(Integer, nullable=False)
     comment = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
