@@ -54,8 +54,14 @@ export function StreamChatWindow({
 
                 console.log('[StreamChatWindow] Initializing channel:', channelId);
 
+                // Get members from conversation participants
+                const members = conversation.participants.map(p => p.user_id);
+
                 // Get or create channel
-                const ch = client.channel('messaging', channelId);
+                // We MUST specify members for private messaging channels
+                const ch = client.channel('messaging', channelId, {
+                    members: members,
+                });
 
                 await ch.watch();
                 setChannel(ch);

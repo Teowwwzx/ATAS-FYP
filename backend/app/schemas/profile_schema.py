@@ -85,7 +85,11 @@ class ProfileResponse(ProfileBase):
     intents: Optional[List[str]] = None
     today_status: Optional[str] = None
     email: Optional[str] = None # Added for UI display
+    roles: List[str] = [] # Added for frontend permission checks
     distance: Optional[float] = None # Debugging field for semantic search
+    
+    followers_count: int = 0
+    following_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

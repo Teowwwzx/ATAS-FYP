@@ -37,6 +37,8 @@ import {
   EventFormat,
   EventRegistrationType,
   EventRegistrationStatus,
+  FollowDetails,
+  FollowerSummary,
 } from './api.types'
 
 // 1. Create an Axios instance
@@ -840,31 +842,24 @@ export const deleteMyJobExperience = async (id: string) => {
 }
 
 // --- Follows ---
-export interface FollowerSummary {
-  id: string
-  full_name?: string
-  avatar_url?: string
-}
 
 export const getMyFollows = async () => {
-  const response = await api.get<{
-    id: string,
-    follower_id: string,
-    followee_id: string,
-    followee?: FollowerSummary,
-    follower?: FollowerSummary
-  }[]>('/follows/me')
+  const response = await api.get<FollowDetails[]>('/follows/me')
   return response.data
 }
 
 export const getMyFollowers = async () => {
-  const response = await api.get<{
-    id: string,
-    follower_id: string,
-    followee_id: string,
-    follower?: FollowerSummary,
-    followee?: FollowerSummary
-  }[]>('/followers/me')
+  const response = await api.get<FollowDetails[]>('/followers/me')
+  return response.data
+}
+
+export const getUserFollows = async (userId: string) => {
+  const response = await api.get<FollowDetails[]>(`/users/${userId}/follows`)
+  return response.data
+}
+
+export const getUserFollowers = async (userId: string) => {
+  const response = await api.get<FollowDetails[]>(`/users/${userId}/followers`)
   return response.data
 }
 

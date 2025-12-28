@@ -10,6 +10,8 @@ from app.models.skill_model import Skill
 from app.models.user_model import User
 from app.models.email_template_model import EmailTemplate
 from app.models.communication_log_model import CommunicationLog
+from app.models.chat_model import Conversation, Message, ConversationParticipant
+from app.models.ai_model import EventEmbedding, ExpertEmbedding
 
 __all__ = [
     "AuditLog",
@@ -24,4 +26,9 @@ __all__ = [
     "User",
     "EmailTemplate",
     "CommunicationLog",
+    "Conversation",
+    "Message",
+    "ConversationParticipant",
+    "EventEmbedding",
+    "ExpertEmbedding",
 ]

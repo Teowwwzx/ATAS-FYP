@@ -89,6 +89,11 @@ class Event(Base):
     remark = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # New fields for Phase 1 Fintech
+    price = Column(Float, nullable=True, default=0.0)  # e.g. 15.00
+    currency = Column(String, nullable=True, default="MYR") # e.g. MYR
+
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 class EventCategory(Base):

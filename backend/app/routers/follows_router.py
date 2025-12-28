@@ -27,6 +27,18 @@ def get_my_followers(db: Session = Depends(get_db), current_user: User = Depends
     items = db.query(Follow).filter(Follow.followee_id == current_user.id).all()
     return items
 
+@router.get("/users/{user_id}/follows", response_model=List[FollowDetails])
+def get_user_follows(user_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Who this user is following"""
+    items = db.query(Follow).filter(Follow.follower_id == user_id).all()
+    return items
+
+@router.get("/users/{user_id}/followers", response_model=List[FollowDetails])
+def get_user_followers(user_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Who follows this user"""
+    items = db.query(Follow).filter(Follow.followee_id == user_id).all()
+    return items
+
 @router.post("/follows", response_model=FollowDetails)
 def follow_user(body: FollowCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if body.followee_id == current_user.id:

@@ -89,7 +89,7 @@ export function BookExpertModal({ isOpen, onClose, expertId, expertName }: BookE
             <div className="fixed inset-0 flex items-center justify-center p-4">
                 <Dialog.Panel className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                     <Dialog.Title className="text-lg font-bold text-zinc-900 mb-4">
-                        Book {expertName}
+                        Invite {expertName}
                     </Dialog.Title>
 
                     <div className="space-y-4">

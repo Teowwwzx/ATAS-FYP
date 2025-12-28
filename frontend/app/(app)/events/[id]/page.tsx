@@ -273,6 +273,8 @@ export default function EventDetailsPage() {
     const isOrganizer = user?.id === event.organizer_id
     const isRegistrationOpen = event.registration_status === 'opened'
     const isAttendanceOpen = currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING
+    const currentParticipants = event.participant_count ?? stats?.total_participants ?? 0
+    const isFull = event.max_participant ? currentParticipants >= event.max_participant : false
 
     const eventStart = new Date(event.start_datetime)
     const eventEnd = new Date(event.end_datetime)
@@ -308,7 +310,6 @@ export default function EventDetailsPage() {
                                     </div>
                                 )}
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                    <span className="bg-black/50 text-white px-3 py-1 rounded-full text-xs backdrop-blur-md">View Fullscreen</span>
                                 </div>
                             </div>
 
@@ -484,7 +485,7 @@ export default function EventDetailsPage() {
                                 <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-full blur-3xl -mr-16 -mt-16 opacity-70 pointer-events-none"></div>
 
                                 <div className="relative z-10">
-                                    {event.registration_type === 'paid' && (
+                                    {event.registration_type === 'paid' && !isParticipant && (
                                         <div className="mb-6">
                                             <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Ticket Price</p>
                                             <div className="flex items-baseline gap-1">
@@ -541,6 +542,10 @@ export default function EventDetailsPage() {
                                                         {registering ? 'Processing...' : 'Cancel Registration'}
                                                     </button>
                                                 </>
+                                            ) : isFull ? (
+                                                <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-2xl font-bold text-center text-lg cursor-not-allowed border border-zinc-200">
+                                                    Event Full
+                                                </div>
                                             ) : (
                                                 <button
                                                     onClick={handleJoin}
@@ -633,9 +638,9 @@ export default function EventDetailsPage() {
                                 <div className="flex justify-between items-end mb-4">
                                     <h3 className="text-xs font-bold text-violet-400 uppercase tracking-widest">Share this event</h3>
                                     {(event.participant_count !== undefined || stats) && (
-                                        <div className="text-right">
-                                            <p className="text-2xl font-black text-violet-900 leading-none">{event.participant_count ?? stats?.total_participants ?? 0}</p>
-                                            <p className="text-[10px] font-bold text-violet-500 uppercase">
+                                        <div className="text-right flex flex-col items-end justify-center">
+                                            <p className="text-xl font-black text-violet-900 leading-none mb-0.5">{event.participant_count ?? stats?.total_participants ?? 0}</p>
+                                            <p className="text-xs font-bold text-violet-500 uppercase">
                                                 {event.max_participant ? `/ ${event.max_participant} Joined` : 'Joined'}
                                             </p>
                                         </div>
