@@ -26,6 +26,59 @@ router = APIRouter()
 def read_admin_root():
     return {"message": "Welcome to the ATAS Admin API!"}
 
+from app.models.organization_model import Organization, OrganizationVisibility, OrganizationType, OrganizationStatus
+from app.schemas.organization_schema import OrganizationResponse
+from fastapi import Query
+
+@router.get("/organizations", response_model=List[OrganizationResponse])
+def admin_list_organizations(
+    q: str | None = Query(None),
+    type: OrganizationType | None = Query(None),
+    status: OrganizationStatus | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    query = db.query(Organization)
+    # Admin sees all visibilities by default
+    
+    # Filter out soft-deleted
+    query = query.filter(Organization.deleted_at.is_(None))
+    
+    if q:
+        query = query.filter(Organization.name.ilike(f"%{q}%"))
+    if type:
+        query = query.filter(Organization.type == type)
+    if status:
+        query = query.filter(Organization.status == status)
+
+    return (
+        query.order_by(Organization.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+@router.get("/organizations/count")
+def admin_count_organizations(
+    q: str | None = Query(None),
+    type: OrganizationType | None = Query(None),
+    status: OrganizationStatus | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    query = db.query(Organization)
+    query = query.filter(Organization.deleted_at.is_(None))
+    if q:
+        query = query.filter(Organization.name.ilike(f"%{q}%"))
+    if type:
+        query = query.filter(Organization.type == type)
+    if status:
+        query = query.filter(Organization.status == status)
+    total = query.with_entities(Organization.id).distinct().count()
+    return {"total_count": total}
+
 @router.get("/audit-logs", response_model=List[dict])
 def list_audit_logs(
     action: str | None = None,

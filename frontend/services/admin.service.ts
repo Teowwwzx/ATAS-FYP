@@ -155,9 +155,14 @@ export const adminService = {
         name?: string
         visibility?: OrganizationVisibility
         type?: OrganizationType
-        include_all_visibility?: boolean
+        status?: string
     }) => {
-        const response = await api.get<OrganizationResponse[]>('/organizations', { params })
+        const queryParams = {
+            ...params,
+            q: params?.name,
+            name: undefined
+        }
+        const response = await api.get<OrganizationResponse[]>('/admin/organizations', { params: queryParams })
         return response.data
     },
 
@@ -254,9 +259,14 @@ export const adminService = {
         name?: string
         visibility?: OrganizationVisibility
         type?: OrganizationType
-        include_all_visibility?: boolean
+        status?: string
     }) => {
-        const response = await api.get<{ total_count: number }>('/organizations/count', { params })
+        const queryParams = {
+            ...params,
+            q: params?.name,
+            name: undefined
+        }
+        const response = await api.get<{ total_count: number }>('/admin/organizations/count', { params: queryParams })
         return response.data.total_count
     },
 

@@ -28,16 +28,15 @@ export default function OrganizationsPage() {
         page_size: PAGE_SIZE,
         name: debouncedSearch || undefined,
         type: (typeFilter as OrganizationType) || undefined,
-        include_all_visibility: true
     }
 
     const { data: organizations, mutate } = useSWR(
-        ['/organizations', queryParams],
+        ['/admin/organizations', queryParams],
         () => adminService.getOrganizations(queryParams)
     )
 
     const { data: totalCount } = useSWR(
-        ['/organizations/count', { ...queryParams, page: undefined, page_size: undefined }],
+        ['/admin/organizations/count', { ...queryParams, page: undefined, page_size: undefined }],
         () => adminService.getOrganizationsCount({
             name: queryParams.name,
             type: queryParams.type

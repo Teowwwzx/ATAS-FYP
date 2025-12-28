@@ -243,7 +243,7 @@ export function ProfileView({
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="text-sm text-zinc-700">{r.comment || 'No comment provided.'}</p>
-                                                    <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id.slice(0, 8)}… • By: {r.reviewer_id.slice(0, 8)}… • {new Date(r.created_at).toLocaleString()}</p>
+                                                    <p className="mt-1 text-xs text-zinc-400 font-mono">Event: {r.event_id ? r.event_id.slice(0, 8) : 'Unknown'}… • By: {r.reviewer_id ? r.reviewer_id.slice(0, 8) : 'Anonymous'}… • {new Date(r.created_at).toLocaleString()}</p>
                                                 </div>
                                             </div>
                                         </li>

@@ -25,21 +25,17 @@ def get_all_organizations(
     type: OrganizationType | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1),
-    include_all_visibility: bool = Query(False),
-    current_user: User | None = Depends(get_current_user_optional),
 ):
     query = db.query(Organization)
-    if not include_all_visibility:
-        query = query.filter(Organization.visibility == OrganizationVisibility.public)
-        if not _is_testing():
-            query = query.filter(Organization.status == OrganizationStatus.approved)
+    
+    # Strictly public and approved only
+    query = query.filter(Organization.visibility == OrganizationVisibility.public)
+    if not _is_testing():
+        query = query.filter(Organization.status == OrganizationStatus.approved)
     
     # Filter out soft-deleted
     query = query.filter(Organization.deleted_at.is_(None))
-    if not include_all_visibility:
-        if not current_user or not _is_admin(db, current_user):
-            raise HTTPException(status_code=403, detail="Not allowed")
-
+    
     if q:
         query = query.filter(Organization.name.ilike(f"%{q}%"))
 
@@ -59,13 +55,13 @@ def count_organizations(
     db: Session = Depends(get_db),
     q: str | None = Query(None),
     type: OrganizationType | None = Query(None),
-    include_all_visibility: bool = Query(False),
 ):
     query = db.query(Organization)
-    if not include_all_visibility:
-        query = query.filter(Organization.visibility == OrganizationVisibility.public)
-        if not _is_testing():
-            query = query.filter(Organization.status == OrganizationStatus.approved)
+    
+    # Public and approved only
+    query = query.filter(Organization.visibility == OrganizationVisibility.public)
+    if not _is_testing():
+        query = query.filter(Organization.status == OrganizationStatus.approved)
     
     # Filter out soft-deleted
     query = query.filter(Organization.deleted_at.is_(None))
