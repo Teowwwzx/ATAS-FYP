@@ -29,6 +29,7 @@ from app.models.notification_model import Notification, NotificationType
 from app.models.user_model import Role, user_roles
 from app.models.onboarding_model import UserOnboarding, OnboardingStatus
 from app.models.review_model import Review
+from app.models.follows_model import Follow
 
 # Simple in-memory rate limiter
 # Map: IP -> List[timestamp]
@@ -62,23 +63,28 @@ def discover_profiles(
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional)
 ):
     q = db.query(Profile)
     if name:
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
     
     q = q.join(User, User.id == Profile.user_id)
-    # q = q.join(user_roles, user_roles.c.user_id == User.id)
-    # q = q.join(Role, Role.id == user_roles.c.role_id)
     
+    # Exclude current user if logged in
+    if current_user:
+        q = q.filter(Profile.user_id != current_user.id)
+
     if role:
         q = q.join(user_roles, user_roles.c.user_id == User.id)\
              .join(Role, Role.id == user_roles.c.role_id)\
              .filter(Role.name.ilike(f"%{role}%"))
     else:
-        # Default to showing all public profiles? Or keep legacy behavior?
-        # User requested "All Members" option, so we shouldn't filter by role if not specified.
-        # But we must ensure specific roles are joined if we filter.
+        # Default behavior: If no role is specified, prioritize verified experts?
+        # For now, let's keep it broad, but we can default to 'expert' if desired by frontend.
+        # User requested: "I think default is showing expert role unless user want to search classmate"
+        # However, it's safer to control this default on the Frontend to avoid confusing API behavior.
+        # But, we MUST ensure we show verified users if looking for experts.
         pass
 
     q = q.filter(Profile.visibility == ProfileVisibility.public)
@@ -696,6 +702,14 @@ def read_my_profile(db: Session = Depends(get_db), current_user: User = Depends(
         raise HTTPException(status_code=404, detail="Profile not found")
     # Manually attach email since not in Profile model
     setattr(db_profile, "email", current_user.email)
+    
+    # Calculate counts
+    followers = db.query(func.count(Follow.id)).filter(Follow.followee_id == current_user.id).scalar()
+    following = db.query(func.count(Follow.id)).filter(Follow.follower_id == current_user.id).scalar()
+    
+    setattr(db_profile, "followers_count", followers)
+    setattr(db_profile, "following_count", following)
+    
     return db_profile
 
 @router.get("/{user_id}", response_model=ProfileResponse)
@@ -714,6 +728,13 @@ def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db), current_user
     # Manually attach email if user is loaded
     if db_profile.user:
         setattr(db_profile, "email", db_profile.user.email)
+        
+    # Calculate counts
+    followers = db.query(func.count(Follow.id)).filter(Follow.followee_id == user_id).scalar()
+    following = db.query(func.count(Follow.id)).filter(Follow.follower_id == user_id).scalar()
+    
+    setattr(db_profile, "followers_count", followers)
+    setattr(db_profile, "following_count", following)
         
     return db_profile
 

@@ -3,8 +3,8 @@
 import React, { useState, useEffect, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getProfileByUserId, getReviewsByUser, getPublicEvents, getMyEvents, inviteEventParticipant, getOrganizationById, getMyFollows, followUser, unfollowUser } from '@/services/api'
-import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem, OrganizationResponse } from '@/services/api.types'
+import { getProfileByUserId, getReviewsByUser, getPublicEvents, getMyEvents, inviteEventParticipant, getOrganizationById, getMyFollows, getUserFollows, getUserFollowers, followUser, unfollowUser } from '@/services/api'
+import { ProfileResponse, ReviewResponse, EventDetails, MyEventItem, OrganizationResponse, FollowerSummary, FollowDetails } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { Button } from '@/components/ui/Button'
@@ -37,6 +37,29 @@ export default function PublicProfilePage() {
     const [inviting, setInviting] = useState(false)
     const [isFollowing, setIsFollowing] = useState(false)
     const [followLoading, setFollowLoading] = useState(false)
+    const [viewFriends, setViewFriends] = useState<'none' | 'followers' | 'following'>('none')
+    const [followersList, setFollowersList] = useState<FollowDetails[]>([])
+    const [followingList, setFollowingList] = useState<FollowDetails[]>([])
+
+    const handleViewFollowers = async () => {
+        try {
+            const data = await getUserFollowers(userId)
+            setFollowersList(data)
+            setViewFriends('followers')
+        } catch (error) {
+            toast.error('Failed to load followers')
+        }
+    }
+
+    const handleViewFollowing = async () => {
+        try {
+            const data = await getUserFollows(userId)
+            setFollowingList(data)
+            setViewFriends('following')
+        } catch (error) {
+            toast.error('Failed to load following')
+        }
+    }
 
     useEffect(() => {
         if (userId) {
@@ -104,14 +127,14 @@ export default function PublicProfilePage() {
             if (isFollowing) {
                 await unfollowUser(userId)
                 setIsFollowing(false)
-                toast.success('Disconnected')
+                toast.success('Unfollowed')
             } else {
                 await followUser(userId)
                 setIsFollowing(true)
-                toast.success('Connected!')
+                toast.success('Followed!')
             }
         } catch (error) {
-            toast.error('Failed to update connection')
+            toast.error('Failed to update status')
         } finally {
             setFollowLoading(false)
         }
@@ -220,6 +243,14 @@ export default function PublicProfilePage() {
                                         </div>
                                     )}
                                 </div>
+                                <div className="mt-2 flex items-center gap-4 text-sm font-bold text-zinc-500 justify-center sm:justify-start">
+                                    <button onClick={handleViewFollowers} className="hover:text-zinc-900 transition-colors">
+                                        <span className="text-zinc-900">{profile.followers_count || 0}</span> Followers
+                                    </button>
+                                    <button onClick={handleViewFollowing} className="hover:text-zinc-900 transition-colors">
+                                        <span className="text-zinc-900">{profile.following_count || 0}</span> Following
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
@@ -238,6 +269,7 @@ export default function PublicProfilePage() {
                                         <button
                                             onClick={handleConnect}
                                             disabled={followLoading}
+                                            title="Follow this user to get updates on their activities"
                                             className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 ${isFollowing
                                                 ? 'bg-white text-zinc-900 border-2 border-zinc-200 hover:bg-zinc-50'
                                                 : 'bg-zinc-900 text-yellow-400 hover:bg-zinc-800'
@@ -246,30 +278,32 @@ export default function PublicProfilePage() {
                                             {isFollowing ? (
                                                 <>
                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                                                    Connected
+                                                    Following
                                                 </>
                                             ) : (
                                                 <>
                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                                    Connect
+                                                    Follow
                                                 </>
                                             )}
                                         </button>
                                         <Link
                                             href={`/book/${userId}`}
+                                            title="Submit a formal proposal or booking request for a new engagement"
                                             className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
                                         >
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            Book Expert
+                                            Request Booking
                                         </Link>
                                         <button
                                             onClick={() => setShowInviteModal(true)}
+                                            title="Invite this expert to speak at one of your existing events"
                                             className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
                                         >
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                             </svg>
-                                            Invite to Speak
+                                            Invite to Event
                                         </button>
                                     </>
                                 )}
@@ -471,6 +505,62 @@ export default function PublicProfilePage() {
                     <div className="text-zinc-500 italic">No public events organized yet.</div>
                 )}
             </div>
+
+
+
+            {/* Followers/Following Modal */}
+            {viewFriends !== 'none' && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/50 ml-0 flex items-center justify-center p-4 animate-fadeIn backdrop-blur-sm"
+                    onClick={() => setViewFriends('none')}
+                >
+                    <div
+                        className="bg-white rounded-[2rem] w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                            <h3 className="font-black text-xl text-zinc-900 capitalize">{viewFriends}</h3>
+                            <button
+                                onClick={() => setViewFriends('none')}
+                                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-zinc-500 hover:bg-gray-200 hover:text-zinc-900 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-2 scrollbar-hide">
+                            {(viewFriends === 'followers' ? followersList : followingList).length === 0 ? (
+                                <div className="p-8 text-center text-zinc-400 italic">
+                                    No {viewFriends} yet.
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {(viewFriends === 'followers' ? followersList : followingList).map((item: FollowDetails) => {
+                                        const person = viewFriends === 'followers' ? item.follower : item.followee
+                                        if (!person) return null
+                                        return (
+                                            <Link href={`/profile/${person.id}`} key={item.id} className="flex items-center gap-4 p-3 hover:bg-zinc-50 rounded-2xl transition-colors group">
+                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
+                                                    {person.avatar_url ? (
+                                                        <img src={person.avatar_url} className="w-full h-full object-cover" alt={person.full_name || 'User'} />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-yellow-100 text-yellow-600 font-bold text-lg">
+                                                            {person.full_name?.[0]?.toUpperCase() || '?'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-bold text-zinc-900 truncate">{person.full_name}</div>
+                                                    <div className="text-xs text-zinc-400 font-medium truncate">User</div>
+                                                </div>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Book Expert Modal */}
             <BookExpertModal

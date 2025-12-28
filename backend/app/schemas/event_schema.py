@@ -30,6 +30,8 @@ class EventCreate(BaseModel):
     venue_place_id: str | None = None
     venue_remark: str | None = None
     remark: str | None = None
+    price: float | None = 0.0
+    currency: str | None = "MYR"
 
 
 class EventUpdate(BaseModel):
@@ -50,6 +52,8 @@ class EventUpdate(BaseModel):
     venue_place_id: str | None = None
     venue_remark: str | None = None
     remark: str | None = None
+    price: float | None = None
+    currency: str | None = None
 
 class EventDetails(BaseModel):
     id: uuid.UUID
@@ -72,6 +76,8 @@ class EventDetails(BaseModel):
     venue_place_id: str | None = None
     venue_remark: str | None = None
     remark: str | None = None
+    price: float | None = 0.0
+    currency: str | None = "MYR"
     created_at: datetime
     updated_at: datetime | None = None
     organizer_name: str | None = None
@@ -311,6 +317,12 @@ class EventInvitationResponse(BaseModel):
     description: str | None = None
     proposal_id: uuid.UUID | None = None
     proposal: EventProposalResponse | None = None
+    
+    # For outgoing requests (sent by me)
+    invitee: EventParticipantDetails | None = None # We might want more user info here
+    invitee_name: str | None = None
+    invitee_email: str | None = None
+    invitee_avatar: str | None = None
     
     model_config = {"from_attributes": True}
 

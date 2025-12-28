@@ -160,6 +160,8 @@ export interface ProfileResponse {
     origin_country?: string
     today_status?: string
     skills?: { id: string; name: string }[]
+    followers_count?: number
+    following_count?: number
 }
 
 export interface ProfileUpdate {
@@ -664,9 +666,17 @@ export interface EventInvitationResponse {
     proposal?: EventProposalResponse
 }
 
+export interface FollowerSummary {
+    id: string
+    full_name: string | null
+    avatar_url: string | null
+}
 
-
-
-
-
-
+export interface FollowDetails {
+    id: string
+    follower_id: string
+    followee_id: string
+    created_at?: string
+    follower?: FollowerSummary | null
+    followee?: FollowerSummary | null
+}

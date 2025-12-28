@@ -23,8 +23,9 @@ except Exception as e:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 TestingSessionLocal = Nonetest_engine = None
 if os.environ.get("TESTING") == "1":
+    # Use in-memory SQLite for testing to avoid creating local files
     test_engine = create_engine(
-        "sqlite:///./test.db", connect_args={"check_same_thread": False}
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 

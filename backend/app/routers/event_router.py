@@ -385,6 +385,47 @@ def get_my_requests(
     return participants
 
 
+@router.get("/events/me/requests/sent", response_model=List[EventInvitationResponse])
+def get_sent_requests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List pending invitations (bookings) sent BY the current user (organizer) to others.
+    """
+    # Join EventParticipant -> Event -> User (invitee) -> Profile (optional)
+    results = (
+        db.query(EventParticipant, Event, User, Profile)
+        .join(Event, EventParticipant.event_id == Event.id)
+        .join(User, EventParticipant.user_id == User.id)
+        .outerjoin(Profile, Profile.user_id == User.id)
+        .filter(
+            Event.organizer_id == current_user.id,
+            EventParticipant.status == EventParticipantStatus.pending,
+            # Filter out organizers (the user themselves) just in case
+            EventParticipant.user_id != current_user.id
+        )
+        .order_by(EventParticipant.created_at.desc())
+        .all()
+    )
+
+    items = []
+    for participant, event, user, profile in results:
+        # Manually assign event to participant to ensure Pydantic can validate it
+        participant.event = event
+        
+        item = EventInvitationResponse.model_validate(participant)
+        
+        # Add invitee details
+        item.invitee_name = profile.full_name if (profile and profile.full_name) else user.email
+        item.invitee_email = user.email
+        item.invitee_avatar = profile.avatar_url if profile else None
+        
+        items.append(item)
+
+    return items
+
+
 
 
 
@@ -498,33 +539,36 @@ def get_request_details(
     
     # --- Chat Logic: Ensure Conversation Exists ---
     if not participant.conversation_id:
-        # Check if conversation already exists (double check)
-        # Assuming 1-on-1 between organizer and invited user for this specific event context?
-        # Actually simplest is to just create a new conversation for this specific "Request" context.
-        # This keeps it separate from other chats.
+        # Ensure a single consistent 1:1 conversation for organizer and invitee
         from app.models.chat_model import Conversation, ConversationParticipant as ChatParticipant
-        
-        # Determine organizer ID
         event = db.query(Event).filter(Event.id == participant.event_id).first()
         organizer_id = event.organizer_id
-        
-        # Create Conversation
-        new_conv = Conversation()
-        db.add(new_conv)
-        db.commit()
-        db.refresh(new_conv)
-        
-        # Add Participants: Organizer & Expert
-        p1 = ChatParticipant(conversation_id=new_conv.id, user_id=organizer_id)
-        p2 = ChatParticipant(conversation_id=new_conv.id, user_id=participant.user_id)
-        db.add(p1)
-        db.add(p2)
-        
-        # Link to Invitation
-        participant.conversation_id = new_conv.id
-        db.add(participant)
-        db.commit()
-        db.refresh(participant)
+        # Try to reuse existing conversation between organizer and invitee
+        organizer_convs = db.query(ChatParticipant.conversation_id)\
+            .filter(ChatParticipant.user_id == organizer_id).subquery()
+        existing_conv = db.query(Conversation)\
+            .join(ChatParticipant, ChatParticipant.conversation_id == Conversation.id)\
+            .filter(
+                ChatParticipant.user_id == participant.user_id,
+                Conversation.id.in_(organizer_convs)
+            ).first()
+        if existing_conv:
+            participant.conversation_id = existing_conv.id
+            db.add(participant)
+            db.commit()
+            db.refresh(participant)
+        else:
+            # Create new conversation if none exists
+            new_conv = Conversation()
+            db.add(new_conv)
+            db.commit()
+            db.refresh(new_conv)
+            db.add(ChatParticipant(conversation_id=new_conv.id, user_id=organizer_id))
+            db.add(ChatParticipant(conversation_id=new_conv.id, user_id=participant.user_id))
+            participant.conversation_id = new_conv.id
+            db.add(participant)
+            db.commit()
+            db.refresh(participant)
 
     return participant
 
@@ -2973,6 +3017,10 @@ def update_event(
         event.venue_remark = body.venue_remark
     if body.remark is not None:
         event.remark = body.remark
+    if body.price is not None:
+        event.price = body.price
+    if body.currency is not None:
+        event.currency = body.currency
 
     db.add(event)
     db.commit()

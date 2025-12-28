@@ -48,9 +48,10 @@ export function StreamCommunicationLog({
                     : `legacy_${conversationId}`;
 
                 // Get or create channel
-                // Don't specify members upfront to avoid "user does not exist" error
-                // GetStream will add members automatically when they interact with the channel
-                const ch = client.channel('messaging', channelId);
+                // We MUST specify members for private messaging channels
+                const ch = client.channel('messaging', channelId, {
+                    members: [currentUserId, organizerId]
+                });
 
                 await ch.watch();
                 setChannel(ch);

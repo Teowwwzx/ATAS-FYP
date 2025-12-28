@@ -1,7 +1,7 @@
 # model/organization.py
 
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Enum, Table
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Enum, Table, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -54,6 +54,10 @@ class Organization(Base):
     location = Column(String, nullable=True)
     visibility = Column(Enum(OrganizationVisibility), default=OrganizationVisibility.public, nullable=False)
     status = Column(Enum(OrganizationStatus), default=OrganizationStatus.approved, nullable=False)
+    
+    # New fields for Phase 1 Fintech
+    bank_details = Column(JSON, nullable=True) # e.g. {"bank_name": "Maybank", "account_number": "123456", "holder_name": "ABC Club"}
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)

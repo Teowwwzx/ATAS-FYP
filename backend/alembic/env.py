@@ -27,6 +27,11 @@ from app.models.profile_model import Profile, Tag, Education, JobExperience
 from app.models.review_model import Review
 from app.models.skill_model import Skill
 from app.models.user_model import User, Role, AuthMailTemplate
+from app.models.onboarding_model import UserOnboarding
+from app.models.email_template_model import EmailTemplate
+from app.models.communication_log_model import CommunicationLog
+from app.models.chat_model import Conversation, Message, ConversationParticipant
+from app.models.ai_model import EventEmbedding, ExpertEmbedding
 
 
 # add your model's MetaData object here
