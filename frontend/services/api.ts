@@ -43,7 +43,7 @@ import {
 
 // 1. Create an Axios instance
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') + '/api/v1',
+  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.2:8000') + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },

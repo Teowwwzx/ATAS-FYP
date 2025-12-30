@@ -108,7 +108,7 @@ export default function AdminNotificationsPage() {
                                     type="text"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
+                                    className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
                                     placeholder="e.g., System Maintenance"
                                     required
                                 />
@@ -121,7 +121,7 @@ export default function AdminNotificationsPage() {
                                 <textarea
                                     value={formData.content}
                                     onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors h-32 resize-none"
+                                    className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors h-32 resize-none"
                                     placeholder="Type your message here..."
                                     required
                                 />
@@ -134,7 +134,7 @@ export default function AdminNotificationsPage() {
                                 <select
                                     value={selectedTemplateId}
                                     onChange={(e) => setSelectedTemplateId(e.target.value)}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
+                                    className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
                                 >
                                     <option value="">None</option>
                                     {(templates || []).map(t => (
@@ -162,7 +162,7 @@ export default function AdminNotificationsPage() {
                                     <select
                                         value={formData.target_role}
                                         onChange={(e) => setFormData({ ...formData, target_role: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
+                                        className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
                                     >
                                         <option value="">All Users</option>
                                         <option value="student">Students</option>
@@ -180,7 +180,7 @@ export default function AdminNotificationsPage() {
                                         type="text"
                                         value={formData.link_url}
                                         onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
+                                        className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
                                         placeholder="/dashboard"
                                     />
                                     <div className="mt-3 flex items-center gap-2">

@@ -7,6 +7,10 @@ import { EventDetails } from '@/services/api.types'
 import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
 import { format } from 'date-fns'
+import PlacesAutocomplete, { geocodeByAddress } from 'react-places-autocomplete'
+import { useLoadScript } from '@react-google-maps/api'
+
+const libraries: ("places")[] = ["places"]
 
 interface EditEventModalProps {
     isOpen: boolean
@@ -16,6 +20,10 @@ interface EditEventModalProps {
 }
 
 export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventModalProps) {
+    const { isLoaded } = useLoadScript({
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        libraries,
+    })
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState({
         title: '',
@@ -23,6 +31,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
         start_datetime: '',
         end_datetime: '',
         venue_remark: '',
+        venue_place_id: '',
         max_participant: 0
     })
 
@@ -34,6 +43,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                 start_datetime: event.start_datetime ? new Date(event.start_datetime).toISOString().slice(0, 16) : '',
                 end_datetime: event.end_datetime ? new Date(event.end_datetime).toISOString().slice(0, 16) : '',
                 venue_remark: event.venue_remark || '',
+                venue_place_id: event.venue_place_id || '',
                 max_participant: event.max_participant || 0
             })
         }
@@ -57,6 +67,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                 start_datetime: new Date(formData.start_datetime).toISOString(),
                 end_datetime: new Date(formData.end_datetime).toISOString(),
                 venue_remark: formData.venue_remark,
+                venue_place_id: formData.venue_place_id,
                 max_participant: formData.max_participant,
             })
 
@@ -141,13 +152,71 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                             </div>
                         </div>
 
-                        <div>
+                        <div className="relative z-20">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
-                            <input
-                                value={formData.venue_remark}
-                                onChange={e => setFormData({ ...formData, venue_remark: e.target.value })}
-                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            />
+                            {isLoaded ? (
+                                <PlacesAutocomplete
+                                    value={formData.venue_remark || ''}
+                                    onChange={(address) => setFormData(prev => ({ ...prev, venue_remark: address }))}
+                                    onSelect={async (address) => {
+                                        // Update address immediately
+                                        setFormData(prev => ({ ...prev, venue_remark: address }))
+                                        try {
+                                            const results = await geocodeByAddress(address)
+                                            if (results && results[0]) {
+                                                const placeId = results[0].place_id
+                                                // We need to update formData with place_id too, but formData structure doesn't include it yet. 
+                                                // I need to update the state and the submit function.
+                                                // Let's assume I'll update the state definition next.
+                                                // But for now, I'll cheat and cast it if needed or rely on 'venue_place_id' being separate.
+                                                // Wait, I should add venue_place_id to formData in next step.
+                                                // For now, let's update it in a way assuming it exists or adding it.
+                                                setFormData(prev => ({ ...prev, venue_remark: address, venue_place_id: placeId }))
+                                            }
+                                        } catch (error) {
+                                            console.error('Error selecting place', error)
+                                        }
+                                    }}
+                                >
+                                    {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
+                                        <div className="relative">
+                                            <input
+                                                {...getInputProps({
+                                                    placeholder: 'Search for a location...',
+                                                    className: "w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                                })}
+                                            />
+                                            {suggestions.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden">
+                                                    {loading && <div className="p-2 text-xs text-gray-500">Loading...</div>}
+                                                    {suggestions.map((suggestion) => {
+                                                        const className = suggestion.active
+                                                            ? 'px-3 py-2 bg-gray-50 cursor-pointer'
+                                                            : 'px-3 py-2 bg-white cursor-pointer hover:bg-gray-50';
+
+                                                        const { key, ...optionProps } = getSuggestionItemProps(suggestion, { className });
+
+                                                        return (
+                                                            <div key={suggestion.placeId} {...optionProps}>
+                                                                <div className="font-medium text-gray-900 text-sm">{suggestion.formattedSuggestion.mainText}</div>
+                                                                <div className="text-xs text-gray-500">{suggestion.formattedSuggestion.secondaryText}</div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </PlacesAutocomplete>
+                            ) : (
+                                <input
+                                    value={formData.venue_remark}
+                                    onChange={e => setFormData({ ...formData, venue_remark: e.target.value })}
+                                    className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    placeholder="Loading Maps..."
+                                    disabled
+                                />
+                            )}
                         </div>
 
                         <div>

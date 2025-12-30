@@ -127,7 +127,7 @@ export function EditUserModal({ isOpen, onClose, user, onSuccess }: EditUserModa
                             <textarea
                                 value={formData.bio}
                                 onChange={e => setFormData({ ...formData, bio: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-24 resize-none"
+                                className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-24 resize-none"
                                 placeholder="Brief user bio..."
                             />
                         </div>
