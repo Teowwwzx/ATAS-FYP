@@ -132,7 +132,7 @@ export default function CreateEventPage() {
         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-sm border border-yellow-100">
             <div className="mb-10 text-center">
                 <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Create New Event</h1>
-                <p className="text-zinc-500 mt-2 font-medium">Fill in the details to host your awesome event.</p>
+                <p className="text-zinc-700 mt-2 font-medium">Fill in the details to host your awesome event.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
@@ -153,7 +153,7 @@ export default function CreateEventPage() {
                             id="description"
                             name="description"
                             rows={4}
-                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                             placeholder="Describe your event..."
                             value={formData.description || ''}
                             onChange={handleChange}
@@ -172,7 +172,7 @@ export default function CreateEventPage() {
                                 name="start_datetime"
                                 id="start_datetime"
                                 required
-                                className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                                className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                                 min={minStart}
                                 value={formData.start_datetime}
                                 onChange={(e) => {
@@ -197,7 +197,7 @@ export default function CreateEventPage() {
                                 name="end_datetime"
                                 id="end_datetime"
                                 required
-                                className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                                className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                                 min={minEnd}
                                 value={formData.end_datetime}
                                 onChange={(e) => {
@@ -217,7 +217,7 @@ export default function CreateEventPage() {
                         <select
                             id="format"
                             name="format"
-                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                             value={formData.format}
                             onChange={handleChange}
                         >
@@ -237,7 +237,7 @@ export default function CreateEventPage() {
                         <select
                             id="type"
                             name="type"
-                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                             value={formData.type}
                             onChange={handleChange}
                         >
@@ -254,7 +254,7 @@ export default function CreateEventPage() {
                         <select
                             id="registration_type"
                             name="registration_type"
-                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                             value={formData.registration_type}
                             onChange={handleChange}
                         >
@@ -270,7 +270,7 @@ export default function CreateEventPage() {
                         <select
                             id="visibility"
                             name="visibility"
-                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                             value={formData.visibility}
                             onChange={handleChange}
                         >
@@ -295,7 +295,7 @@ export default function CreateEventPage() {
                                     <input
                                         {...getInputProps({
                                             placeholder: 'Search for a location...',
-                                            className: "block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200"
+                                            className: "block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
                                         })}
                                     />
                                     {suggestions.length > 0 && (
@@ -344,21 +344,26 @@ export default function CreateEventPage() {
                     </div>
                 )}
 
-                <div className="flex justify-end gap-4 pt-4">
-                    <button
-                        type="button"
-                        onClick={() => router.back()}
-                        className="px-6 py-3 bg-white text-zinc-900 rounded-full font-bold shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-200"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-8 py-3 bg-yellow-400 text-zinc-900 rounded-full shadow-lg font-bold hover:bg-yellow-300 hover:scale-105 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {loading ? 'Creating...' : 'Create Event'}
-                    </button>
+                <div className="flex flex-col items-end gap-2 pt-4">
+                    <div className="flex gap-4">
+                        <button
+                            type="button"
+                            onClick={() => router.back()}
+                            className="px-6 py-3 bg-white text-zinc-900 rounded-full font-bold shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-200"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-8 py-3 bg-yellow-400 text-zinc-900 rounded-full shadow-lg font-bold hover:bg-yellow-300 hover:scale-105 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {loading ? 'Creating...' : 'Create Event'}
+                        </button>
+                    </div>
+                    <p className="text-right text-xs font-medium text-zinc-400 mr-2">
+                        <span className="text-yellow-400">Publish</span> later <br/> to make it visible to public
+                    </p>
                 </div>
             </form>
         </div>

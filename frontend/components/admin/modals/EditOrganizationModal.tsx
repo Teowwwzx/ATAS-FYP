@@ -6,6 +6,10 @@ import { Cross2Icon } from '@radix-ui/react-icons'
 import { OrganizationResponse, OrganizationType, OrganizationVisibility } from '@/services/api.types'
 import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
+import PlacesAutocomplete, { geocodeByAddress } from 'react-places-autocomplete'
+import { useLoadScript } from '@react-google-maps/api'
+
+const libraries: ("places")[] = ["places"]
 
 interface EditOrganizationModalProps {
     isOpen: boolean
@@ -15,6 +19,10 @@ interface EditOrganizationModalProps {
 }
 
 export function EditOrganizationModal({ isOpen, onClose, organization, onSuccess }: EditOrganizationModalProps) {
+    const { isLoaded } = useLoadScript({
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        libraries,
+    })
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState({
         name: '',
@@ -141,13 +149,61 @@ export function EditOrganizationModal({ isOpen, onClose, organization, onSuccess
                             />
                         </div>
 
-                        <div>
+                        <div className="relative z-20">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                            <input
-                                value={formData.location}
-                                onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            />
+                            {isLoaded ? (
+                                <PlacesAutocomplete
+                                    value={formData.location || ''}
+                                    onChange={(address) => setFormData(prev => ({ ...prev, location: address }))}
+                                    onSelect={async (address) => {
+                                        setFormData(prev => ({ ...prev, location: address }))
+                                        try {
+                                            await geocodeByAddress(address)
+                                            // Ideally we save place_id too but backend only supports string location for now
+                                        } catch (error) {
+                                            console.error('Error selecting place', error)
+                                        }
+                                    }}
+                                >
+                                    {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
+                                        <div className="relative">
+                                            <input
+                                                {...getInputProps({
+                                                    placeholder: 'Search for a location...',
+                                                    className: "w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                                })}
+                                            />
+                                            {suggestions.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden">
+                                                    {loading && <div className="p-2 text-xs text-gray-500">Loading...</div>}
+                                                    {suggestions.map((suggestion) => {
+                                                        const className = suggestion.active
+                                                            ? 'px-3 py-2 bg-gray-50 cursor-pointer'
+                                                            : 'px-3 py-2 bg-white cursor-pointer hover:bg-gray-50';
+
+                                                        const { key, ...optionProps } = getSuggestionItemProps(suggestion, { className });
+
+                                                        return (
+                                                            <div key={suggestion.placeId} {...optionProps}>
+                                                                <div className="font-medium text-gray-900 text-sm">{suggestion.formattedSuggestion.mainText}</div>
+                                                                <div className="text-xs text-gray-500">{suggestion.formattedSuggestion.secondaryText}</div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </PlacesAutocomplete>
+                            ) : (
+                                <input
+                                    value={formData.location}
+                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                    className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    placeholder="Loading Maps..."
+                                    disabled
+                                />
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">

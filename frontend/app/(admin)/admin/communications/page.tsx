@@ -43,7 +43,7 @@ export default function CommunicationLogsPage() {
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                        className="text-gray-900 px-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-500"
                     >
                         <option value="">All Status</option>
                         <option value="sent">Sent</option>

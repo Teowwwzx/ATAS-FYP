@@ -90,7 +90,7 @@ export default function AdminCategoriesPage() {
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
+                                className="text-gray-900 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
                                 placeholder="e.g., Python"
                                 required
                             />
