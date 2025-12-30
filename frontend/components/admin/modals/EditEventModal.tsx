@@ -22,7 +22,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
         description: '',
         start_datetime: '',
         end_datetime: '',
-        venue_name: '',
+        venue_remark: '',
         max_participant: 0
     })
 
@@ -33,7 +33,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                 description: event.description || '',
                 start_datetime: event.start_datetime ? new Date(event.start_datetime).toISOString().slice(0, 16) : '',
                 end_datetime: event.end_datetime ? new Date(event.end_datetime).toISOString().slice(0, 16) : '',
-                venue_name: event.venue_name || '',
+                venue_remark: event.venue_remark || '',
                 max_participant: event.max_participant || 0
             })
         }
@@ -52,9 +52,12 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
         setIsLoading(true)
         try {
             await adminService.updateEvent(event.id, {
-                ...formData,
+                title: formData.title,
+                description: formData.description,
                 start_datetime: new Date(formData.start_datetime).toISOString(),
                 end_datetime: new Date(formData.end_datetime).toISOString(),
+                venue_remark: formData.venue_remark,
+                max_participant: formData.max_participant,
             })
 
             if (files.cover) {
@@ -141,8 +144,8 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
                             <input
-                                value={formData.venue_name}
-                                onChange={e => setFormData({ ...formData, venue_name: e.target.value })}
+                                value={formData.venue_remark}
+                                onChange={e => setFormData({ ...formData, venue_remark: e.target.value })}
                                 className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             />
                         </div>

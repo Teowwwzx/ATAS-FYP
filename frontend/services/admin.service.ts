@@ -227,6 +227,11 @@ export const adminService = {
         return response.data
     },
 
+    createEvent: async (data: any) => {
+        const response = await api.post<import('./api.types').EventDetails>('/events', data)
+        return response.data
+    },
+
     updateEvent: async (eventId: string, data: any) => {
         const response = await api.put<import('./api.types').EventDetails>(`/events/${eventId}`, data)
         return response.data

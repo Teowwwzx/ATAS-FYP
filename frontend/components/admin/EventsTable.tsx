@@ -13,7 +13,8 @@ import {
     Cross2Icon,
     ChevronDownIcon,
     ChevronUpIcon,
-    ImageIcon
+    ImageIcon,
+    Pencil1Icon
 } from '@radix-ui/react-icons'
 import { format } from 'date-fns'
 import Image from 'next/image'
@@ -25,7 +26,12 @@ interface EventsTableProps {
     onRefresh: () => void
 }
 
+import { CreateEventModal } from './modals/CreateEventModal'
+import { EditEventModal } from './modals/EditEventModal'
+
 export function EventsTable({ events, onRefresh }: EventsTableProps) {
+    const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [editingEvent, setEditingEvent] = useState<EventDetails | null>(null)
     const [isLoading, setIsLoading] = useState<string | null>(null)
     const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -189,6 +195,15 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                                {/* Edit Button */}
+                                                <button
+                                                    onClick={() => setEditingEvent(event)}
+                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Edit Event"
+                                                >
+                                                    <Pencil1Icon className="w-4 h-4" />
+                                                </button>
+
                                                 {event.status === 'draft' ? (
                                                     <button
                                                         onClick={() => handlePublish(event.id)}
@@ -267,6 +282,18 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                     </table>
                 </div>
             </div>
+
+            {editingEvent && (
+                <EditEventModal
+                    isOpen={!!editingEvent}
+                    onClose={() => setEditingEvent(null)}
+                    event={editingEvent}
+                    onSuccess={() => {
+                        setEditingEvent(null)
+                        onRefresh()
+                    }}
+                />
+            )}
 
             <Dialog.Root open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
                 <Dialog.Portal>
