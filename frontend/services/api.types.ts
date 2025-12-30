@@ -502,6 +502,12 @@ export interface OrganizationUpdate {
 export interface OrganizationResponse {
     id: string
     owner_id: string
+    owner?: {
+        id: string
+        email: string
+        full_name?: string
+        avatar_url?: string
+    }
     name: string
     logo_url?: string
     cover_url?: string

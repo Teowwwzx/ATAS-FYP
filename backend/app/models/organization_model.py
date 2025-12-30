@@ -63,3 +63,4 @@ class Organization(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     
     members = relationship("User", secondary=organization_members, back_populates="organizations")
+    owner = relationship("User", foreign_keys=[owner_id])

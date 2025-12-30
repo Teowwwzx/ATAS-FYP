@@ -2,7 +2,7 @@
 
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.sql import func
 from typing import List
 import app.database.database
@@ -40,7 +40,7 @@ def admin_list_organizations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"]))
 ):
-    query = db.query(Organization)
+    query = db.query(Organization).options(joinedload(Organization.owner).joinedload(User.profile))
     # Admin sees all visibilities by default
     
     # Filter out soft-deleted
