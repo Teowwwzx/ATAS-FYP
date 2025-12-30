@@ -13,6 +13,8 @@ import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 import { EventBadge } from '@/components/ui/EventBadge'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { ReminderModal } from '@/components/event/ReminderModal'
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
+import { formatEventDate, formatEventTimeRange } from '@/lib/date'
 
 export default function EventDetailsPage() {
     const params = useParams()
@@ -46,6 +48,7 @@ export default function EventDetailsPage() {
         libraries: ['places'] as ("places")[],
     })
     const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null)
+    const [venueAddress, setVenueAddress] = useState<string | null>(null)
 
     const [mapError, setMapError] = useState(false)
 
@@ -59,8 +62,10 @@ export default function EventDetailsPage() {
                 const loc = results[0].geometry.location
                 const json = loc.toJSON()
                 setMapCenter({ lat: json.lat, lng: json.lng })
+                setVenueAddress(results[0].formatted_address || null)
             } else {
                 setMapError(true)
+                setVenueAddress(null)
             }
         })
     }, [isLoaded, event?.venue_place_id])
@@ -279,6 +284,9 @@ export default function EventDetailsPage() {
     const eventStart = new Date(event.start_datetime)
     const eventEnd = new Date(event.end_datetime)
 
+    const dateLine = formatEventDate(eventStart)
+    const timeLine = formatEventTimeRange(eventStart, eventEnd)
+
     return (
         <div className="w-full min-h-screen pt-8 pb-24">
             <div className="max-w-screen-xl mx-auto px-4 md:px-8">
@@ -297,20 +305,22 @@ export default function EventDetailsPage() {
                     <div className="lg:col-span-8 flex flex-col gap-10">
 
                         {/* Combined Header Card */}
-                        <div className="bg-white rounded-3xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
-                            {/* Cover Image */}
-                            <div className="w-full aspect-[21/9] md:aspect-[21/8] bg-zinc-100 relative group overflow-hidden cursor-pointer" onClick={() => setShowImageModal(true)}>
-                                {event.cover_url ? (
-                                    <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
-                                        <svg className="w-20 h-20 text-purple-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                </div>
+                        <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-zinc-100 relative group">
+                            <div className="relative h-[450px] w-full">
+                                <ImageWithFallback
+                                    src={event.cover_url || `https://placehold.co/1200x600/png?text=${encodeURIComponent(event.title)}`}
+                                    fallbackSrc={`https://placehold.co/1200x600/png?text=${encodeURIComponent(event.title)}`}
+                                    alt={event.title}
+                                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                    fill
+                                    unoptimized={false}
+                                    priority
+                                />
+                                {/* <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent opacity-90" />
+                                <div className="absolute top-6 left-6 flex flex-wrap gap-2">
+                                    <EventBadge type="status" value={event.status} className="!text-sm !px-3 !py-1" />
+                                    <EventBadge type="type" value={event.type} className="!text-sm !px-3 !py-1" />
+                                </div> */}
                             </div>
 
                             {/* Event Details Content */}
@@ -365,13 +375,14 @@ export default function EventDetailsPage() {
                                             </svg>
                                         </div>
                                         <div>
-                                            <h4 className="text-sm font-bold text-sky-900 uppercase">Date & Time</h4>
+                                            {/* <h4 className="text-sm font-bold text-sky-900 uppercase">Date & Time</h4> */}
                                             <p className="text-sky-800 text-sm mt-1 font-medium">
-                                                {eventStart.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                                                {dateLine}
                                             </p>
                                             <p className="text-sky-600 text-xs mt-0.5">
-                                                {eventStart.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} - {eventEnd.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                                {timeLine}
                                             </p>
+                                            {/* Duration */}
                                         </div>
                                     </div>
 
@@ -382,9 +393,9 @@ export default function EventDetailsPage() {
                                             </svg>
                                         </div>
                                         <div>
-                                            <h4 className="text-sm font-bold text-emerald-900 uppercase">{event.type === 'online' ? 'Online Event' : 'Location'}</h4>
+                                            {/* <h4 className="text-sm font-bold text-emerald-900 uppercase">{event.type === 'online' ? 'Online Event' : 'Location'}</h4> */}
                                             <p className="text-emerald-800 text-sm mt-1 font-medium">
-                                                {event.type === 'online' ? 'Join via Link' : (event.venue_name || 'TBD')}
+                                                {event.venue_remark || event.venue_name || 'TBC'}
                                             </p>
                                             <div className="text-emerald-600 text-xs mt-0.5 line-clamp-1">
                                                 {event.type === 'online' ? (
@@ -393,10 +404,10 @@ export default function EventDetailsPage() {
                                                             {event.meeting_url}
                                                         </a>
                                                     ) : (
-                                                        <span>Link available after registration</span>
+                                                        <span>TBC</span>
                                                     )
                                                 ) : (
-                                                    event.venue_remark || 'Details upon registration'
+                                                    <span>{venueAddress || event.location || event.venue_name || 'TBC'}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -575,18 +586,13 @@ export default function EventDetailsPage() {
                                             <div className="w-6 h-6 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
                                                 <span className="text-xs font-bold">1</span>
                                             </div>
-                                            <span className="text-sm font-medium leading-tight pt-0.5">Bring digital/printed ticket.</span>
-                                        </li>
-                                        <li className="flex gap-3 text-amber-900">
-                                            <div className="w-6 h-6 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
-                                                <span className="text-xs font-bold">2</span>
-                                            </div>
                                             <span className="text-sm font-medium leading-tight pt-0.5">Arrive 15 mins early.</span>
                                         </li>
-                                        {(event.type === 'offline' || event.type === 'hybrid') && (
+
+                                        {(event.type != 'online') && (
                                             <li className="flex gap-3 text-amber-900">
                                                 <div className="w-6 h-6 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
-                                                    <span className="text-xs font-bold">3</span>
+                                                    <span className="text-xs font-bold">2</span>
                                                 </div>
                                                 <span className="text-sm font-medium leading-tight pt-0.5">Dress: Smart Casual.</span>
                                             </li>

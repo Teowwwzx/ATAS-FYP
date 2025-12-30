@@ -474,8 +474,8 @@ def create_event(
         if event.format == EventFormat.webinar or getattr(event.format, 'value', None) == "webinar":
             derived_type = EventType.online
         else:
-            # Most non-webinar formats are offline by default
-            derived_type = EventType.offline
+            # Most non-webinar formats are physical by default
+            derived_type = EventType.physical
 
     # Default venue to APU if not provided
     venue_place_id = event.venue_place_id if event.venue_place_id else DEFAULT_APU_PLACE_ID
@@ -949,11 +949,8 @@ def get_event_details(
         event.payment_qr_url = None
 
     # Populate extra fields for EventDetails schema
-    organizer = db.query(User).filter(User.id == event.organizer_id).first()
-    if organizer:
-        event.organizer_name = organizer.full_name
-        event.organizer_avatar = organizer.avatar_url
-
+    # organizer_name and organizer_avatar are properties on the Event model, so we don't set them manually.
+    
     event.participant_count = (
         db.query(EventParticipant)
         .filter(
@@ -3001,7 +2998,7 @@ def update_event(
         event.format = body.format
         # derive type if not provided
         if body.type is None:
-            event.type = EventType.online if event.format == EventFormat.webinar else EventType.offline
+            event.type = EventType.online if event.format == EventFormat.webinar else EventType.physical
     if body.type is not None:
         event.type = body.type
     if body.start_datetime is not None:

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { DashboardProModal } from '@/components/dashboard/DashboardProModal'
 import { EventBadge } from '@/components/ui/EventBadge'
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal'
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 
 interface DashboardEventListProps {
     events: MyEventItem[]
@@ -32,7 +33,7 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
     // ... (rest of local setup) 
 
 
-    const handleImageClick = (e: React.MouseEvent, url: string) => {
+    const handleImageClick = (e: React.MouseEvent<HTMLImageElement>, url: string) => {
         e.stopPropagation()
         setPreviewImage(url)
     }
@@ -41,7 +42,7 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
     interface CardProps {
         event: MyEventItem
         onSelect: (event: MyEventItem) => void
-        handleImageClick: (e: React.MouseEvent, url: string) => void
+        handleImageClick: (e: React.MouseEvent<HTMLImageElement>, url: string) => void
     }
 
     const CompactEventCard = ({ event, onSelect, handleImageClick }: CardProps) => (
@@ -52,11 +53,14 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
             {/* Cover Image */}
             <div className="h-40 w-full bg-zinc-100 flex-shrink-0 relative overflow-hidden">
                 {event.cover_url ? (
-                    <img
+                    <ImageWithFallback
                         src={event.cover_url}
+                        fallbackSrc={`https://placehold.co/400x300/png?text=${encodeURIComponent(event.title)}`}
                         alt={event.title}
+                        fill
                         onClick={(e) => handleImageClick(e, event.cover_url!)}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-zoom-in"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500 cursor-zoom-in"
+                        unoptimized={false}
                     />
                 ) : (
                     <div className="w-full h-full bg-gradient-to-br from-yellow-50 to-orange-50 flex items-center justify-center">

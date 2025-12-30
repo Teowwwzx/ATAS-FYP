@@ -96,7 +96,7 @@ export default function AdminEventsPage() {
                 >
                     <option value="">All Types</option>
                     <option value="online">Online</option>
-                    <option value="offline">Offline</option>
+                    <option value="physical">Physical</option>
                     <option value="hybrid">Hybrid</option>
                 </select>
                 <select

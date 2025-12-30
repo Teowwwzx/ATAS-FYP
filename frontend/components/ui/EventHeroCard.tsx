@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { EventDetails } from '@/services/api.types'
 import { format } from 'date-fns'
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal'
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 
 interface EventHeroCardProps {
     event: EventDetails
@@ -45,11 +46,14 @@ export function EventHeroCard({ event, enableImagePreview }: EventHeroCardProps)
 
     return (
         <div className="w-full relative h-[420px] rounded-[2.5rem] overflow-hidden">
-            <img
+            <ImageWithFallback
                 src={coverUrl}
+                fallbackSrc={`https://placehold.co/1200x600/png?text=${encodeURIComponent(event.title)}`}
                 alt={event.title}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="object-cover"
+                fill
                 onClick={handlePreview}
+                unoptimized={false}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
 

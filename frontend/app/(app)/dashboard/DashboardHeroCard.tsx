@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { updateEventCover } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 
 interface DashboardHeroCardProps {
     event: EventDetails | MyEventItem
@@ -57,8 +58,9 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
         >
             {/* Background Image - with zoom and slight brightness reduction */}
             <div className="absolute inset-0 overflow-hidden">
-                <Image
+                <ImageWithFallback
                     src={coverUrl}
+                    fallbackSrc={`https://placehold.co/800x400/png?text=${encodeURIComponent(event.title)}`}
                     alt={event.title}
                     fill
                     className="object-cover opacity-90"

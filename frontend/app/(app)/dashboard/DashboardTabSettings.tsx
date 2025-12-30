@@ -37,7 +37,7 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
         max_participant: event.max_participant || 0,
         registration_type: event.registration_type || 'free',
         format: event.format || 'workshop',
-        type: event.type || 'offline',
+        type: event.type || 'physical',
     })
 
     const handleConfigUpdate = async (e: React.FormEvent) => {
@@ -287,7 +287,7 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                                     onChange={(e) => setConfigForm({ ...configForm, type: e.target.value as any })}
                                     className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-900 capitalize"
                                 >
-                                    <option value="offline">Offline (Physical)</option>
+                                    <option value="physical">Physical</option>
                                     <option value="online">Online</option>
                                     <option value="hybrid">Hybrid</option>
                                 </select>

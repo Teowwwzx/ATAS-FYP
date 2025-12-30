@@ -105,18 +105,14 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '', com
                         <div className="pt-4 mt-2 border-t border-white/10 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Avatar
-                                    src={null} // API doesn't seem to return organizer avatar URL yet? check EventDetails. Assuming 'organizer_id' is just an ID. 
-                                    // If strict type check fails, I might need to adjust.
-                                    // Actually, looking at previous code: 
-                                    // {event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
-                                    // It seems we only have ID. So just fallback.
-                                    fallback={event.organizer_id ? event.organizer_id.charAt(0).toUpperCase() : '?'}
+                                    src={event.organizer_avatar}
+                                    fallback={event.organizer_name ? event.organizer_name.charAt(0).toUpperCase() : '?'}
                                     size="sm"
                                     className="bg-white/10 border border-white/20 backdrop-blur-sm text-white"
                                 />
                                 <div className="text-xs">
                                     <span className="block text-zinc-400 font-medium uppercase tracking-wider text-[10px]">Hosted by</span>
-                                    <span className="block text-white font-bold truncate max-w-[120px]">Event Host</span>
+                                    <span className="block text-white font-bold truncate max-w-[120px]">{event.organizer_name || 'Event Host'}</span>
                                 </div>
                             </div>
 

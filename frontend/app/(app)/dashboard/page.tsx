@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'react-hot-toast'
 import { DashboardEventList } from './DashboardEventList'
 import { DashboardInvitationList } from './DashboardInvitationList'
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 
 function DashboardPageInner() {
     const router = useRouter()
@@ -280,7 +281,7 @@ function DashboardPageInner() {
                                             const daysRemaining = Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
                                             // Determine colors
                                             const typeColor = evt.type === 'online' ? 'bg-blue-100 text-blue-700' :
-                                                (evt.type as any) === 'physical' || (evt.type as any) === 'offline' ? 'bg-orange-100 text-orange-700' :
+                                                evt.type === 'physical' ? 'bg-orange-100 text-orange-700' :
                                                     'bg-purple-100 text-purple-700'
 
                                             return (
@@ -291,8 +292,15 @@ function DashboardPageInner() {
                                                 >
                                                     {/* Image or Date Box */}
                                                     {evt.cover_url ? (
-                                                        <div className="w-16 h-16 rounded-xl bg-zinc-100 flex-shrink-0 overflow-hidden">
-                                                            <img src={evt.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                        <div className="w-16 h-16 rounded-xl bg-zinc-100 flex-shrink-0 overflow-hidden relative">
+                                                            <ImageWithFallback 
+                                                                src={evt.cover_url} 
+                                                                fallbackSrc={`https://placehold.co/64x64/png?text=${encodeURIComponent(evt.title.substring(0, 2))}`}
+                                                                alt="" 
+                                                                className="object-cover group-hover:scale-110 transition-transform" 
+                                                                fill
+                                                                sizes="64px"
+                                                            />
                                                         </div>
                                                     ) : (
                                                         <div className="w-16 h-16 bg-blue-50 rounded-xl flex flex-col items-center justify-center text-blue-900 flex-shrink-0 group-hover:bg-blue-100">
@@ -349,7 +357,7 @@ function DashboardPageInner() {
                                             const daysRemaining = Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
                                             // Determine colors
                                             const typeColor = evt.type === 'online' ? 'bg-blue-100 text-blue-700' :
-                                                (evt.type as any) === 'physical' || (evt.type as any) === 'offline' ? 'bg-orange-100 text-orange-700' :
+                                                evt.type === 'physical' ? 'bg-orange-100 text-orange-700' :
                                                     'bg-purple-100 text-purple-700'
 
                                             return (

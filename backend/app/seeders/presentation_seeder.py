@@ -168,7 +168,7 @@ def seed_presentation_data(db: Session):
             venue_place_id="APU Campus",
             venue_remark="Auditorium 1",
             max_participant=100,
-            cover_url="https://images.unsplash.com/photo-1504384308090-c54be3855833?q=80&w=2576&auto=format&fit=crop"
+            cover_url="https://placehold.co/1200x600/png?text=APU+Hackathon+2024"
         )
         db.add(hackathon)
         db.flush()
@@ -183,7 +183,7 @@ def seed_presentation_data(db: Session):
             title="Coding Club Weekly Meetup",
             description="Weekly meetup for the APU Coding Club. Let's discuss algorithms and data structures.",
             format=EventFormat.club_event,
-            type=EventType.offline,
+            type=EventType.physical,
             start_datetime=datetime.now() + timedelta(days=2),
             end_datetime=datetime.now() + timedelta(days=2, hours=2),
             registration_type=EventRegistrationType.free,

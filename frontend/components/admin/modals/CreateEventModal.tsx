@@ -88,7 +88,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 end_datetime: '',
                 venue_name: '',
                 max_participant: 100,
-                type: 'offline',
+                type: 'physical',
                 format: 'conference',
                 visibility: 'public'
             })

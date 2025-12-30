@@ -364,7 +364,7 @@ export default function DiscoverPage() {
                                                     >
                                                         <option value="">All Types</option>
                                                         <option value="online">Online</option>
-                                                        <option value="offline">Physical</option>
+                                                        <option value="physical">Physical</option>
                                                         <option value="hybrid">Hybrid</option>
                                                     </select>
                                                 </div>
@@ -464,7 +464,7 @@ export default function DiscoverPage() {
 
                             {/* Incoming Events Carousel */}
                             {incomingEvents.length > 0 && (
-                                <div className="relative group">
+                                <div className="relative">
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-2xl font-black text-zinc-900">Incoming Events</h2>
                                         <div className="flex gap-2">
