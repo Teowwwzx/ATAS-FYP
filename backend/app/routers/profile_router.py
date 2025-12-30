@@ -526,6 +526,10 @@ def search_profiles(
     db: Session = Depends(get_db),
 ):
     q = db.query(Profile).filter(Profile.visibility == ProfileVisibility.public)
+    
+    # Exclude admins
+    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    q = q.filter(Profile.user_id.notin_(admin_subquery))
 
     if email:
         from sqlalchemy.sql import func as sa_func

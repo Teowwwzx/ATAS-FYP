@@ -531,7 +531,32 @@ export default function EventDetailsPage() {
 
 
 
-                                                    {isJoinedAccepted && (
+                                                    {event.type === 'online' && (
+                                                        event.meeting_url ? (
+                                                            <a
+                                                                href={event.meeting_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={`w-full py-4 rounded-xl font-bold text-center text-lg shadow-lg mb-4 flex items-center justify-center gap-2 transition-all ${(new Date().getTime() >= new Date(event.start_datetime).getTime() - 30 * 60 * 1000) && (new Date() < new Date(event.end_datetime))
+                                                                    ? 'bg-violet-600 text-white hover:bg-violet-700 hover:-translate-y-1 hover:shadow-xl animate-pulse'
+                                                                    : 'bg-zinc-100 text-zinc-400 cursor-not-allowed pointer-events-none'
+                                                                    }`}
+                                                            >
+                                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                </svg>
+                                                                {(new Date().getTime() >= new Date(event.start_datetime).getTime() - 30 * 60 * 1000)
+                                                                    ? 'Join Meeting Now'
+                                                                    : 'Meeting Link Available 30m Before'}
+                                                            </a>
+                                                        ) : (
+                                                            <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-xl font-bold text-center text-lg shadow-sm mb-4 border border-zinc-200">
+                                                                Meeting Link Pending
+                                                            </div>
+                                                        )
+                                                    )}
+
+                                                    {isJoinedAccepted && event.type !== 'online' && (
                                                         <button
                                                             onClick={() => setShowQRModal(true)}
                                                             disabled={!isAttendanceOpen}

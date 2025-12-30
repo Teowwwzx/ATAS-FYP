@@ -45,6 +45,7 @@ export type RoleItem = string | { id: string; name: string }
 export interface UserResponse {
     id: string
     email: string
+    full_name?: string
     is_verified: boolean
     status: 'active' | 'inactive' | 'frozen' | 'suspended'
     roles: RoleItem[]
@@ -209,7 +210,8 @@ export interface EventCreate {
     title: string
     description?: string
     logo_url?: string
-    cover_url?: string
+    cover_url?: string | null
+    meeting_url?: string | null
     payment_qr_url?: string | null
     format: EventFormat
     type: EventType
@@ -271,7 +273,7 @@ export interface EventParticipantDetails {
     role: EventParticipantRole
     description?: string | null
     join_method?: string
-    status: 'pending' | 'accepted' | 'rejected'
+    status: EventParticipantStatus
     created_at: string
     updated_at?: string
     conversation_id?: string

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import uuid
 from sqlalchemy.sql import func
 from app.database.database import get_db
@@ -104,22 +104,22 @@ def list_users(
     email: str | None = None,
     status: UserStatus | None = None,
     is_verified: bool | None = None,
+    name: str | None = None,
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin", "customer_support"]))
 ):
-    q = db.query(User)
+    q = db.query(User).options(joinedload(User.profile))
     if email:
         q = q.filter(func.lower(User.email).like(f"%{email.lower()}%"))
     if status is not None:
         q = q.filter(User.status == status)
     if is_verified is not None:
         q = q.filter(User.is_verified == is_verified)
-    # Optional name filter via profile
-    from sqlalchemy import or_
-    if 'name' in locals():
-        pass
+    
+    if name:
+        q = q.join(Profile, Profile.user_id == User.id).filter(func.lower(Profile.full_name).like(f"%{name.lower()}%"))
     
     if page < 1:
         page = 1
@@ -135,9 +135,11 @@ def list_users(
         {
             "id": str(u.id),
             "email": u.email,
+            "full_name": u.full_name, # Accessed via property or loaded relationship
             "is_verified": bool(u.is_verified),
             "status": (u.status.value if isinstance(u.status, UserStatus) else str(u.status)),
             "roles": [r.name for r in getattr(u, "roles", [])],
+            "created_at": u.created_at.isoformat() if hasattr(u, "created_at") and u.created_at else None
         }
         for u in items
     ]

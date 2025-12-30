@@ -32,6 +32,7 @@ export default function CreateEventPage() {
         visibility: 'public',
         venue_remark: 'Asia Pacific University',
         venue_place_id: '',
+        meeting_url: '',
     })
 
     const handleSelect = async (address: string) => {
@@ -281,53 +282,66 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="relative z-20">
-                    <label htmlFor="venue_remark" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
-                        Venue / Location
+                    <label htmlFor={formData.type === 'online' ? "meeting_url" : "venue_remark"} className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                        {formData.type === 'online' ? "Meeting URL / Link" : "Venue / Location"}
                     </label>
-                    {isLoaded ? (
-                        <PlacesAutocomplete
-                            value={formData.venue_remark || ''}
-                            onChange={(address) => setFormData(prev => ({ ...prev, venue_remark: address }))}
-                            onSelect={handleSelect}
-                        >
-                            {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
-                                <div className="relative">
-                                    <input
-                                        {...getInputProps({
-                                            placeholder: 'Search for a location...',
-                                            className: "block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
-                                        })}
-                                    />
-                                    {suggestions.length > 0 && (
-                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-zinc-100 overflow-hidden">
-                                            {loading && <div className="p-3 text-sm text-zinc-500">Loading...</div>}
-                                            {suggestions.map((suggestion) => {
-                                                const className = suggestion.active
-                                                    ? 'px-4 py-3 bg-yellow-50 cursor-pointer'
-                                                    : 'px-4 py-3 bg-white cursor-pointer hover:bg-gray-50';
 
-                                                // Create a div wrapper to hold props and content to avoid duplicate key issues or spread issues
-                                                const { key, ...optionProps } = getSuggestionItemProps(suggestion, { className });
-
-                                                return (
-                                                    <div
-                                                        key={suggestion.placeId}
-                                                        {...optionProps}
-                                                    >
-                                                        <div className="font-bold text-zinc-900 text-sm">{suggestion.formattedSuggestion.mainText}</div>
-                                                        <div className="text-xs text-zinc-500">{suggestion.formattedSuggestion.secondaryText}</div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </PlacesAutocomplete>
+                    {formData.type === 'online' ? (
+                        <input
+                            type="url"
+                            id="meeting_url"
+                            name="meeting_url"
+                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
+                            placeholder="e.g. https://zoom.us/j/123456789"
+                            value={formData.meeting_url || ''}
+                            onChange={handleChange}
+                        />
                     ) : (
-                        <div className="w-full px-5 py-4 bg-zinc-100 rounded-2xl text-zinc-500 font-medium">
-                            Loading Maps...
-                        </div>
+                        isLoaded ? (
+                            <PlacesAutocomplete
+                                value={formData.venue_remark || ''}
+                                onChange={(address) => setFormData(prev => ({ ...prev, venue_remark: address }))}
+                                onSelect={handleSelect}
+                            >
+                                {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
+                                    <div className="relative">
+                                        <input
+                                            {...getInputProps({
+                                                placeholder: 'Search for a location...',
+                                                className: "block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
+                                            })}
+                                        />
+                                        {suggestions.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-zinc-100 overflow-hidden">
+                                                {loading && <div className="p-3 text-sm text-zinc-500">Loading...</div>}
+                                                {suggestions.map((suggestion) => {
+                                                    const className = suggestion.active
+                                                        ? 'px-4 py-3 bg-yellow-50 cursor-pointer'
+                                                        : 'px-4 py-3 bg-white cursor-pointer hover:bg-gray-50';
+
+                                                    // Create a div wrapper to hold props and content to avoid duplicate key issues or spread issues
+                                                    const { key, ...optionProps } = getSuggestionItemProps(suggestion, { className });
+
+                                                    return (
+                                                        <div
+                                                            key={suggestion.placeId}
+                                                            {...optionProps}
+                                                        >
+                                                            <div className="font-bold text-zinc-900 text-sm">{suggestion.formattedSuggestion.mainText}</div>
+                                                            <div className="text-xs text-zinc-500">{suggestion.formattedSuggestion.secondaryText}</div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </PlacesAutocomplete>
+                        ) : (
+                            <div className="w-full px-5 py-4 bg-zinc-100 rounded-2xl text-zinc-500 font-medium">
+                                Loading Maps...
+                            </div>
+                        )
                     )}
                 </div>
 
@@ -362,7 +376,7 @@ export default function CreateEventPage() {
                         </button>
                     </div>
                     <p className="text-right text-xs font-medium text-zinc-400 mr-2">
-                        <span className="text-yellow-400">Publish</span> later <br/> to make it visible to public
+                        <span className="text-yellow-400">Publish</span> later <br /> to make it visible to public
                     </p>
                 </div>
             </form>

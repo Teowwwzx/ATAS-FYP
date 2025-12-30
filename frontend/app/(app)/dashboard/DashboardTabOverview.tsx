@@ -10,6 +10,7 @@ import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 import { CategoryResponse } from '@/services/api.types'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
+import { EventCheckInQRModal } from './EventCheckInQRModal'
 
 const libraries: ("places")[] = ["places"]
 
@@ -25,6 +26,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [showCheckInQR, setShowCheckInQR] = useState(false)
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -73,6 +75,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
         title: event.title,
         description: event.description || '',
         remark: event.remark || '',
+        meeting_url: event.meeting_url || '',
     })
 
     const handleUpdate = async (e?: React.FormEvent) => {
@@ -171,6 +174,19 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                     className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900 text-sm"
                                 />
                             </div>
+
+                            {event.type === 'online' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Meeting URL</label>
+                                    <input
+                                        type="url"
+                                        value={form.meeting_url}
+                                        onChange={(e) => setForm({ ...form, meeting_url: e.target.value })}
+                                        placeholder="https://zoom.us/..."
+                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 font-bold text-zinc-900"
+                                    />
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Categories</label>
@@ -338,6 +354,18 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                             Edit Details
                                         </button>
                                     )}
+                                    {(canEdit || role === 'speaker') && (
+                                        <button
+                                            onClick={() => setShowCheckInQR(true)}
+                                            className="h-10 px-4 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold text-xs hover:bg-indigo-100 transition-colors flex items-center gap-2"
+                                            title="Show Check-in QR"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                            </svg>
+                                            Check-in QR
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -369,9 +397,21 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                             </svg>
-                                            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Venue location</h4>
+                                            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+                                                {event.type === 'online' ? 'Meeting URL' : 'Venue location'}
+                                            </h4>
                                         </div>
-                                        <p className="text-base font-bold text-zinc-900 leading-snug">{event.venue_remark || 'No venue set'}</p>
+                                        {event.type === 'online' ? (
+                                            event.meeting_url ? (
+                                                <a href={event.meeting_url} target="_blank" rel="noopener noreferrer" className="text-base font-bold text-blue-600 hover:underline leading-snug break-all">
+                                                    {event.meeting_url}
+                                                </a>
+                                            ) : (
+                                                <p className="text-base font-bold text-zinc-400 leading-snug italic">No meeting link provided</p>
+                                            )
+                                        ) : (
+                                            <p className="text-base font-bold text-zinc-900 leading-snug">{event.venue_remark || 'No venue set'}</p>
+                                        )}
                                     </div>
 
                                     <div className="w-full h-px bg-zinc-100"></div>
@@ -396,6 +436,13 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                     </div>
                 )}
             </div>
-        </div>
+
+            <EventCheckInQRModal
+                isOpen={showCheckInQR}
+                onClose={() => setShowCheckInQR(false)}
+                eventTitle={event.title}
+                checkInUrl={typeof window !== 'undefined' ? `${window.location.origin}/checkin/${event.id}` : ''}
+            />
+        </div >
     )
 }

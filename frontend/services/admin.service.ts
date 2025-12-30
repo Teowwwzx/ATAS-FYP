@@ -233,7 +233,7 @@ export const adminService = {
     },
 
     updateEvent: async (eventId: string, data: any) => {
-        const response = await api.put<import('./api.types').EventDetails>(`/events/${eventId}`, data)
+        const response = await api.put<import('./api.types').EventDetails>(`/admin/events/${eventId}`, data)
         return response.data
     },
 
@@ -243,12 +243,30 @@ export const adminService = {
     },
 
     publishEvent: async (eventId: string) => {
-        const response = await api.put<EventDetails>(`/events/${eventId}/publish`)
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/publish`)
         return response.data
     },
 
     unpublishEvent: async (eventId: string) => {
-        const response = await api.put<EventDetails>(`/events/${eventId}/unpublish`)
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/unpublish`)
+        return response.data
+    },
+
+    updateEventLogo: async (eventId: string, file: File) => {
+        const fd = new FormData()
+        fd.append('file', file)
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/images/logo`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return response.data
+    },
+
+    updateEventCover: async (eventId: string, file: File) => {
+        const fd = new FormData()
+        fd.append('file', file)
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/images/cover`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
         return response.data
     },
 

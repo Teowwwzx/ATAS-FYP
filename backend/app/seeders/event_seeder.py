@@ -149,7 +149,7 @@ def seed_events(db, num_events=20):
             max_participant=random.randint(10, 100) if random.random() > 0.3 else None,
             logo_url=EVENT_LOGO_IMAGES[idx % len(EVENT_LOGO_IMAGES)],
             cover_url=EVENT_COVER_IMAGES[idx % len(EVENT_COVER_IMAGES)],
-            venue_place_id="ChIJr7mC9fN5zDERSrD1wGg7oYQ" if event_type != EventType.online else None,
+            venue_place_id="ChIJ2SVQebtKzDERaKlLcSoYNxw" if event_type != EventType.online else None,
             venue_remark=fake.sentence() if random.random() > 0.5 else None,
             remark=fake.sentence() if random.random() > 0.7 else None,
             created_at=datetime.now(),
@@ -420,7 +420,7 @@ def seed_proposal_invitation_for_student1(db):
         max_participant=200,
         logo_url="https://placehold.co/200x200/0D9488/fff.png?text=AI+Ed",
         cover_url="https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=1200&h=600&fit=crop",
-        venue_place_id="ChIJr7mC9fN5zDERSrD1wGg7oYQ",
+        venue_place_id="ChIJ2SVQebtKzDERaKlLcSoYNxw",
         venue_remark="Grand Hall, Main Campus",
         created_at=datetime.now(),
         updated_at=datetime.now()
