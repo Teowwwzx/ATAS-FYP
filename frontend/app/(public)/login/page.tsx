@@ -3,7 +3,7 @@
 'use client'
 
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
@@ -13,7 +13,7 @@ import { getApiErrorMessage } from '@/lib/utils'
 import { login, getMyProfile, getMe, resendVerification, loginWithGoogle, logout } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 
-export default function LoginPage() {
+function LoginPageContent() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
@@ -343,5 +343,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+            <LoginPageContent />
+        </Suspense>
     )
 }

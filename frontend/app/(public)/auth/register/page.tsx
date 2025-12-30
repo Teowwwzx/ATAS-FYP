@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { register, loginWithGoogle, getMyProfile } from '@/services/api'
@@ -9,7 +9,7 @@ import { FormButton } from '@/components/auth/FormButton'
 import { toast } from 'react-hot-toast'
 import { getApiErrorMessage } from '@/lib/utils'
 
-export default function RegisterPage() {
+function RegisterPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [email, setEmail] = useState('')
@@ -47,7 +47,7 @@ export default function RegisterPage() {
                         callback: async (response: any) => {
                             const idToken = response?.credential
                             if (!idToken) return
-                            
+
                             // Validate email if provided in params
                             const emailParam = searchParams?.get('email')
                             if (emailParam) {
@@ -55,11 +55,11 @@ export default function RegisterPage() {
                                     // Simple decode to check email
                                     const base64Url = idToken.split('.')[1]
                                     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-                                    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                                    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
                                         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
                                     }).join(''))
                                     const payload = JSON.parse(jsonPayload)
-                                    
+
                                     if (payload.email && payload.email.toLowerCase() !== emailParam.toLowerCase()) {
                                         toast.error(`Please sign in with ${emailParam} to link your attendance.`)
                                         return
@@ -85,26 +85,26 @@ export default function RegisterPage() {
                             }
                         },
                     })
-                } catch {}
+                } catch { }
                 try {
                     const target = document.getElementById('googleSignInBtn')
                     if (target && (window as any).google?.accounts.id.renderButton) {
                         (window as any).google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', shape: 'pill', text: 'signup_with' })
                     }
-                } catch {}
+                } catch { }
             }
             document.body.appendChild(script)
         } else {
             setGoogleReady(true)
             // Re-render button if script already loaded
-             try {
+            try {
                 setTimeout(() => {
                     const target = document.getElementById('googleSignInBtn')
                     if (target && (window as any).google?.accounts.id.renderButton) {
                         (window as any).google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', shape: 'pill', text: 'signup_with' })
                     }
                 }, 100)
-            } catch {}
+            } catch { }
         }
     }, [router, searchParams])
 
@@ -244,5 +244,13 @@ export default function RegisterPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+            <RegisterPageContent />
+        </Suspense>
     )
 }
