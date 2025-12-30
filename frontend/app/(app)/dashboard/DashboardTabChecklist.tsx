@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { EventDetails, EventChecklistItemResponse, ProfileResponse, EventProposalResponse } from '@/services/api.types'
+import { EventDetails, EventChecklistItemResponse, ProfileResponse, EventProposalResponse, EventParticipantRole, EventParticipantDetails } from '@/services/api.types'
 import { getEventChecklist, createEventChecklistItem, updateEventChecklistItem, deleteEventChecklistItem, findProfiles, getEventProposals, getEventParticipants, getProfileByUserId } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 import { Dialog, Transition, Menu } from '@headlessui/react'
 import { Fragment } from 'react'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 const TEMPLATES = {
     default: {
@@ -12,10 +13,12 @@ const TEMPLATES = {
         name: "Default",
         description: "Essential tasks for any event.",
         tasks: [
-            "Secure a speaker",
-            "Send email confirmation",
-            "Attendees confirmation emails",
-            "Prepare appreciation email"
+            { title: "Secure a speaker", assigned_role: "committee" },
+            { title: "Send email confirmation", assigned_role: "organizer" },
+            { title: "Attendees confirmation emails", assigned_role: "organizer" },
+            { title: "Prepare appreciation email", assigned_role: "organizer" },
+            { title: "Collect car plate numbers", assigned_role: "committee", link_url: "https://docs.google.com/spreadsheets/u/0/create" },
+            { title: "Set up registration spreadsheet", link_url: "https://docs.google.com/spreadsheets/u/0/create" }
         ]
     },
     project_management: {
@@ -23,16 +26,16 @@ const TEMPLATES = {
         name: "Project Management",
         description: "Detailed setup for structured project tracking.",
         tasks: [
-            "Create Project Charter",
-            "Define Work Breakdown Structure (WBS)",
-            "Develop Budget Plan",
-            "Risk Assessment Analysis",
-            "Secure a speaker",
-            "Send email confirmation",
-            "Attendees confirmation emails",
-            "Prepare appreciation email",
-            "Create Performance Report",
-            "Project Chatter"
+            { title: "Create Project Charter", assigned_role: "organizer" },
+            { title: "Define Work Breakdown Structure (WBS)", assigned_role: "committee" },
+            { title: "Develop Budget Plan", assigned_role: "organizer", link_url: "https://docs.google.com/spreadsheets/u/0/create" },
+            { title: "Risk Assessment Analysis", assigned_role: "committee" },
+            { title: "Secure a speaker", assigned_role: "committee" },
+            { title: "Send email confirmation", assigned_role: "organizer" },
+            { title: "Attendees confirmation emails", assigned_role: "organizer" },
+            { title: "Prepare appreciation email", assigned_role: "organizer" },
+            { title: "Create Performance Report", assigned_role: "committee" },
+            { title: "Project Chatter" }
         ]
     },
     coming_soon: {
@@ -59,13 +62,25 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
 
     // Assignment State
     const [committee, setCommittee] = useState<ProfileResponse[]>([])
+    const [participants, setParticipants] = useState<EventParticipantDetails[]>([])
 
     // Inline Add State
     const [newItemTitle, setNewItemTitle] = useState('')
     const [newItemUser, setNewItemUser] = useState<ProfileResponse | null>(null)
     const [newItemFile, setNewItemFile] = useState<EventProposalResponse | null>(null) // New: Link a file
+    const [newItemLinkUrl, setNewItemLinkUrl] = useState('')
+    const [newVisibility, setNewVisibility] = useState<'internal' | 'external'>('internal')
+    const [newAudienceRole, setNewAudienceRole] = useState<EventParticipantRole | null>(null)
     const [userSearch, setUserSearch] = useState('')
     const [showAssignMenu, setShowAssignMenu] = useState(false)
+    const [showAttachMenu, setShowAttachMenu] = useState(false)
+
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+
+    const [editLinkItemId, setEditLinkItemId] = useState<string | null>(null)
+    const [editLinkValue, setEditLinkValue] = useState('')
 
     const fetchChecklist = async () => {
         try {
@@ -76,10 +91,11 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
             ])
             setItems(checklistData.sort((a, b) => a.sort_order - b.sort_order))
             setFiles(filesData)
+            setParticipants(participantsData)
 
             // Fetch Committee Profiles
             const committeeIds = participantsData
-                .filter(p => ['organizer', 'committee'].includes(p.role))
+                .filter(p => ['organizer', 'committee', 'speaker', 'sponsor'].includes(p.role))
                 .map(p => p.user_id)
 
             // Unique IDs
@@ -114,6 +130,38 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
         fetchChecklist()
     }, [event.id])
 
+    const getLinkType = (url: string) => {
+        try {
+            const u = new URL(url)
+            const host = u.hostname
+            const path = u.pathname.toLowerCase()
+            const ext = (path.split('.').pop() || '').toLowerCase()
+            if (ext === 'pdf') return 'pdf'
+            if (['doc', 'docx'].includes(ext)) return 'doc'
+            if (['xls', 'xlsx'].includes(ext)) return 'sheet'
+            if (['ppt', 'pptx'].includes(ext)) return 'ppt'
+            if (path.match(/\.(jpeg|jpg|gif|png|webp)$/)) return 'image'
+            if (host.includes('docs.google.com')) {
+                if (path.includes('/spreadsheets/')) return 'sheet'
+                if (path.includes('/presentation/')) return 'ppt'
+                return 'doc'
+            }
+            if (host.includes('drive.google.com')) return 'doc'
+            return 'generic'
+        } catch {
+            return 'generic'
+        }
+    }
+
+    const getLinkBadgeClass = (type: string) => {
+        if (type === 'pdf') return 'bg-red-50 text-red-700 border-red-100'
+        if (type === 'doc') return 'bg-blue-50 text-blue-700 border-blue-100'
+        if (type === 'sheet') return 'bg-green-50 text-green-700 border-green-100'
+        if (type === 'ppt') return 'bg-orange-50 text-orange-700 border-orange-100'
+        if (type === 'image') return 'bg-purple-50 text-purple-700 border-purple-100'
+        return 'bg-zinc-50 text-zinc-700 border-zinc-100'
+    }
+
     const handleToggle = async (item: EventChecklistItemResponse) => {
         const originalItems = [...items]
         const updatedItems = items.map(i => i.id === item.id ? { ...i, is_completed: !i.is_completed } : i)
@@ -128,15 +176,25 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
         }
     }
 
-    const handleDelete = async (itemId: string) => {
-        if (!confirm('Delete this task?')) return
+    const handleDeleteClick = (itemId: string) => {
+        setItemToDelete(itemId)
+        setIsDeleteModalOpen(true)
+    }
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return
+        setIsDeleting(true)
         try {
-            await deleteEventChecklistItem(event.id, itemId)
-            setItems(items.filter(i => i.id !== itemId))
+            await deleteEventChecklistItem(event.id, itemToDelete)
+            setItems(items.filter(i => i.id !== itemToDelete))
             toast.success('Task deleted')
+            setIsDeleteModalOpen(false)
         } catch (error) {
             console.error(error)
             toast.error('Failed to delete task')
+        } finally {
+            setIsDeleting(false)
+            setItemToDelete(null)
         }
     }
 
@@ -206,12 +264,16 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
         setNewItemTitle('')
         setNewItemUser(null)
         setNewItemFile(null)
+        setNewItemLinkUrl('')
         setShowAssignMenu(false)
 
         try {
             const newItem = await createEventChecklistItem(event.id, {
                 title: tempItem.title,
-                assigned_user_ids: tempItem.assigned_user_ids
+                assigned_user_ids: tempItem.assigned_user_ids,
+                link_url: newItemLinkUrl.trim() ? newItemLinkUrl.trim() : undefined,
+                visibility: newVisibility,
+                audience_role: newVisibility === 'external' ? newAudienceRole ?? undefined : undefined
             })
             // Replace temp item with real one
             setItems(prev => prev.map(i => i.id === tempId ? newItem : i))
@@ -234,6 +296,33 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
         }
     }
 
+    const startEditLink = (item: EventChecklistItemResponse) => {
+        setEditLinkItemId(item.id)
+        setEditLinkValue(item.link_url || '')
+    }
+
+    const saveEditLink = async () => {
+        if (!editLinkItemId) return
+        const id = editLinkItemId
+        const value = editLinkValue.trim() || null
+        const original = items.find(i => i.id === id)
+        if (!original) {
+            setEditLinkItemId(null)
+            return
+        }
+        setItems(items.map(i => i.id === id ? { ...i, link_url: value || undefined } : i))
+        try {
+            await updateEventChecklistItem(event.id, id, { link_url: value || undefined })
+            toast.success('Link updated')
+        } catch (error) {
+            console.error(error)
+            setItems(items.map(i => i.id === id ? original : i))
+            toast.error('Failed to update link')
+        } finally {
+            setEditLinkItemId(null)
+        }
+    }
+
     const loadTemplate = async () => {
         const template = TEMPLATES[selectedTemplate]
         if (!template || template.tasks.length === 0) return
@@ -241,8 +330,18 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
         setLoading(true)
         setShowTemplateModal(false)
         try {
-            for (const title of template.tasks) {
-                await createEventChecklistItem(event.id, { title })
+            for (const task of template.tasks) {
+                if (typeof task === 'string') {
+                    await createEventChecklistItem(event.id, { title: task })
+                } else {
+                    const payload: any = { title: task.title }
+                    if (task.link_url) payload.link_url = task.link_url
+                    if (task.assigned_role) {
+                        const target = participants.find(p => p.role === task.assigned_role)
+                        if (target) payload.assigned_user_ids = [target.user_id]
+                    }
+                    await createEventChecklistItem(event.id, payload)
+                }
             }
             await fetchChecklist()
             toast.success(`${template.name} template loaded`)
@@ -326,12 +425,38 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                 <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Tasks Preview</h4>
                                                 <ul className="space-y-3">
                                                     {TEMPLATES[selectedTemplate].tasks.length > 0 ? (
-                                                        TEMPLATES[selectedTemplate].tasks.map((task, i) => (
-                                                            <li key={i} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 border border-zinc-100">
-                                                                <div className="w-5 h-5 rounded-md border-2 border-zinc-300" />
-                                                                <span className="text-sm font-bold text-zinc-700">{task}</span>
-                                                            </li>
-                                                        ))
+                                                        TEMPLATES[selectedTemplate].tasks.map((task: any, i: number) => {
+                                                            const title = typeof task === 'string' ? task : task.title
+                                                            const link = typeof task === 'string' ? null : task.link_url || null
+                                                            const role = typeof task === 'string' ? null : task.assigned_role || null
+                                                            let linkLabel = ''
+                                                            if (link) {
+                                                                try {
+                                                                    const u = new URL(link)
+                                                                    const path = u.pathname
+                                                                    const ext = (path.split('.').pop() || '').toUpperCase()
+                                                                    linkLabel = ext || u.hostname.replace('www.', '')
+                                                                } catch {
+                                                                    linkLabel = 'Link'
+                                                                }
+                                                            }
+                                                            return (
+                                                                <li key={i} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 border border-zinc-100">
+                                                                    <div className="w-5 h-5 rounded-md border-2 border-zinc-300" />
+                                                                    <span className="text-sm font-bold text-zinc-700">{title}</span>
+                                                                    {role && (
+                                                                        <span className="ml-auto text-xs px-2 py-1 rounded-lg border bg-zinc-50 text-zinc-700 border-zinc-200">
+                                                                            Assigned: {role}
+                                                                        </span>
+                                                                    )}
+                                                                    {link && (
+                                                                        <span className="text-xs px-2 py-1 rounded-lg border bg-blue-50 text-blue-700 border-blue-100">
+                                                                            {linkLabel}
+                                                                        </span>
+                                                                    )}
+                                                                </li>
+                                                            )
+                                                        })
                                                     ) : (
                                                         <div className="h-full flex items-center justify-center text-zinc-400 text-sm italic">
                                                             No tasks in this template yet.
@@ -435,7 +560,36 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                         )
                                                     }
                                                     return null
-                                                })()}
+                                                 })()}
+                                                {item.link_url && (
+                                                    <div className="mt-2">
+                                                        {(() => {
+                                                            const type = getLinkType(item.link_url || '')
+                                                            const classes = getLinkBadgeClass(type)
+                                                            let label = ''
+                                                            try {
+                                                                const u = new URL(item.link_url || '')
+                                                                const path = u.pathname
+                                                                const ext = (path.split('.').pop() || '').toUpperCase()
+                                                                label = ext || u.hostname.replace('www.', '')
+                                                            } catch {
+                                                                label = 'Link'
+                                                            }
+                                                            return (
+                                                                <a
+                                                                    href={item.link_url || '#'}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors border ${classes}`}
+                                                                    title={item.link_url || ''}
+                                                                >
+                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                                    {label}
+                                                                </a>
+                                                            )
+                                                        })()}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <Menu as="div" className="relative">
@@ -476,7 +630,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                         leaveFrom="transform opacity-100 scale-100"
                                                         leaveTo="transform opacity-0 scale-95"
                                                     >
-                                                        <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                                                        <Menu.Items className="absolute left-0 bottom-full mb-2 w-56 origin-bottom-left divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                                                             <div className="p-1 max-h-60 overflow-y-auto">
                                                                 {committee.length > 0 ? (
                                                                     committee.map(u => {
@@ -518,7 +672,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    {/* Attach File Menu */}
+                                                    {/* Attach File/Menu */}
                                                     <Menu as="div" className="relative inline-block text-left">
                                                         <Menu.Button className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all focus:opacity-100 focus:outline-none">
                                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -534,8 +688,16 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                             leaveFrom="transform opacity-100 scale-100"
                                                             leaveTo="transform opacity-0 scale-95"
                                                         >
-                                                            <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                                                            <Menu.Items className="absolute right-0 bottom-full mb-2 w-56 origin-bottom-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                                                                 <div className="p-1 max-h-60 overflow-y-auto">
+                                                                    <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                                        Quick Create
+                                                                    </div>
+                                                                    <div className="px-2 py-1 flex flex-col gap-1">
+                                                                        <a href="https://docs.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-blue-50 text-zinc-700">Create Google Doc</a>
+                                                                        <a href="https://sheets.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-green-50 text-zinc-700">Create Google Sheet</a>
+                                                                        <a href="https://slides.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-orange-50 text-zinc-700">Create Google Slide</a>
+                                                                    </div>
                                                                     <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                                                                         Attach File
                                                                     </div>
@@ -564,20 +726,65 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                                     ) : (
                                                                         <div className="px-3 py-2 text-xs text-zinc-400 italic">No files available</div>
                                                                     )}
+                                                                    <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                                        Attach External Link
+                                                                    </div>
+                                                                    <div className="px-3 py-2">
+                                                                        <button
+                                                                            onClick={() => startEditLink(item)}
+                                                                            className="w-full text-left px-3 py-2 rounded-lg border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-50"
+                                                                        >
+                                                                            Paste link…
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
-                                                            </Menu.Items>
-                                                        </Transition>
+                                                        </Menu.Items>
+                                                    </Transition>
                                                     </Menu>
+                                                    {/* Edit Link Inline */}
+                                                    <div className="relative inline-block">
+                                                        {editLinkItemId === item.id ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="url"
+                                                                    value={editLinkValue}
+                                                                    onChange={(e) => setEditLinkValue(e.target.value)}
+                                                                    placeholder="Paste link"
+                                                                    className="w-40 bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold placeholder-zinc-400 focus:ring-2 focus:ring-yellow-400"
+                                                                />
+                                                                <button
+                                                                    onClick={saveEditLink}
+                                                                    className="p-1 bg-zinc-900 text-yellow-400 rounded-lg text-xs font-bold"
+                                                                >
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setEditLinkItemId(null)}
+                                                                    className="p-1 bg-zinc-100 text-zinc-700 rounded-lg text-xs font-bold"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => startEditLink(item)}
+                                                                className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-all"
+                                                                title="Edit link"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536M7.5 20.5l9.192-9.192a2 2 0 10-2.828-2.828L4.672 17.672a2 2 0 00-.586 1.414V20.5H7.5z" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
 
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all focus:opacity-100"
-                                                        title="Delete task"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
+                <button
+                    onClick={() => handleDeleteClick(item.id)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-all px-2 py-1"
+                    title="Remove"
+                >
+                    ×
+                </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -598,50 +805,98 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                 placeholder="Add a new task... (Press Enter)"
                                 className="flex-1 bg-transparent border-none p-0 text-base font-medium placeholder-zinc-400 focus:ring-0 text-zinc-900"
                             />
-
-                            <div className="relative">
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAssignMenu(!showAssignMenu)}
-                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${newItemUser || newItemFile
-                                            ? 'bg-blue-50 border-blue-200 text-blue-700'
-                                            : 'bg-white border-zinc-200 text-zinc-500 hover:border-yellow-400'
-                                            }`}
+                            {/* External link moved into Attach menu */}
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={newVisibility}
+                                    onChange={(e) => {
+                                        const v = e.target.value as 'internal' | 'external'
+                                        setNewVisibility(v)
+                                        if (v === 'internal') setNewAudienceRole(null)
+                                    }}
+                                    className="bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-bold text-zinc-700"
+                                >
+                                    <option value="internal">Internal</option>
+                                    <option value="external">External</option>
+                                </select>
+                                {newVisibility === 'external' && (
+                                    <select
+                                        value={newAudienceRole || ''}
+                                        onChange={(e) => setNewAudienceRole((e.target.value || null) as any)}
+                                        className="bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-bold text-zinc-700"
                                     >
-                                        {newItemUser ? (
-                                            <>
-                                                <span className="text-blue-600">@</span> {newItemUser.full_name}
-                                            </>
-                                        ) : newItemFile ? (
-                                            <>
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                                {newItemFile.title}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span>Assign / Attach</span>
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
+                                        <option value="">All Attendees</option>
+                                        <option value="audience">Audience</option>
+                                        <option value="organizer">Organizer</option>
+                                        <option value="committee">Committee</option>
+                                    </select>
+                                )}
+                            </div>
+
+                            <div className="relative flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowAssignMenu(!showAssignMenu)
+                                        setShowAttachMenu(false)
+                                    }}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${newItemUser
+                                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                                        : 'bg-white border-zinc-200 text-zinc-500 hover:border-yellow-400'
+                                        }`}
+                                >
+                                    {newItemUser ? (
+                                        <>
+                                            <span className="text-blue-600">@</span> {newItemUser.full_name}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Assign</span>
+                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowAttachMenu(!showAttachMenu)
+                                        setShowAssignMenu(false)
+                                    }}
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold transition-all ${newItemFile || newItemLinkUrl.trim()
+                                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                                        : 'bg-white border-zinc-200 text-zinc-500 hover:border-yellow-400'
+                                        }`}
+                                >
+                                    {newItemFile ? (
+                                        <>
+                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                            {newItemFile.title}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Attach</span>
+                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                        </>
+                                    )}
+                                </button>
 
                                 {showAssignMenu && (
                                     <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-zinc-100 rounded-xl shadow-xl overflow-hidden z-20">
                                         <div className="max-h-60 overflow-y-auto">
-                                            {/* Committee Section */}
                                             <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                                                Committee & Organizers
+                                                Assign to Member
                                             </div>
                                             {committee.length > 0 ? (
-                                                committee.map(u => (
+                                                committee.map(u => {
+                                                    const pr = participants.find(p => p.user_id === u.user_id)
+                                                    const roleTag = pr ? pr.role : null
+                                                    return (
                                                     <button
                                                         key={u.id}
                                                         type="button"
                                                         onClick={() => {
                                                             setNewItemUser(u)
-                                                            setNewItemFile(null) // Reset file if user selected
+                                                            setNewItemFile(null)
                                                             setShowAssignMenu(false)
                                                         }}
                                                         className="w-full text-left px-4 py-3 hover:bg-yellow-50 flex items-center gap-3 group"
@@ -650,39 +905,75 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                             {u.full_name[0]}
                                                         </div>
                                                         <span className="text-xs font-bold text-zinc-700 group-hover:text-zinc-900">{u.full_name}</span>
+                                                        {roleTag && (
+                                                            <span className="ml-auto text-[10px] px-2 py-1 rounded-lg border bg-zinc-50 text-zinc-600 border-zinc-200">
+                                                                {roleTag}
+                                                            </span>
+                                                        )}
                                                     </button>
-                                                ))
+                                                    )
+                                                })
                                             ) : (
                                                 <div className="px-4 py-3 text-xs text-zinc-400 italic">No members found</div>
                                             )}
+                                        </div>
+                                    </div>
+                                )}
 
-                                            {/* Files Section */}
-                                            {files.length > 0 && (
-                                                <>
-                                                    <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-t border-zinc-100">
-                                                        Attach File
-                                                    </div>
-                                                    {files.map(f => (
-                                                        <button
-                                                            key={f.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setNewItemFile(f)
-                                                                setNewItemUser(null) // Reset user if file selected (can change logic to allow both if backend supports it, but for now 1 slot in UI)
-                                                                // Actually UI can support both if we have separate states, but `handleAdd` assign logic needs care.
-                                                                // The requested feature is "people OR files".
-                                                                setShowAssignMenu(false)
-                                                            }}
-                                                            className="w-full text-left px-4 py-3 hover:bg-blue-50 flex items-center gap-3 group"
-                                                        >
-                                                            <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center text-blue-600">
-                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                                            </div>
-                                                            <span className="text-xs font-bold text-zinc-700 group-hover:text-blue-800 truncate">{f.title || 'Untitled File'}</span>
-                                                        </button>
-                                                    ))}
-                                                </>
+                                {showAttachMenu && (
+                                    <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-zinc-100 rounded-xl shadow-xl overflow-hidden z-20">
+                                        <div className="max-h-60 overflow-y-auto">
+                                            <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                Quick Create
+                                            </div>
+                                            <div className="px-2 py-1 flex flex-col gap-1">
+                                                <a href="https://docs.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-blue-50 text-zinc-700">Create Google Doc</a>
+                                                <a href="https://sheets.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-green-50 text-zinc-700">Create Google Sheet</a>
+                                                <a href="https://slides.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-orange-50 text-zinc-700">Create Google Slide</a>
+                                            </div>
+                                            <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-t border-zinc-100">
+                                                Attach File
+                                            </div>
+                                            {files.length > 0 ? (
+                                                files.map(f => (
+                                                    <button
+                                                        key={f.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setNewItemFile(f)
+                                                            setNewItemUser(null)
+                                                            setShowAttachMenu(false)
+                                                        }}
+                                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 flex items-center gap-3 group"
+                                                    >
+                                                        <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center text-blue-600">
+                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                        </div>
+                                                        <span className="text-xs font-bold text-zinc-700 group-hover:text-blue-800 truncate">{f.title || 'Untitled File'}</span>
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-4 py-3 text-xs text-zinc-400 italic">No files available</div>
                                             )}
+                                            <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-t border-zinc-100">
+                                                Attach External Link
+                                            </div>
+                                            <div className="px-4 py-3 flex items-center gap-2">
+                                                <input
+                                                    type="url"
+                                                    value={newItemLinkUrl}
+                                                    onChange={(e) => setNewItemLinkUrl(e.target.value)}
+                                                    placeholder="Paste link"
+                                                    className="flex-1 bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold placeholder-zinc-400 focus:ring-2 focus:ring-yellow-400"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAttachMenu(false)}
+                                                    className="px-2 py-1 bg-zinc-900 text-yellow-400 rounded-lg text-xs font-bold"
+                                                >
+                                                    Save
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -701,6 +992,16 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                     </div>
                 </div>
             )}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Task"
+                message="Are you sure you want to delete this checklist task?"
+                confirmText="Yes, Delete"
+                variant="danger"
+                isLoading={isDeleting}
+            />
         </div>
     )
 }
