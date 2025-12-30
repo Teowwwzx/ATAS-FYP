@@ -26,8 +26,10 @@ export function FloatingChatWrapper() {
         if (!client) return;
 
         const updateCount = () => {
-            if (client.user?.total_unread_count !== undefined) {
-                setUnreadCount(client.user.total_unread_count);
+            // Type assertion to access total_unread_count
+            const user = client.user as any;
+            if (user?.total_unread_count !== undefined) {
+                setUnreadCount(user.total_unread_count);
             }
         };
 
@@ -108,7 +110,8 @@ export function FloatingChatWrapper() {
             setConversations(data)
             // We rely on client events for unread count mostly, but we can update here too
             const totalUnread = data.reduce((acc, c) => acc + c.unread_count, 0)
-            if (client?.user?.total_unread_count === undefined) {
+            const user = client?.user as any;
+            if (user?.total_unread_count === undefined) {
                  setUnreadCount(totalUnread)
             }
         } catch (error) {

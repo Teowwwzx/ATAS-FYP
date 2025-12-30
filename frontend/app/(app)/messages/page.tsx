@@ -6,6 +6,7 @@ import { getConversations, getMe } from '@/services/api'
 import { ChatConversation, UserMeResponse } from '@/services/api.types'
 import { ConversationList } from './components/ConversationList'
 import { StreamChatWindow } from './components/StreamChatWindow'
+import { useStreamChat } from '@/hooks/useStreamChat'
 import { toast } from 'react-hot-toast'
 import { useSearchParams } from 'next/navigation'
 
@@ -18,6 +19,9 @@ function MessagesContent() {
     // Check if redirecting from profile with ?conversation_id=...
     const searchParams = useSearchParams()
     const initialConvId = searchParams.get('conversation_id')
+
+    // Initialize Stream Chat (shared client)
+    const { client } = useStreamChat(me?.id);
 
     useEffect(() => {
         const init = async () => {

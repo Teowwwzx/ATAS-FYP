@@ -25,7 +25,8 @@ export default function EventDetailsPage() {
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState<UserMeResponse | null>(null)
     const [registering, setRegistering] = useState(false)
-    const [isParticipant, setIsParticipant] = useState(false)
+    // Remove conflicting state declaration
+    // const [isParticipant, setIsParticipant] = useState(false) 
     const [isJoinedAccepted, setIsJoinedAccepted] = useState(false)
     const [reminding, setReminding] = useState(false)
     const [showLeaveModal, setShowLeaveModal] = useState(false)
@@ -129,13 +130,13 @@ export default function EventDetailsPage() {
             if (userData) {
                 try {
                     const summary: any = await getMyParticipationSummary(id)
-                    setIsParticipant(!!summary?.is_participant)
+                    // setIsParticipant(!!summary?.is_participant) // Removed state
                     setIsJoinedAccepted(summary?.my_status === 'accepted' || summary?.my_status === 'attended')
                     setParticipantStatus(summary?.my_status || null)
                     setPaymentStatus(summary?.payment_status || null)
                     setMyRole(summary?.my_role || null)
                 } catch {
-                    setIsParticipant(false)
+                    // setIsParticipant(false) // Removed state
                     setIsJoinedAccepted(false)
                     setParticipantStatus(null)
                     setPaymentStatus(null)
@@ -151,7 +152,7 @@ export default function EventDetailsPage() {
                     setMyReminder(null)
                 }
             } else {
-                setIsParticipant(false)
+                // setIsParticipant(false) // Removed state
                 setIsJoinedAccepted(false)
                 setParticipantStatus(null)
                 setPaymentStatus(null)
@@ -289,6 +290,9 @@ export default function EventDetailsPage() {
 
     const isOrganizer = user?.id === event.organizer_id
     const isCommittee = myRole === 'committee'
+    const isParticipant = myRole === 'participant' && isJoinedAccepted
+    const isSpeaker = myRole === 'speaker' && isJoinedAccepted
+    const isSponsor = myRole === 'sponsor' && isJoinedAccepted
     const isRegistrationOpen = event.registration_status === 'opened'
     const isAttendanceOpen = currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING
     const currentParticipants = event.participant_count ?? stats?.total_participants ?? 0

@@ -43,8 +43,10 @@ export function ConversationList({ conversations, selectedId, currentUserId, onS
                 {...props} 
                 onSelect={() => {
                     // Extract raw UUID from channel ID (e.g. legacy_UUID -> UUID)
-                    const rawId = props.channel.id.replace('legacy_', '');
-                    onSelect(rawId);
+                    const rawId = props.channel?.id ? props.channel.id.replace('legacy_', '') : '';
+                    if (rawId) {
+                        onSelect(rawId);
+                    }
                 }} 
             />
         );
