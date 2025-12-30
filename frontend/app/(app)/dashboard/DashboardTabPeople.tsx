@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
 import { EventPhase } from '@/lib/eventPhases'
+import { WalkInModal } from '@/components/admin/modals/WalkInModal'
 
 interface DashboardTabPeopleProps {
     event: EventDetails
@@ -20,6 +21,7 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
     const [filter, setFilter] = useState<'all' | 'speaker' | 'audience' | 'staff' | 'pending_payment'>('all')
     const [chatParticipant, setChatParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
     const [receiptParticipant, setReceiptParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
+    const [showWalkInModal, setShowWalkInModal] = useState(false)
 
     const fetchParticipants = async () => {
         try {
@@ -104,15 +106,28 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div />
                 {onInvite && (
-                    <button
-                        onClick={onInvite}
-                        className="px-5 py-2.5 bg-zinc-900 text-yellow-400 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-all shadow-sm flex items-center gap-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Invite People
-                    </button>
+                    <div className="flex gap-2">
+                        {event.type === 'physical' && (
+                            <button
+                                onClick={() => setShowWalkInModal(true)}
+                                className="px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all shadow-sm flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                                Walk-in Attendance
+                            </button>
+                        )}
+                        <button
+                            onClick={onInvite}
+                            className="px-5 py-2.5 bg-zinc-900 text-yellow-400 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-all shadow-sm flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Invite People
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -351,6 +366,13 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                     </div>
                 </Dialog>
             </Transition>
+
+            <WalkInModal
+                isOpen={showWalkInModal}
+                onClose={() => setShowWalkInModal(false)}
+                event={event}
+                onSuccess={fetchParticipants}
+            />
         </div>
     )
 }

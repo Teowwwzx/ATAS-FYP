@@ -2581,10 +2581,24 @@ def walk_in_event_attendance(
     event_id: uuid.UUID,
     body: WalkInAttendanceRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     event = db.query(Event).filter(Event.id == event_id, Event.deleted_at.is_(None)).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Permission check: Organizer or committee only
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role != EventParticipantRole.committee:
+            raise HTTPException(status_code=403, detail="Not allowed to register walk-in")
 
     now_utc = datetime.now(timezone.utc)
     if event.status != EventStatus.published:

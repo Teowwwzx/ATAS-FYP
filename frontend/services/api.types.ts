@@ -313,6 +313,11 @@ export interface EventParticipantBulkCreate {
 
 // --- Attendance Types ---
 
+export interface WalkInAttendanceRequest {
+    name: string
+    email: string
+}
+
 export interface AttendanceQRResponse {
     token: string
     expires_at: string // ISO string

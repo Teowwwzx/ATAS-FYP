@@ -306,6 +306,11 @@ export const scanAttendance = async (eventId: string, token: string) => {
   return response.data
 }
 
+export const walkInAttendance = async (eventId: string, data: import('./api.types').WalkInAttendanceRequest) => {
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/attendance/walk_in`, data)
+  return response.data
+}
+
 export interface AttendanceStats {
   total_participants: number
   total_attended: number
