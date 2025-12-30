@@ -11,7 +11,7 @@ interface DashboardTabProposalsProps {
     event: EventDetails
 }
 
-import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
+import { StreamCommunicationLog } from '@/components/dashboard/StreamCommunicationLog'
 import { getMe } from '@/services/api'
 
 // Wrapped CommunicationLog in a Modal
@@ -54,9 +54,9 @@ function ProposalDiscussionModal({ proposal, isOpen, onClose, currentUser }: { p
                                 </div>
                                 <div className="flex-1 overflow-hidden flex flex-col p-6">
                                     {proposal.conversation_id ? (
-                                        <CommunicationLog
+                                        <StreamCommunicationLog
                                             conversationId={proposal.conversation_id}
-                                            organizerName="Organizer" // Or fetch actual name? For now generic is fine or prop
+                                            organizerName="Organizer"
                                             currentUserId={currentUser?.id}
                                         />
                                     ) : (

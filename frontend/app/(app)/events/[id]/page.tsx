@@ -91,6 +91,8 @@ export default function EventDetailsPage() {
         loadHostOrg()
     }, [event?.organizer_id])
 
+    const [myRole, setMyRole] = useState<string | null>(null)
+
     useEffect(() => {
         const loadReviews = async () => {
             // Only load reviews if Post-Event
@@ -131,11 +133,13 @@ export default function EventDetailsPage() {
                     setIsJoinedAccepted(summary?.my_status === 'accepted' || summary?.my_status === 'attended')
                     setParticipantStatus(summary?.my_status || null)
                     setPaymentStatus(summary?.payment_status || null)
+                    setMyRole(summary?.my_role || null)
                 } catch {
                     setIsParticipant(false)
                     setIsJoinedAccepted(false)
                     setParticipantStatus(null)
                     setPaymentStatus(null)
+                    setMyRole(null)
                 }
 
 
@@ -151,6 +155,7 @@ export default function EventDetailsPage() {
                 setIsJoinedAccepted(false)
                 setParticipantStatus(null)
                 setPaymentStatus(null)
+                setMyRole(null)
             }
             try {
                 const s = await getEventAttendanceStats(id)
@@ -283,6 +288,7 @@ export default function EventDetailsPage() {
     if (!event) return null
 
     const isOrganizer = user?.id === event.organizer_id
+    const isCommittee = myRole === 'committee'
     const isRegistrationOpen = event.registration_status === 'opened'
     const isAttendanceOpen = currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING
     const currentParticipants = event.participant_count ?? stats?.total_participants ?? 0
@@ -513,16 +519,16 @@ export default function EventDetailsPage() {
                                     )}
 
                                     {/* Action Buttons */}
-                                    {isOrganizer ? (
+                                    {isOrganizer || isCommittee ? (
                                         <Link
                                             href={`/manage/${event.id}`}
                                             className="block w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold text-center text-lg hover:bg-zinc-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
                                         >
-                                            Manage Event
+                                            {isOrganizer ? 'Manage Event' : 'Committee Dashboard'}
                                         </Link>
                                     ) : (
                                         <div className="space-y-4">
-                                            {isParticipant ? (
+                                            {isParticipant || isSpeaker || isSponsor ? (
                                                 <>
                                                     <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
@@ -532,7 +538,11 @@ export default function EventDetailsPage() {
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-bold text-emerald-800">You are going!</p>
-                                                            <p className="text-xs text-emerald-600">{participantStatus === 'attended' ? 'Attendance marked' : 'Ticket confirmed'}</p>
+                                                            <p className="text-xs text-emerald-600">
+                                                                {myRole === 'speaker' ? 'Speaker' : 
+                                                                 myRole === 'sponsor' ? 'Sponsor' : 
+                                                                 participantStatus === 'attended' ? 'Attendance marked' : 'Ticket confirmed'}
+                                                            </p>
                                                         </div>
                                                     </div>
 
@@ -578,31 +588,6 @@ export default function EventDetailsPage() {
                                 </div>
                             </div>
 
-                            {/* 2. Event Checklist (Attendee-Facing) */}
-                            {externalChecklist.length > 0 && (
-                                <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl overflow-hidden p-6">
-                                    <h3 className="text-lg font-black text-zinc-900 mb-4">Event Checklist</h3>
-                                    <ul className="space-y-3">
-                                        {externalChecklist.map(item => (
-                                            <li key={item.id} className="flex items-start gap-3">
-                                                <div className="mt-1 w-2 h-2 rounded-full bg-zinc-300"></div>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-bold text-zinc-800">{item.title}</p>
-                                                    {item.description && (
-                                                        <p className="text-xs text-zinc-500">{item.description}</p>
-                                                    )}
-                                                    {item.link_url && (
-                                                        <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline mt-1 inline-block">
-                                                            Open Link
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-
                             {/* What to Prepare - Re-styled & Moved to Sidebar */}
                             {isJoinedAccepted && (
                                 <div className="bg-amber-50 rounded-3xl p-6 border border-amber-100 shadow-sm relative overflow-hidden group">
@@ -631,6 +616,29 @@ export default function EventDetailsPage() {
                                         )}
 
                                     </ul>
+                                    {externalChecklist.length > 0 && (
+                                        <div className="mt-4">
+                                            <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">Checklist</h4>
+                                            <ul className="space-y-3">
+                                                {externalChecklist.map(item => (
+                                                    <li key={item.id} className="flex items-start gap-3">
+                                                        <div className="mt-1 w-2 h-2 rounded-full bg-amber-300"></div>
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-bold text-amber-900">{item.title}</p>
+                                                            {item.description && (
+                                                                <p className="text-xs text-amber-800">{item.description}</p>
+                                                            )}
+                                                            {item.link_url && (
+                                                                <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-amber-700 underline mt-1 inline-block">
+                                                                    Open Link
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                     <div className="relative z-10">
                                         {myReminder ? (
                                             <button

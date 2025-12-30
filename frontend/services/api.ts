@@ -43,7 +43,7 @@ import {
 
 // 1. Create an Axios instance
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.2:8000') + '/api/v1',
+  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -923,6 +923,12 @@ export interface StreamTokenResponse {
 
 export const getStreamChatToken = async (): Promise<StreamTokenResponse> => {
   const response = await api.get<StreamTokenResponse>('/chat/stream/token')
+  return response.data
+}
+
+// Ensure Stream conversation exists and members are upserted
+export const ensureStreamConversation = async (conversationId: string): Promise<{ channel_id: string; member_ids: string[] }> => {
+  const response = await api.post<{ channel_id: string; member_ids: string[] }>(`/chat/stream/conversations/${conversationId}/ensure`)
   return response.data
 }
 

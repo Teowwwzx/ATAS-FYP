@@ -55,6 +55,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
     const [loading, setLoading] = useState(true)
     const [files, setFiles] = useState<EventProposalResponse[]>([])
     const [fileLinks, setFileLinks] = useState<Record<string, string[]>>({}) // fileId -> checklistId[] list
+    const [viewVisibility, setViewVisibility] = useState<'all' | 'internal' | 'external'>('all')
 
     // Templates State
     const [showTemplateModal, setShowTemplateModal] = useState(false)
@@ -256,7 +257,8 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
             sort_order: items.length + 1,
             created_by_user_id: 'me',
             created_at: new Date().toISOString(),
-            assigned_user_ids: newItemUser ? [newItemUser.user_id] : []
+            assigned_user_ids: newItemUser ? [newItemUser.user_id] : [],
+            visibility: newVisibility
         }
 
         // Optimistic UI
@@ -495,6 +497,37 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
             ) : (
                 <div className="space-y-4">
                     <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
+                        <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100 bg-zinc-50">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setViewVisibility('all')}
+                                    className={`px-3 py-1 rounded-lg text-xs font-bold ${viewVisibility === 'all' ? 'bg-zinc-900 text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'}`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    onClick={() => setViewVisibility('internal')}
+                                    className={`px-3 py-1 rounded-lg text-xs font-bold ${viewVisibility === 'internal' ? 'bg-zinc-900 text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'}`}
+                                >
+                                    Internal
+                                </button>
+                                <button
+                                    onClick={() => setViewVisibility('external')}
+                                    className={`px-3 py-1 rounded-lg text-xs font-bold ${viewVisibility === 'external' ? 'bg-zinc-900 text-white' : 'bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-100'}`}
+                                >
+                                    External
+                                </button>
+                            </div>
+                            <a
+                                href={`/events/${event.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-zinc-200 text-blue-700 hover:bg-blue-50"
+                                title="Preview public event page"
+                            >
+                                Preview Public
+                            </a>
+                        </div>
                         <table className="w-full text-left">
                             <thead className="bg-zinc-50 border-b border-zinc-100">
                                 <tr>
@@ -514,7 +547,9 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                         </td>
                                     </tr>
                                 ) : (
-                                    items.map((item) => (
+                                    items
+                                        .filter(i => viewVisibility === 'all' ? true : (i.visibility || 'internal') === viewVisibility)
+                                        .map((item) => (
                                         <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors group">
                                             <td className="px-6 py-4 text-center">
                                                 <button

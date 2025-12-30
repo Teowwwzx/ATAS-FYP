@@ -1,25 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import {
-    Channel,
-    MessageInput,
-    MessageList,
-    Thread,
-    Window,
-    Chat,
-} from 'stream-chat-react';
+import { Channel, Chat, MessageInput, MessageList, Thread, Window } from 'stream-chat-react';
 import { useStreamChat } from '@/hooks/useStreamChat';
 import type { Channel as StreamChannel } from 'stream-chat';
 import 'stream-chat-react/dist/css/v2/index.css';
 import '@/components/dashboard/stream-chat-custom.css';
 import { ChatConversation } from '@/services/api.types';
+import { ensureStreamConversation } from '@/services/api';
 
 interface StreamChatWindowProps {
     conversation: ChatConversation;
     currentUserId: string;
     onMessageSent?: () => void;
     onBack?: () => void;
+    forceBackVisible?: boolean;
 }
 
 export function StreamChatWindow({
@@ -27,45 +22,102 @@ export function StreamChatWindow({
     currentUserId,
     onMessageSent,
     onBack,
-}: StreamChatWindowProps) {
-    const { client, loading, error } = useStreamChat(currentUserId);
+    forceBackVisible = false,
+    client, // Accept client prop
+}: StreamChatWindowProps & { client?: any }) {
+    // Debug logging for profile issue
+    useEffect(() => {
+        console.log('[StreamChatWindow] Debug:', {
+            conversationId: conversation.id,
+            currentUserId,
+            participants: conversation.participants,
+            otherParticipantFound: conversation.participants.find((p) => p.user_id !== currentUserId)
+        });
+    }, [conversation, currentUserId]);
+
+    // Use passed client or internal hook (fallback)
+    const internalHook = useStreamChat(currentUserId);
+    const finalClient = client || internalHook.client;
+    const loading = client ? false : internalHook.loading;
+    const error = client ? null : internalHook.error;
+
     const [channel, setChannel] = useState<StreamChannel | null>(null);
     const [channelLoading, setChannelLoading] = useState(true);
 
     // Get other participant info
     const otherParticipant = conversation.participants.find((p) => p.user_id !== currentUserId);
-    const participantName = otherParticipant?.full_name || 'Unknown';
-    const participantAvatar = otherParticipant?.avatar_url;
+    
+    // Fallback logic: 
+    // 1. If we found a specific "other" person, use them.
+    // 2. If not, and there are participants, try to find one that isn't me (redundant check but safe).
+    // 3. If still nothing (e.g. only me in list), show "Unknown User" instead of my own name.
+    let participantName = 'Unknown User';
+    let participantAvatar = undefined;
+
+    if (otherParticipant) {
+        participantName = otherParticipant.full_name || 'Unknown User';
+        participantAvatar = otherParticipant.avatar_url;
+    } else if (conversation.participants.length > 0) {
+        // Fallback to first participant
+        const first = conversation.participants[0];
+        participantName = first.full_name || 'Unknown User';
+        participantAvatar = first.avatar_url;
+
+        // If it's the current user, maybe it's a self-chat?
+        if (first.user_id === currentUserId) {
+            // Only mark as "Note to Self" if there really are no other participants
+            if (conversation.participants.length === 1 || 
+                (conversation.participants.length === 2 && conversation.participants[1].user_id === currentUserId)) {
+                participantName = `${participantName} (You)`;
+            }
+        }
+    }
 
     useEffect(() => {
-        if (!client || !conversation.id) {
+        if (!finalClient || !conversation.id) {
             setChannelLoading(false);
             return;
         }
 
         const initChannel = async () => {
             try {
+                // Ensure client is connected
+                if (!finalClient.userID) {
+                    console.warn('[StreamChatWindow] Client not connected, skipping channel init');
+                    setChannelLoading(false);
+                    return;
+                }
+
                 setChannelLoading(true);
 
-                // Create channel ID - use legacy_ prefix to match request detail page
-                const channelId = conversation.id.startsWith('legacy_')
+                let streamChannelId = conversation.id.startsWith('legacy_')
                     ? conversation.id
                     : `legacy_${conversation.id}`;
 
-                console.log('[StreamChatWindow] Initializing channel:', channelId);
+                try {
+                    const ensureData = await ensureStreamConversation(conversation.id.replace('legacy_', ''));
+                    // Use the authoritative channel ID from backend
+                    if (ensureData && ensureData.channel_id) {
+                        streamChannelId = ensureData.channel_id;
+                    }
+                } catch (e) {
+                    console.warn('[StreamChatWindow] ensureStreamConversation failed, using default ID:', e instanceof Error ? e.message : e);
+                }
+
+                console.log('[StreamChatWindow] Initializing channel:', streamChannelId);
 
                 // Get members from conversation participants
                 const members = conversation.participants.map(p => p.user_id);
 
                 // Get or create channel
                 // We MUST specify members for private messaging channels
-                const ch = client.channel('messaging', channelId, {
+                const ch = finalClient.channel('messaging', streamChannelId, {
                     members: members,
                 });
 
                 await ch.watch();
                 setChannel(ch);
-                console.log('[StreamChatWindow] Channel ready:', channelId);
+                console.log('[StreamChatWindow] Channel ready:', streamChannelId);
 
                 // Call onMessageSent when new message arrives (for updating unread counts)
                 if (onMessageSent) {
@@ -85,10 +137,15 @@ export function StreamChatWindow({
         return () => {
             // Cleanup
             if (channel) {
-                channel.stopWatching().catch((e) => console.error('Stop watching error:', e));
+                // Ignore errors if client is already disconnected
+                try {
+                    channel.stopWatching().catch(() => {});
+                } catch (e) {
+                    // Ignore synchronous errors
+                }
             }
         };
-    }, [client, conversation.id, onMessageSent]);
+    }, [finalClient, conversation.id, onMessageSent]);
 
     // Loading state
     if (loading || channelLoading) {
@@ -139,17 +196,17 @@ export function StreamChatWindow({
     // Main chat UI
     return (
         <div className="flex-1 flex flex-col h-full">
-            <Chat client={client!} theme="str-chat__theme-light">
+            <Chat client={finalClient!} theme="str-chat__theme-light">
                 <Channel channel={channel}>
                     <Window>
                         {/* Custom Header */}
                         <div className="p-4 md:p-6 border-b border-zinc-100 bg-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                {/* Back button for mobile */}
+                                {/* Back button for mobile or forced */}
                                 {onBack && (
                                     <button
                                         onClick={onBack}
-                                        className="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-zinc-100 transition-colors"
+                                        className={`${forceBackVisible ? 'flex' : 'md:hidden flex'} w-10 h-10 items-center justify-center rounded-xl hover:bg-zinc-100 transition-colors`}
                                     >
                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />

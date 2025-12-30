@@ -64,6 +64,54 @@ def get_stream_token(current_user: User = Depends(get_current_user)):
 
 # ==================== Legacy Chat Endpoints ====================
 
+@router.post("/stream/conversations/{conversation_id}/ensure")
+def ensure_stream_conversation(
+    conversation_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _check_participant(conversation_id, current_user.id, db)
+
+    participants = db.query(ConversationParticipant).options(
+        joinedload(ConversationParticipant.user).joinedload(User.profile)
+    ).filter(ConversationParticipant.conversation_id == conversation_id).all()
+
+    stream_service = get_stream_service()
+
+    member_ids: List[str] = []
+    if participants:
+        for p in participants:
+            u = p.user
+            name = u.email
+            image = None
+            if u.profile:
+                if u.profile.full_name:
+                    name = u.profile.full_name
+                if u.profile.avatar_url:
+                    image = u.profile.avatar_url
+            stream_service.upsert_user(user_id=str(u.id), name=name, image=image)
+            member_ids.append(str(u.id))
+    else:
+        name = current_user.email
+        image = None
+        if current_user.profile:
+            if current_user.profile.full_name:
+                name = current_user.profile.full_name
+            if current_user.profile.avatar_url:
+                image = current_user.profile.avatar_url
+        stream_service.upsert_user(user_id=str(current_user.id), name=name, image=image)
+        member_ids.append(str(current_user.id))
+
+    channel_id = f"legacy_{str(conversation_id)}"
+    stream_service.get_or_create_channel(
+        channel_type="messaging",
+        channel_id=channel_id,
+        created_by_id=str(current_user.id),
+        members=member_ids,
+    )
+
+    return {"channel_id": channel_id, "member_ids": member_ids}
+
 
 @router.post("/conversations", response_model=ConversationResponse)
 def create_or_get_conversation(

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import {
     Channel,
-    ChannelHeader,
     MessageInput,
     MessageList,
     Thread,
@@ -14,26 +13,25 @@ import { useStreamChat } from '@/hooks/useStreamChat';
 import type { Channel as StreamChannel } from 'stream-chat';
 import 'stream-chat-react/dist/css/v2/index.css';
 import './stream-chat-custom.css'; // We'll create custom styles
+import { ensureStreamConversation } from '@/services/api';
 
 interface StreamCommunicationLogProps {
     conversationId: string | undefined;
     currentUserId?: string;
     organizerName: string;
-    organizerId?: string;
 }
 
 export function StreamCommunicationLog({
     conversationId,
     currentUserId,
     organizerName,
-    organizerId,
 }: StreamCommunicationLogProps) {
     const { client, loading, error } = useStreamChat(currentUserId);
     const [channel, setChannel] = useState<StreamChannel | null>(null);
     const [channelLoading, setChannelLoading] = useState(true);
 
     useEffect(() => {
-        if (!client || !conversationId || !currentUserId || !organizerId) {
+        if (!client || !conversationId || !currentUserId) {
             setChannelLoading(false);
             return;
         }
@@ -42,16 +40,17 @@ export function StreamCommunicationLog({
             try {
                 setChannelLoading(true);
 
+                const rawConvId = conversationId.startsWith('legacy_')
+                    ? conversationId.replace('legacy_', '')
+                    : conversationId;
+                await ensureStreamConversation(rawConvId);
+
                 // Create channel ID from conversation
                 const channelId = conversationId.startsWith('legacy_')
                     ? conversationId
                     : `legacy_${conversationId}`;
 
-                // Get or create channel
-                // We MUST specify members for private messaging channels
-                const ch = client.channel('messaging', channelId, {
-                    members: [currentUserId, organizerId]
-                });
+                const ch = client.channel('messaging', channelId);
 
                 await ch.watch();
                 setChannel(ch);
@@ -71,7 +70,7 @@ export function StreamCommunicationLog({
                 channel.stopWatching().catch(e => console.error('Stop watching error:', e));
             }
         };
-    }, [client, conversationId, currentUserId, organizerId, organizerName]);
+    }, [client, conversationId, currentUserId]);
 
     // Loading state
     if (loading || channelLoading) {

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { ProfileHeader } from '@/components/profile/ProfileHeader'
 import { ProfileView } from '@/components/profile/ProfileView'
 import { BookExpertModal } from '@/components/modals/BookExpertModal'
+import { createConversation } from '@/services/api'
 
 export default function PublicProfilePage() {
     const params = useParams()
@@ -208,6 +209,23 @@ export default function PublicProfilePage() {
                 </button>
             ) : (
                 <>
+                    <button
+                        onClick={async () => {
+                            try {
+                                const conv = await createConversation([userId])
+                                toast.success('Chat created')
+                                router.push(`/messages?conversation_id=${conv.id}`)
+                            } catch (error) {
+                                toast.error('Failed to start chat')
+                            }
+                        }}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
+                    >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Message
+                    </button>
                     <button
                         onClick={handleConnect}
                         disabled={followLoading}

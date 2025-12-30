@@ -108,17 +108,19 @@ class StreamChatService:
             Channel ID
         """
         try:
-            channel = self.client.channel(channel_type, channel_id)
-            
-            # Prepare channel data
-            data = {"members": members}
+            # Prepare channel data (members, optional name, and custom fields)
+            channel_data = {"members": members}
             if name:
-                data["name"] = name
-            data.update(custom_data)
+                channel_data["name"] = name
+            channel_data.update(custom_data)
+
+            # Initialize channel with explicit id and data
+            channel = self.client.channel(channel_type, channel_id, channel_data)
             
             # Try to create, will succeed if doesn't exist
             try:
-                channel.create(created_by_id=created_by_id, data=data)
+                # Python SDK expects the creator user_id as the first positional arg
+                channel.create(created_by_id)
                 logger.info(f"Created new channel: {channel_type}:{channel_id}")
             except Exception as create_error:
                 # Channel likely already exists, just watch it

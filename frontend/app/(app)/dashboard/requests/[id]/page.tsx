@@ -312,7 +312,6 @@ export default function RequestDetailsPage() {
                         conversationId={request.conversation_id}
                         organizerName={organizer?.full_name || 'Organizer'}
                         currentUserId={currentUser?.id}
-                        organizerId={request.event?.organizer_id}
                     />
                 </div>
             </div>

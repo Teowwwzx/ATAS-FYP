@@ -95,15 +95,6 @@ export function AppNavbar() {
                             >
                                 Discover
                             </Link>
-                            <Link
-                                href="/messages"
-                                className={`inline-flex items-center px-1 pt-1 border-b-4 text-sm font-bold transition-all duration-200 ${isActive('/messages')
-                                    ? 'border-yellow-400 text-zinc-900'
-                                    : 'border-transparent text-zinc-500 hover:text-zinc-900 hover:border-yellow-200'
-                                    }`}
-                            >
-                                Messages
-                            </Link>
                         </div>
                     </div>
                     <div className="hidden sm:ml-6 sm:flex sm:items-center">
@@ -226,16 +217,6 @@ export function AppNavbar() {
                             onClick={() => setIsMenuOpen(false)}
                         >
                             Discover
-                        </Link>
-                        <Link
-                            href="/messages"
-                            className={`block px-3 py-2 rounded-xl text-base font-bold ${isActive('/messages')
-                                ? 'bg-yellow-50 text-zinc-900'
-                                : 'text-zinc-500 hover:bg-gray-50 hover:text-zinc-900'
-                                }`}
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            Messages
                         </Link>
                         <button
                             onClick={() => {

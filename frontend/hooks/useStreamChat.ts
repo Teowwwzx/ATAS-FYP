@@ -62,11 +62,11 @@ export function useStreamChat(userId: string | undefined) {
 
         // Cleanup on unmount
         return () => {
-            if (chatClient && chatClient.userID) {
-                chatClient.disconnectUser()
-                    .then(() => console.log('[StreamChat] User disconnected'))
-                    .catch(e => console.error('[StreamChat] Disconnect error:', e));
-            }
+            // We DO NOT disconnect here to prevent race conditions when navigating
+            // between pages (e.g. Floating Chat -> Messages Page).
+            // The StreamChat singleton will maintain the connection.
+            // If the user changes, the useEffect dependency [userId] will trigger
+            // a new connection which handles the switch automatically.
         };
     }, [userId]);
 

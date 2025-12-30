@@ -95,9 +95,26 @@
 
 .str-chat__send-button svg {
   fill: rgb(24 24 27) !important;
-  transform: rotate(90deg) !important;
   width: 1.25rem !important;
   height: 1.25rem !important;
+}
+
+/* Fix for Thread View layout issues */
+.str-chat__thread .str-chat__message-text-inner {
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-width: 2rem !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.str-chat__thread .str-chat__message-simple-text-inner {
+  width: fit-content !important;
+}
+
+/* Ensure thread input doesn't look squashed */
+.str-chat__thread .str-chat__input-flat {
+  padding: 0.5rem !important;
 }
 
 /* Avatar */

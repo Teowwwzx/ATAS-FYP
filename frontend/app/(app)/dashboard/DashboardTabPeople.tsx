@@ -4,7 +4,7 @@ import { EventDetails, EventParticipantDetails, ProfileResponse } from '@/servic
 import { getEventParticipants, getProfileByUserId, removeEventParticipant, verifyParticipantPayment } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
-import { CommunicationLog } from '@/components/dashboard/CommunicationLog'
+import { StreamCommunicationLog } from '@/components/dashboard/StreamCommunicationLog'
 import { EventPhase } from '@/lib/eventPhases'
 
 interface DashboardTabPeopleProps {
@@ -335,7 +335,7 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                                 </div>
                                 <div className="flex-1 overflow-hidden flex flex-col p-6">
                                     {chatParticipant?.conversation_id ? (
-                                        <CommunicationLog
+                                        <StreamCommunicationLog
                                             conversationId={chatParticipant.conversation_id}
                                             organizerName={chatParticipant.profile?.full_name || 'Participant'}
                                             currentUserId={user?.user_id}

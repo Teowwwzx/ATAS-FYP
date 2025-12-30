@@ -2,6 +2,9 @@
 import React from 'react'
 import { ChatConversation } from '@/services/api.types'
 import { format } from 'date-fns'
+import { ChannelList, Chat, ChannelPreviewUIComponentProps } from 'stream-chat-react'
+import { CustomChannelPreview } from './CustomChannelPreview'
+import type { StreamChat } from 'stream-chat'
 
 interface ConversationListProps {
     conversations: ChatConversation[]
@@ -9,9 +12,10 @@ interface ConversationListProps {
     currentUserId: string
     onSelect: (id: string) => void
     loading?: boolean
+    client?: StreamChat | null
 }
 
-export function ConversationList({ conversations, selectedId, currentUserId, onSelect, loading }: ConversationListProps) {
+export function ConversationList({ conversations, selectedId, currentUserId, onSelect, loading, client }: ConversationListProps) {
     if (loading) {
         return (
             <div className="space-y-4 p-4">
@@ -28,6 +32,38 @@ export function ConversationList({ conversations, selectedId, currentUserId, onS
         )
     }
 
+    // Use Stream Chat List if client is available
+    if (client) {
+        const filters = { type: 'messaging', members: { $in: [currentUserId] } };
+        const sort = { last_message_at: -1 as const };
+        const options = { limit: 20 };
+
+        const PreviewWrapper = (props: ChannelPreviewUIComponentProps) => (
+            <CustomChannelPreview 
+                {...props} 
+                onSelect={() => {
+                    // Extract raw UUID from channel ID (e.g. legacy_UUID -> UUID)
+                    const rawId = props.channel.id.replace('legacy_', '');
+                    onSelect(rawId);
+                }} 
+            />
+        );
+
+        return (
+            <div className="h-full stream-chat-list-wrapper">
+                <Chat client={client} theme="str-chat__theme-light">
+                    <ChannelList 
+                        filters={filters}
+                        sort={sort}
+                        options={options}
+                        Preview={PreviewWrapper}
+                        showChannelSearch={false}
+                    />
+                </Chat>
+            </div>
+        );
+    }
+
     if (conversations.length === 0) {
         return (
             <div className="p-8 text-center text-zinc-400 text-sm">
@@ -40,7 +76,7 @@ export function ConversationList({ conversations, selectedId, currentUserId, onS
         <div className="overflow-y-auto h-full">
             {conversations.map(conv => {
                 // Find other participant
-                const other = conv.participants.find(p => p.user_id !== currentUserId) || conv.participants[0]
+                const other = conv.participants.find(p => p.user_id !== currentUserId)
                 const name = other?.full_name || 'Unknown User'
                 const avatar = other?.avatar_url || `https://placehold.co/200x200/png?text=${encodeURIComponent(name)}`
                 const isSelected = selectedId === conv.id

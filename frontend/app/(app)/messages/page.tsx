@@ -86,6 +86,7 @@ function MessagesContent() {
                         currentUserId={me?.id || ''}
                         onSelect={setSelectedId}
                         loading={loading}
+                        client={client} // Pass client
                     />
                 </div>
 
@@ -97,6 +98,7 @@ function MessagesContent() {
                             currentUserId={me.id}
                             onMessageSent={refreshList}
                             onBack={() => setSelectedId(null)}
+                            client={client} // Pass client
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50/30 text-zinc-400 p-8 text-center">
