@@ -43,6 +43,10 @@ class EventVisibility(enum.Enum):
     public = "public"
     private = "private"
 
+class ChecklistVisibility(enum.Enum):
+    internal = "internal"
+    external = "external"
+
 class EventParticipantRole(enum.Enum):
     organizer = "organizer"
     committee = "committee"
@@ -193,6 +197,11 @@ class EventChecklistItem(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     is_completed = Column(Boolean, nullable=False, default=False)
+    visibility = Column(Enum(ChecklistVisibility), nullable=False, default=ChecklistVisibility.internal)
+    # Optional role targeting for external visibility
+    audience_role = Column(Enum(EventParticipantRole), nullable=True)
+    # Optional external link for collaboration (e.g., Google Docs/Sheets)
+    link_url = Column(String, nullable=True)
     assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     sort_order = Column(Integer, nullable=False, default=0)
     due_datetime = Column(DateTime(timezone=True), nullable=True)
@@ -235,4 +244,3 @@ class EventProposalComment(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-

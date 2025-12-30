@@ -593,6 +593,11 @@ export const getEventChecklist = async (eventId: string) => {
   return response.data
 }
 
+export const getEventExternalChecklist = async (eventId: string) => {
+  const response = await api.get<EventChecklistItemResponse[]>(`/events/${eventId}/checklist/external`)
+  return response.data
+}
+
 export const createEventChecklistItem = async (eventId: string, data: EventChecklistItemCreate) => {
   const response = await api.post<EventChecklistItemResponse>(`/events/${eventId}/checklist`, data)
   return response.data

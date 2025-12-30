@@ -12,6 +12,7 @@ from app.models.event_model import (
     EventVisibility,
     EventParticipantRole,
     EventParticipantStatus,
+    ChecklistVisibility,
 )
 
 class EventCreate(BaseModel):
@@ -222,6 +223,9 @@ class EventChecklistItemCreate(BaseModel):
     assigned_user_id: uuid.UUID | None = None # Deprecated, use below
     assigned_user_ids: list[uuid.UUID] = []
     due_datetime: datetime | None = None
+    visibility: ChecklistVisibility | None = ChecklistVisibility.internal
+    audience_role: EventParticipantRole | None = None
+    link_url: str | None = None
 
     @field_validator("assigned_user_id", "due_datetime", mode="before")
     def _empty_string_to_none(cls, v):
@@ -240,6 +244,9 @@ class EventChecklistItemUpdate(BaseModel):
     assigned_user_ids: list[uuid.UUID] | None = None
     sort_order: int | None = None
     due_datetime: datetime | None = None
+    visibility: ChecklistVisibility | None = None
+    audience_role: EventParticipantRole | None = None
+    link_url: str | None = None
 
     @field_validator("assigned_user_id", "due_datetime", mode="before")
     def _empty_string_to_none_update(cls, v):
@@ -263,6 +270,9 @@ class EventChecklistItemResponse(BaseModel):
     created_by_user_id: uuid.UUID
     created_at: datetime
     updated_at: datetime | None = None
+    visibility: ChecklistVisibility
+    audience_role: EventParticipantRole | None = None
+    link_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -327,4 +337,3 @@ class EventInvitationResponse(BaseModel):
     invitee_avatar: str | None = None
     
     model_config = {"from_attributes": True}
-

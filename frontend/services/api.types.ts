@@ -416,6 +416,9 @@ export interface EventChecklistItemCreate {
     assigned_user_id?: string | null // Deprecated
     assigned_user_ids?: string[]
     due_datetime?: string | null
+    visibility?: 'internal' | 'external'
+    audience_role?: EventParticipantRole | null
+    link_url?: string | null
 }
 
 export interface EventChecklistItemUpdate {
@@ -426,6 +429,9 @@ export interface EventChecklistItemUpdate {
     assigned_user_ids?: string[]
     sort_order?: number | null
     due_datetime?: string | null
+    visibility?: 'internal' | 'external' | null
+    audience_role?: EventParticipantRole | null
+    link_url?: string | null
 }
 
 // --- Review Types ---
@@ -462,6 +468,9 @@ export interface EventChecklistItemResponse {
     created_by_user_id: string
     created_at: string
     updated_at?: string | null
+    visibility: 'internal' | 'external'
+    audience_role?: EventParticipantRole | null
+    link_url?: string | null
 }
 export interface UserMeResponse {
     id: string

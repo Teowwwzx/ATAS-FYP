@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, deleteEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary, getMyReminders } from '@/services/api'
-import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse, EventReminderResponse, EventReminderOption } from '@/services/api.types'
+import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, deleteEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary, getMyReminders, getEventExternalChecklist } from '@/services/api'
+import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse, EventReminderResponse, EventReminderOption, EventChecklistItemResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/Skeleton'
 import Link from 'next/link'
@@ -42,6 +42,7 @@ export default function EventDetailsPage() {
     const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
     const [currentPhase, setCurrentPhase] = useState<EventPhase>(EventPhase.DRAFT)
     const [showImageModal, setShowImageModal] = useState(false)
+    const [externalChecklist, setExternalChecklist] = useState<EventChecklistItemResponse[]>([])
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -156,6 +157,12 @@ export default function EventDetailsPage() {
                 setStats(s)
             } catch {
                 setStats(null)
+            }
+            try {
+                const external = await getEventExternalChecklist(id)
+                setExternalChecklist(external)
+            } catch {
+                setExternalChecklist([])
             }
         } catch (error) {
             console.error(error)
@@ -570,6 +577,31 @@ export default function EventDetailsPage() {
                                     )}
                                 </div>
                             </div>
+
+                            {/* 2. Event Checklist (Attendee-Facing) */}
+                            {externalChecklist.length > 0 && (
+                                <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl overflow-hidden p-6">
+                                    <h3 className="text-lg font-black text-zinc-900 mb-4">Event Checklist</h3>
+                                    <ul className="space-y-3">
+                                        {externalChecklist.map(item => (
+                                            <li key={item.id} className="flex items-start gap-3">
+                                                <div className="mt-1 w-2 h-2 rounded-full bg-zinc-300"></div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-zinc-800">{item.title}</p>
+                                                    {item.description && (
+                                                        <p className="text-xs text-zinc-500">{item.description}</p>
+                                                    )}
+                                                    {item.link_url && (
+                                                        <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline mt-1 inline-block">
+                                                            Open Link
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
 
                             {/* What to Prepare - Re-styled & Moved to Sidebar */}
                             {isJoinedAccepted && (

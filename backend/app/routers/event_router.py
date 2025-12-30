@@ -26,6 +26,7 @@ from app.models.event_model import (
     EventProposalComment,
 
 )
+from app.models.event_model import ChecklistVisibility
 from app.models.notification_model import Notification, NotificationType
 from app.services.email_service import (
     send_event_invitation_email,
@@ -2804,6 +2805,9 @@ def create_event_checklist_item(
         event_id=event.id,
         title=body.title,
         description=body.description,
+        visibility=body.visibility or ChecklistVisibility.internal,
+        audience_role=body.audience_role,
+        link_url=body.link_url,
         assigned_user_id=body.assigned_user_id,
         due_datetime=body.due_datetime,
         created_by_user_id=current_user.id,
@@ -2895,6 +2899,12 @@ def update_event_checklist_item(
     # Explicitly clear due date if provided as null
     if "due_datetime" in body.model_fields_set and body.due_datetime is None:
         item.due_datetime = None
+    if "visibility" in body.model_fields_set and body.visibility is not None:
+        item.visibility = body.visibility
+    if "audience_role" in body.model_fields_set:
+        item.audience_role = body.audience_role
+    if "link_url" in body.model_fields_set:
+        item.link_url = body.link_url
     if body.due_datetime is not None:
         due = body.due_datetime
         if due.tzinfo is None:
@@ -2950,6 +2960,38 @@ def delete_event_checklist_item(
     db.delete(item)
     db.commit()
     return {"detail": "Checklist item deleted"}
+
+@router.get("/events/{event_id}/checklist/external", response_model=list[EventChecklistItemResponse])
+def list_event_external_checklist(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    participant_role: EventParticipantRole | None = None
+    if current_user is not None:
+        link = (
+            db.query(EventParticipant)
+            .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
+            .first()
+        )
+        participant_role = link.role if link else None
+    if event.visibility == EventVisibility.private and participant_role is None and event.organizer_id != (current_user.id if current_user else None):
+        raise HTTPException(status_code=403, detail="This event is private")
+    items = (
+        db.query(EventChecklistItem)
+        .filter(EventChecklistItem.event_id == event.id, EventChecklistItem.visibility == ChecklistVisibility.external)
+        .order_by(EventChecklistItem.sort_order.asc(), EventChecklistItem.created_at.asc())
+        .all()
+    )
+    def _visible(i: EventChecklistItem):
+        if getattr(i, "audience_role", None) is None:
+            return True
+        return participant_role is not None and i.audience_role == participant_role
+    filtered = [i for i in items if _visible(i)]
+    return filtered
 @router.put("/events/{event_id}", response_model=EventDetails)
 def update_event(
     event_id: uuid.UUID,
