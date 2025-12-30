@@ -8,7 +8,7 @@ from sqlalchemy.sql import func
 from app.database.database import get_db
 from app.models.notification_model import Notification, NotificationType
 from app.schemas.notification_schema import NotificationResponse, NotificationReadAllResponse
-from app.dependencies import get_current_user, require_roles
+from app.dependencies import get_current_user, require_roles, get_current_user_sse
 from app.models.user_model import User
 from app.services.sse_manager import sse_manager
 
@@ -73,7 +73,7 @@ def get_unread_notifications_count(db: Session = Depends(get_db), current_user: 
     return {"unread_count": count}
 
 @router.get("/notifications/stream")
-async def stream_notifications(current_user: User = Depends(get_current_user)):
+async def stream_notifications(current_user: User = Depends(get_current_user_sse)):
     """
     Server-Sent Events endpoint for real-time notifications.
     Keeps connection open and streams new notifications as they arrive.

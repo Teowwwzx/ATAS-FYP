@@ -1590,8 +1590,6 @@ def organizer_update_participant_status(
     db.commit()
     return participant
 
-    return participant
-
 
 @router.post("/events/{event_id}/self-checkin", response_model=EventParticipantDetails)
 def self_checkin(
@@ -2630,36 +2628,35 @@ def walk_in_event_attendance(
         .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == user.id)
         .first()
     )
-    if participant is None:
-        participant = EventParticipant(
-            event_id=event.id,
-            user_id=user.id,
-            role=EventParticipantRole.audience,
-            description=None,
-            join_method="walk_in",
-            status=EventParticipantStatus.attended,
+    
+    # Walk-in is ONLY for new onsite attendees, not existing participants
+    if participant is not None:
+        raise HTTPException(
+            status_code=400, 
+            detail="This email is already registered for this event. Please use the QR code attendance system instead."
         )
-        db.add(participant)
-        notif = Notification(
-            recipient_id=user.id,
-            actor_id=user.id,
-            type=NotificationType.event,
-            content=f"Attendance recorded for '{event.title}'",
-            link_url=f"/main/events/{event.id}",
-        )
-        db.add(notif)
-        db.commit()
-        db.refresh(participant)
-        return participant
-    else:
-        if participant.status in (EventParticipantStatus.accepted, EventParticipantStatus.pending):
-            participant.status = EventParticipantStatus.attended
-            participant.join_method = participant.join_method or "walk_in"
-            db.add(participant)
-            db.commit()
-            db.refresh(participant)
-            return participant
-        return participant
+    
+    # Create new walk-in participant
+    participant = EventParticipant(
+        event_id=event.id,
+        user_id=user.id,
+        role=EventParticipantRole.audience,
+        description=None,
+        join_method="walk_in",
+        status=EventParticipantStatus.attended,
+    )
+    db.add(participant)
+    notif = Notification(
+        recipient_id=user.id,
+        actor_id=user.id,
+        type=NotificationType.event,
+        content=f"Attendance recorded for '{event.title}'",
+        link_url=f"/main/events/{event.id}",
+    )
+    db.add(notif)
+    db.commit()
+    db.refresh(participant)
+    return participant
 
 
 

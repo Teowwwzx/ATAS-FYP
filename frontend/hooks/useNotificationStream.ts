@@ -20,9 +20,8 @@ export function useNotificationStream() {
     useEffect(() => {
         // Simple cookie check without libraries
         const getAccessToken = () => {
-            if (typeof document === 'undefined') return null;
-            const match = document.cookie.match(new RegExp('(^| )access_token=([^;]+)'));
-            return match ? match[2] : null;
+            if (typeof window === 'undefined') return null;
+            return localStorage.getItem('atas_token');
         };
 
         const token = getAccessToken();
@@ -33,7 +32,7 @@ export function useNotificationStream() {
         }
 
         // Create EventSource connection
-        const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/notifications/stream`;
+        const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/notifications/stream?token=${token}`;
 
         // EventSource doesn't support custom headers directly, so we append token as query param
         // OR we can use a different approach - fetch with ReadableStream

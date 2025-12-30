@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 import { getApiErrorMessage } from '@/lib/utils'
 
-import { login, getMyProfile, resendVerification, loginWithGoogle } from '@/services/api'
+import { login, getMyProfile, getMe, resendVerification, loginWithGoogle, logout } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 
 export default function LoginPage() {
@@ -77,13 +77,13 @@ export default function LoginPage() {
                             }
                         },
                     })
-                } catch {}
+                } catch { }
                 try {
                     const target = document.getElementById('googleSignInBtn')
                     if (target && (window as any).google?.accounts.id.renderButton) {
                         (window as any).google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with' })
                     }
-                } catch {}
+                } catch { }
             }
             document.body.appendChild(script)
         } else {
@@ -109,6 +109,17 @@ export default function LoginPage() {
             localStorage.setItem('atas_token', access_token)
 
             try {
+                // Security Check: Prevent blocking roles (Admins) from logging in here
+                const userMe = await getMe()
+                const blockedRoles = ['admin', 'customer_support', 'content_moderator']
+
+                if (userMe.roles.some(role => blockedRoles.includes(role))) {
+                    await logout()
+                    toast.error('Admin accounts must use the Admin Portal.', { duration: 4000 })
+                    router.push('/admin/login')
+                    return
+                }
+
                 const profile = await getMyProfile()
 
                 // Check is_onboarded status
@@ -134,7 +145,7 @@ export default function LoginPage() {
             // Check if error is related to inactive/unverified account
             // Backend returns: "User is not active. Please verify your email."
             if (error.response?.status === 400 && message.toLowerCase().includes('not active')) {
-                try { localStorage.setItem('pending_login_email', email) } catch {}
+                try { localStorage.setItem('pending_login_email', email) } catch { }
                 setShowVerificationModal(true)
             } else {
                 toast.error(message, { id: 'login-error' })
