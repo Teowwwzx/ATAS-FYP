@@ -98,6 +98,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
             const committeeIds = participantsData
                 .filter(p => ['organizer', 'committee', 'speaker', 'sponsor'].includes(p.role))
                 .map(p => p.user_id)
+                .filter((id): id is string => !!id)
 
             // Unique IDs
             const uniqueIds = Array.from(new Set(committeeIds))

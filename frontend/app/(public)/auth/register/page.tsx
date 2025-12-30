@@ -1,18 +1,112 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { register } from '@/services/api'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { register, loginWithGoogle, getMyProfile } from '@/services/api'
 import { FormInput } from '@/components/auth/FormInput'
 import { FormButton } from '@/components/auth/FormButton'
+import { toast } from 'react-hot-toast'
+import { getApiErrorMessage } from '@/lib/utils'
 
 export default function RegisterPage() {
+    const router = useRouter()
+    const searchParams = useSearchParams()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [googleReady, setGoogleReady] = useState(false)
+
+    useEffect(() => {
+        const emailParam = searchParams?.get('email')
+        if (emailParam) {
+            setEmail(emailParam)
+        }
+    }, [searchParams])
+
+    useEffect(() => {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        if (!clientId) {
+            return
+        }
+        const scriptId = 'google-identity-services'
+        if (!document.getElementById(scriptId)) {
+            const script = document.createElement('script')
+            script.src = 'https://accounts.google.com/gsi/client'
+            script.async = true
+            script.defer = true
+            script.id = scriptId
+            script.onload = () => {
+                setGoogleReady(true)
+                try {
+                    (window as any).google?.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: async (response: any) => {
+                            const idToken = response?.credential
+                            if (!idToken) return
+                            
+                            // Validate email if provided in params
+                            const emailParam = searchParams?.get('email')
+                            if (emailParam) {
+                                try {
+                                    // Simple decode to check email
+                                    const base64Url = idToken.split('.')[1]
+                                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+                                    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                                    }).join(''))
+                                    const payload = JSON.parse(jsonPayload)
+                                    
+                                    if (payload.email && payload.email.toLowerCase() !== emailParam.toLowerCase()) {
+                                        toast.error(`Please sign in with ${emailParam} to link your attendance.`)
+                                        return
+                                    }
+                                } catch (e) {
+                                    // Ignore decode errors, let backend handle it
+                                }
+                            }
+
+                            try {
+                                const { access_token } = await loginWithGoogle(idToken)
+                                localStorage.setItem('atas_token', access_token)
+                                const profile = await getMyProfile()
+                                if (!profile.is_onboarded) {
+                                    toast('Please complete your onboarding!', { icon: '👋' })
+                                    router.push('/onboarding')
+                                } else {
+                                    toast.success('Welcome back!')
+                                    router.push('/dashboard')
+                                }
+                            } catch (err: any) {
+                                toast.error(getApiErrorMessage(err, 'Google sign-in failed'))
+                            }
+                        },
+                    })
+                } catch {}
+                try {
+                    const target = document.getElementById('googleSignInBtn')
+                    if (target && (window as any).google?.accounts.id.renderButton) {
+                        (window as any).google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', shape: 'pill', text: 'signup_with' })
+                    }
+                } catch {}
+            }
+            document.body.appendChild(script)
+        } else {
+            setGoogleReady(true)
+            // Re-render button if script already loaded
+             try {
+                setTimeout(() => {
+                    const target = document.getElementById('googleSignInBtn')
+                    if (target && (window as any).google?.accounts.id.renderButton) {
+                        (window as any).google.accounts.id.renderButton(target, { theme: 'outline', size: 'large', shape: 'pill', text: 'signup_with' })
+                    }
+                }, 100)
+            } catch {}
+        }
+    }, [router, searchParams])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -87,6 +181,17 @@ export default function RegisterPage() {
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow-xl shadow-indigo-100 sm:rounded-xl sm:px-10 border border-gray-100">
+                    <div className="mb-6">
+                        <div id="googleSignInBtn" className="flex justify-center"></div>
+                    </div>
+                    <div className="relative mb-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-gray-300" />
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="bg-white px-2 text-gray-500">Or register with email</span>
+                        </div>
+                    </div>
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <FormInput
                             id="email"

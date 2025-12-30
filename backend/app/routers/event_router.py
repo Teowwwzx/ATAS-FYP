@@ -1142,6 +1142,61 @@ def join_public_event(
     return participant
 
 
+@router.post("/events/{event_id}/walk-in", response_model=EventParticipantDetails)
+def walk_in_attendance(
+    event_id: uuid.UUID,
+    body: WalkInAttendanceRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Register a walk-in participant.
+    - If email exists in participants, update status to attended.
+    - If not, create new participant (linking User if exists).
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check if participant exists by email
+    participant = db.query(EventParticipant).filter(
+        EventParticipant.event_id == event_id,
+        EventParticipant.email == body.email
+    ).first()
+
+    if participant:
+        # User requested to block existing participants from using this form
+        raise HTTPException(
+            status_code=400, 
+            detail="Participant with this email already registered. Please use standard check-in."
+        )
+
+    # Check if user exists
+    user = db.query(User).filter(User.email == body.email).first()
+
+    if user and user.id == event.organizer_id:
+         raise HTTPException(status_code=400, detail="Organizer cannot register as a walk-in participant")
+    
+    # Handle paid events logic if needed? 
+    # For walk-in, we assume they paid on spot or it's free.
+    # Let's set payment_status to verified if it's paid? Or pending?
+    # User didn't specify payment logic, so we assume standard attendance.
+    
+    participant = EventParticipant(
+        event_id=event_id,
+        user_id=user.id if user else None,
+        name=body.name,
+        email=body.email,
+        role=EventParticipantRole.audience,
+        status=EventParticipantStatus.attended,
+        join_method="walk_in",
+        payment_status=None # Defaults to None
+    )
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    return participant
+
+
 @router.delete("/events/{event_id}/participants/me", status_code=204)
 def leave_event(
     event_id: uuid.UUID,

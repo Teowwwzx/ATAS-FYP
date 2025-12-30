@@ -29,6 +29,7 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
             // Enrich with profile data
             const enriched = await Promise.all(
                 data.map(async (p) => {
+                    if (!p.user_id) return p
                     try {
                         const profile = await getProfileByUserId(p.user_id)
                         return { ...p, profile }
@@ -177,31 +178,43 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                             {filtered.map((item) => (
                                 <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors group">
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <Link href={`/profile/${item.user_id}`} className="flex items-center gap-4 hover:opacity-75 transition-opacity group/link">
-                                            {item.profile?.avatar_url ? (
-                                                <img
-                                                    src={item.profile.avatar_url}
-                                                    alt={item.profile.full_name}
-                                                    className="w-10 h-10 rounded-full object-cover ring-2 ring-zinc-50 group-hover/link:ring-yellow-400 transition-all"
-                                                />
-                                            ) : (
-                                                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold group-hover/link:bg-yellow-100 group-hover/link:text-yellow-600 transition-colors">
-                                                    {item.profile?.full_name?.charAt(0) || '?'}
-                                                </div>
-                                            )}
-                                            <div>
-                                                <div className="font-bold text-zinc-900 group-hover/link:text-yellow-600 transition-colors">{item.profile?.full_name || 'Unknown User'}</div>
-                                                <div className="text-xs text-zinc-500">{item.profile?.email || 'No email'}</div>
-                                                {/* Payment Status Label */}
-                                                {item.payment_proof_url && (
-                                                    <div className="mt-1">
-                                                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase transition-colors hover:bg-blue-100 cursor-help" title={item.payment_status || 'Submitted'}>
-                                                            Receipt Submitted
-                                                        </span>
+                                        {item.user_id ? (
+                                            <Link href={`/profile/${item.user_id}`} className="flex items-center gap-4 hover:opacity-75 transition-opacity group/link">
+                                                {item.profile?.avatar_url ? (
+                                                    <img
+                                                        src={item.profile.avatar_url}
+                                                        alt={item.profile.full_name}
+                                                        className="w-10 h-10 rounded-full object-cover ring-2 ring-zinc-50 group-hover/link:ring-yellow-400 transition-all"
+                                                    />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold group-hover/link:bg-yellow-100 group-hover/link:text-yellow-600 transition-colors">
+                                                        {item.profile?.full_name?.charAt(0) || item.name?.charAt(0) || '?'}
                                                     </div>
                                                 )}
+                                                <div>
+                                                    <div className="font-bold text-zinc-900 group-hover/link:text-yellow-600 transition-colors">{item.profile?.full_name || item.name || 'Unknown User'}</div>
+                                                    <div className="text-xs text-zinc-500">{item.profile?.email || item.email || 'No email'}</div>
+                                                    {/* Payment Status Label */}
+                                                    {item.payment_proof_url && (
+                                                        <div className="mt-1">
+                                                            <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase transition-colors hover:bg-blue-100 cursor-help" title={item.payment_status || 'Submitted'}>
+                                                                Receipt Submitted
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold">
+                                                    {item.name?.charAt(0) || '?'}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-zinc-900">{item.name || 'Unknown User'}</div>
+                                                    <div className="text-xs text-zinc-500">{item.email || 'No email'}</div>
+                                                </div>
                                             </div>
-                                        </Link>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className="text-sm font-medium text-zinc-700 capitalize block px-2 py-1 rounded-md bg-zinc-100 w-fit">

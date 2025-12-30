@@ -6,6 +6,8 @@ import { ProfileResponse } from '@/services/api.types'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+import { isTokenExpired } from '@/lib/auth'
+
 // This is the fetcher function that `useSWR` will call.
 const fetcher = (url: string) => api.get<ProfileResponse>(url).then((res) => res.data)
 
@@ -16,12 +18,24 @@ interface UseUserParams {
 
 export function useUser({ redirectTo, redirectIfFound }: UseUserParams = {}) {
     const router = useRouter()
-    // The key for SWR is `/profiles/me`. SWR will automatically re-fetch
-    // this data when the window is refocused, which is great for keeping
-    // the user's session fresh.
+
+    // Determine if we should fetch (client-side only + valid token)
+    const shouldFetch = typeof window !== 'undefined'
+        ? (() => {
+            const token = localStorage.getItem('atas_token')
+            return token && !isTokenExpired(token)
+        })()
+        : false
+
+    // The key for SWR is `/profiles/me`. If null, SWR will not fetch.
     const { data, error, isLoading, mutate } = useSWR<ProfileResponse>(
-        '/profiles/me',
-        fetcher
+        shouldFetch ? '/profiles/me' : null,
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 600000, // 10 minutes
+            shouldRetryOnError: false
+        }
     )
 
     // Check if user has a profile by verifying data exists
