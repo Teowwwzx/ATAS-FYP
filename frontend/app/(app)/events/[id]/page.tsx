@@ -297,6 +297,7 @@ export default function EventDetailsPage() {
     const isSponsor = myRole === 'sponsor' && isJoinedAccepted
     const isRegistrationOpen = event.registration_status === 'opened'
     const isAttendanceOpen = currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING
+    const hasEventStarted = new Date(event.start_datetime) < new Date()
     const currentParticipants = event.participant_count ?? stats?.total_participants ?? 0
     const isFull = event.max_participant ? currentParticipants >= event.max_participant : false
 
@@ -604,6 +605,27 @@ export default function EventDetailsPage() {
                                             ) : isFull ? (
                                                 <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-2xl font-bold text-center text-lg cursor-not-allowed border border-zinc-200">
                                                     Event Full
+                                                </div>
+                                            ) : hasEventStarted ? (
+                                                <div className="space-y-3">
+                                                    <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
+                                                        Event Ongoing
+                                                    </div>
+                                                    {event.type !== 'online' ? (
+                                                        <Link
+                                                            href={`/events/${event.id}/walk-in`}
+                                                            className="block w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-center text-sm hover:bg-indigo-700 transition-colors shadow-md"
+                                                        >
+                                                            Join by Walk-in or contact organizaer team to join
+                                                        </Link>
+                                                    ) : (
+                                                        <button
+                                                            disabled
+                                                            className="w-full py-3 bg-zinc-50 text-zinc-400 rounded-xl font-bold text-sm cursor-not-allowed border border-zinc-100"
+                                                        >
+                                                            Contact Organizer to Join
+                                                        </button>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <button

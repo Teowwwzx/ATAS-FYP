@@ -1,7 +1,11 @@
 from app.models.user_model import User, Role, UserStatus
 from app.models.profile_model import Profile, ProfileVisibility
 from app.models.organization_model import Organization, OrganizationType, OrganizationVisibility, OrganizationStatus
-from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipant, EventParticipantRole, EventParticipantStatus
+from app.models.event_model import (
+    Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, 
+    EventParticipant, EventParticipantRole, EventParticipantStatus,
+    EventChecklistItem, EventReminder, EventPicture, EventCategory, EventProposal
+)
 from app.models.onboarding_model import UserOnboarding, OnboardingStatus
 from app.core.hashing import Hasher
 from sqlalchemy.orm import Session
@@ -9,7 +13,12 @@ from app.database.database import SessionLocal
 import uuid
 from datetime import datetime, timedelta
 
+from app.seeders.clear_db import clear_db
+
 def seed_presentation_data(db: Session):
+    # Cleanup first using the comprehensive clear_db
+    clear_db(db)
+
     print("Seeding presentation data...")
 
     # 1. Ensure Roles Exist

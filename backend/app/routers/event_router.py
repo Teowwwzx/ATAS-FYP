@@ -1063,6 +1063,28 @@ def join_public_event(
         if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
             raise HTTPException(status_code=400, detail="Registration is closed")
 
+    # Check if event has started
+    import datetime
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    if event.start_datetime and event.start_datetime < now_utc:
+        # Event has started
+        # If it is a physical event, reject and tell user to use Walk-in
+        # For hybrid/online, we might allow it, but let's be strict for now based on user request.
+        # The user specifically mentioned "Join by walk-in (for physical event)" or "Contact organizer".
+        # We will return a specific 400 so frontend can handle it, or just a descriptive message.
+        if event.location_type == "physical":
+             raise HTTPException(
+                status_code=400, 
+                detail="Event has started. Please use Walk-in Registration at the venue or contact the organizer team to join."
+            )
+        else:
+            # For online/hybrid, maybe allow? Or block? 
+            # User said "or just contacting the organizer". Let's block to be safe and consistent.
+            raise HTTPException(
+                status_code=400, 
+                detail="Event has started. Please contact the organizer team to join."
+            )
+
     # Allow joining during event window as long as registration is opened
 
     # Already a participant?
