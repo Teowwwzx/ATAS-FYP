@@ -269,7 +269,9 @@ export type EventParticipantStatus =
 export interface EventParticipantDetails {
     id: string
     event_id: string
-    user_id: string
+    user_id: string | null
+    name?: string | null
+    email?: string | null
     role: EventParticipantRole
     description?: string | null
     join_method?: string

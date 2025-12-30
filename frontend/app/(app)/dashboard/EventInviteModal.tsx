@@ -64,7 +64,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
             // Fetch existing participants to exclude
             getEventParticipants(eventId).then(participants => {
                 // @ts-ignore
-                const ids = new Set(participants.map(p => p.user_id))
+                const ids = new Set(participants.map(p => p.user_id).filter((id): id is string => !!id))
                 setJoinedUserIds(ids)
             }).catch(console.error)
 

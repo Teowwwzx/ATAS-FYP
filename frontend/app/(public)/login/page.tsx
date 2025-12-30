@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 import { getApiErrorMessage } from '@/lib/utils'
@@ -22,11 +22,13 @@ export default function LoginPage() {
     const [countdown, setCountdown] = useState(0)
     const [googleReady, setGoogleReady] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectUrl = searchParams.get('redirect') || '/dashboard'
 
     React.useEffect(() => {
         const token = localStorage.getItem('atas_token')
         if (token) {
-            router.replace('/dashboard')
+            router.replace(redirectUrl)
         }
         try {
             const pendingEmail = localStorage.getItem('pending_login_email')
@@ -70,7 +72,7 @@ export default function LoginPage() {
                                     router.push('/onboarding')
                                 } else {
                                     toast.success('Welcome back!')
-                                    router.push('/dashboard')
+                                    router.push(redirectUrl)
                                 }
                             } catch (err: any) {
                                 toast.error(getApiErrorMessage(err, 'Google sign-in failed'))
@@ -128,7 +130,7 @@ export default function LoginPage() {
                     router.push('/onboarding')
                 } else {
                     toast.success('Welcome back!')
-                    router.push('/dashboard')
+                    router.push(redirectUrl)
                 }
             } catch (profileError) {
                 const err = profileError as AxiosError

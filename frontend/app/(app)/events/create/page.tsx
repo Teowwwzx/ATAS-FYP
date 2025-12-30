@@ -35,6 +35,26 @@ export default function CreateEventPage() {
         meeting_url: '',
     })
 
+    // Load draft on mount
+    useEffect(() => {
+        const draft = localStorage.getItem('event_create_draft')
+        if (draft) {
+            try {
+                const parsed = JSON.parse(draft)
+                setFormData(prev => ({ ...prev, ...parsed }))
+                toast.success('Restored draft from previous session', { id: 'draft-restore' })
+            } catch { }
+        }
+    }, [])
+
+    // Save draft on change
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            localStorage.setItem('event_create_draft', JSON.stringify(formData))
+        }, 500)
+        return () => clearTimeout(handler)
+    }, [formData])
+
     const handleSelect = async (address: string) => {
         setFormData(prev => ({ ...prev, venue_remark: address }))
         try {
@@ -78,13 +98,15 @@ export default function CreateEventPage() {
 
             await pingApi()
             const newEvent = await createEvent(formData)
+            localStorage.removeItem('event_create_draft')
             toast.success('Event created successfully')
             router.push(`/events/${newEvent.id}`)
         } catch (err: any) {
             console.error(err)
             if (err.response?.status === 401) {
                 localStorage.removeItem('atas_token')
-                router.push('/login')
+                const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+                router.push(`/login?redirect=${returnUrl}`)
                 return
             }
             if (err.response?.data?.detail) {

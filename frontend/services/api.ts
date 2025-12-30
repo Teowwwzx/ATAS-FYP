@@ -39,6 +39,7 @@ import {
   EventRegistrationStatus,
   FollowDetails,
   FollowerSummary,
+  WalkInAttendanceRequest,
 } from './api.types'
 
 // 1. Create an Axios instance
@@ -307,7 +308,7 @@ export const scanAttendance = async (eventId: string, token: string) => {
 }
 
 export const walkInAttendance = async (eventId: string, data: import('./api.types').WalkInAttendanceRequest) => {
-  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/attendance/walk_in`, data)
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/walk-in`, data)
   return response.data
 }
 
@@ -411,8 +412,15 @@ export const getMyEvents = async () => {
 }
 
 
-export const getMe = async () => {
-  const response = await api.get<UserMeResponse>(`/users/me`)
+export const getMe = async (skipRedirect = false) => {
+  // Prevent 401 redirect loop for public pages by checking token first
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('atas_token')
+    if (!token || isTokenExpired(token)) {
+      throw new Error('No valid token')
+    }
+  }
+  const response = await api.get<UserMeResponse>(`/users/me`, { skipAuthRedirect: skipRedirect } as any)
   return response.data
 }
 
@@ -720,6 +728,12 @@ api.interceptors.response.use(
         localStorage.removeItem('atas_token')
       } catch { }
 
+      // Check if the request explicitly requested to skip redirect
+      // @ts-ignore
+      if (error.config?.skipAuthRedirect) {
+        return Promise.reject(error)
+      }
+
       if (typeof window !== 'undefined') {
         const path = window.location.pathname
         // Don't redirect if already on login pages
@@ -729,7 +743,8 @@ api.interceptors.response.use(
             window.location.href = '/admin/login'
           } else {
             // Otherwise redirect to main login
-            window.location.href = '/login'
+            const returnUrl = encodeURIComponent(path + window.location.search)
+            window.location.href = `/login?redirect=${returnUrl}`
           }
         }
       }
@@ -794,6 +809,12 @@ export interface NotificationItem {
 }
 
 export const getNotifications = async () => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('atas_token')
+    if (!token || isTokenExpired(token)) {
+      return []
+    }
+  }
   const response = await api.get<NotificationItem[]>('/notifications/me')
   // Map backend response to frontend interface
   return response.data.map(n => {

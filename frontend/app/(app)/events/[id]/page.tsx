@@ -151,17 +151,19 @@ export default function EventDetailsPage() {
                 } catch {
                     setMyReminder(null)
                 }
+
+                try {
+                    const s = await getEventAttendanceStats(id)
+                    setStats(s)
+                } catch {
+                    setStats(null)
+                }
             } else {
                 // setIsParticipant(false) // Removed state
                 setIsJoinedAccepted(false)
                 setParticipantStatus(null)
                 setPaymentStatus(null)
                 setMyRole(null)
-            }
-            try {
-                const s = await getEventAttendanceStats(id)
-                setStats(s)
-            } catch {
                 setStats(null)
             }
             try {

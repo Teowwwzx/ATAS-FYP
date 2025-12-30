@@ -102,6 +102,8 @@ class EventParticipantDetails(BaseModel):
     id: uuid.UUID
     event_id: uuid.UUID
     user_id: uuid.UUID | None = None
+    name: str | None = None
+    email: str | None = None
     role: EventParticipantRole
     description: str | None = None
     join_method: str | None = None
