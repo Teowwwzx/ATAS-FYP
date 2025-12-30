@@ -409,7 +409,7 @@ def seed_proposal_invitation_for_student1(db):
         title="Keynote: The Future of AI in Education",
         description="An exclusive session discussing how AI is transforming the educational landscape. You have been invited to present your proposal.",
         format=EventFormat.seminar,
-        type=EventType.offline,
+        type=EventType.physical,
         start_datetime=start_time,
         end_datetime=end_time,
         registration_type=EventRegistrationType.free,

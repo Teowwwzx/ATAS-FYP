@@ -47,7 +47,7 @@ export function DashboardInvitationList({ requests, layoutMode = 'list' }: Dashb
 
                 // Determine colors
                 const typeColor = req.event.type === 'online' ? 'bg-blue-100 text-blue-700' :
-                    (req.event.type as any) === 'physical' || req.event.type === 'offline' ? 'bg-orange-100 text-orange-700' :
+                    req.event.type === 'physical' ? 'bg-orange-100 text-orange-700' :
                         'bg-purple-100 text-purple-700'
 
                 return (

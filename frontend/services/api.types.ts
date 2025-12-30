@@ -199,7 +199,7 @@ export type EventFormat =
     | 'conference'
     | 'other'
 
-export type EventType = 'online' | 'offline' | 'hybrid'
+export type EventType = 'online' | 'physical' | 'hybrid'
 export type EventRegistrationType = 'free' | 'paid'
 export type EventStatus = 'draft' | 'published' | 'declined' | 'ended'
 export type EventRegistrationStatus = 'opened' | 'closed'

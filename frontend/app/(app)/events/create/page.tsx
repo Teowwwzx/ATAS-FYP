@@ -25,7 +25,7 @@ export default function CreateEventPage() {
         title: '',
         description: '',
         format: 'workshop',
-        type: 'offline',
+        type: 'physical',
         start_datetime: '',
         end_datetime: '',
         registration_type: 'free',
@@ -104,7 +104,7 @@ export default function CreateEventPage() {
         if (formData.format === 'webinar') {
             setFormData(prev => ({ ...prev, type: 'online', venue_remark: 'Zoom / Google Meet' }))
         } else if (formData.format === 'panel_discussion') {
-            setFormData(prev => ({ ...prev, type: 'offline' }))
+            setFormData(prev => ({ ...prev, type: 'physical' }))
             if (!formData.venue_remark) {
                 setFormData(prev => ({ ...prev, venue_remark: 'Asia Pacific University' }))
             }
@@ -241,7 +241,7 @@ export default function CreateEventPage() {
                             value={formData.type}
                             onChange={handleChange}
                         >
-                            <option value="offline">Offline (Physical)</option>
+                            <option value="physical">Physical</option>
                             <option value="online">Online</option>
                             <option value="hybrid">Hybrid</option>
                         </select>

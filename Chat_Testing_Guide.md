@@ -21,7 +21,7 @@ The specialized seeder has created a perfect test scenario for you to verify the
 - **Organizer**: student1@gmail.com
 - **Invited Speaker**: expert1@gmail.com (PENDING status)
 - **Conversation**: Already created with 2 initial messages
-- **Type**: Hybrid event (online + offline)
+- **Type**: Hybrid event (online + physical)
 - **Date**: Next week (7 days from now)
 
 ---

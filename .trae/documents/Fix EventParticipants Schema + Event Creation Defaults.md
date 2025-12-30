@@ -19,7 +19,7 @@
 - Auto-set `type` based on `format` if not provided:
   - Mapping:
     - `webinar` → `online`
-    - `panel_discussion`, `workshop`, `seminar`, `club_event` → `offline`
+    - `panel_discussion`, `workshop`, `seminar`, `club_event` → `physical`
     - `other` → keep `online` as safe default
   - Do not override if user provided `type`.
 - Keep existing validations: non-empty title, end after start, positive `max_participant` (already at `backend/app/routers/event_router.py:178`).

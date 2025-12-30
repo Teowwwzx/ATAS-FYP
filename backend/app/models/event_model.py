@@ -18,8 +18,9 @@ class EventFormat(enum.Enum):
 
 class EventType(enum.Enum):
     online = "online"
-    offline = "offline"
+    physical = "physical"
     hybrid = "hybrid"
+    offline = "offline" # Deprecated: kept for legacy data compatibility
 
 class EventRegistrationType(enum.Enum):
     free = "free"
@@ -95,6 +96,16 @@ class Event(Base):
     currency = Column(String, nullable=True, default="MYR") # e.g. MYR
 
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    organizer = relationship("User", foreign_keys=[organizer_id])
+
+    @property
+    def organizer_name(self):
+        return self.organizer.full_name if self.organizer else None
+
+    @property
+    def organizer_avatar(self):
+        return self.organizer.avatar_url if self.organizer else None
 
 class EventCategory(Base):
     __tablename__ = "event_categories"

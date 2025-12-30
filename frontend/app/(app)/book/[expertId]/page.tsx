@@ -160,7 +160,7 @@ export default function BookingPage() {
                     end_datetime: endDateTime.toISOString(),
                     venue_place_id: null,
                     venue_remark: venue,
-                    type: 'offline',
+                    type: 'physical',
                     format: 'seminar',
                     cover_url: undefined,
                     logo_url: undefined,
