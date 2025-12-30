@@ -26,6 +26,17 @@ function VerifyEmailContent() {
         setMessage(res.message || 'Email verified successfully.')
         setStatus('success')
         toast.success('Email verified!')
+
+        // Auto-login if token is returned
+        if (res.access_token) {
+          localStorage.setItem('atas_token', res.access_token)
+          localStorage.removeItem('pending_login_email')
+
+          // Delay redirect to show success message
+          setTimeout(() => {
+            window.location.href = '/dashboard'
+          }, 2000)
+        }
       } catch (err: unknown) {
         const e = err as { response?: { data?: { detail?: string } } }
         const errorMsg = e?.response?.data?.detail || 'Failed to verify email.'

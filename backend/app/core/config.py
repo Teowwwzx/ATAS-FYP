@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     RESEND_API_KEY: str = ""
     SENDER_EMAIL: str = "ATAS <onboarding@resend.dev>"
-    FRONTEND_BASE_URL: str = "http://localhost:3000"
+    FRONTEND_BASE_URL: str = "http://localhost:3000" # Defaults to localhost, override with env var in production
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
     CLOUDINARY_CLOUD_NAME: str = ""

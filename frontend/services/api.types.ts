@@ -54,6 +54,9 @@ export interface UserResponse {
 
 export interface VerifyEmailSuccessResponse {
     message: string
+    access_token?: string
+    refresh_token?: string
+    token_type?: string
 }
 
 export interface OnboardingData {

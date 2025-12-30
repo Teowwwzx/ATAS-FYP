@@ -68,7 +68,21 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     user.verification_token = None
     db.commit()
 
-    return {"message": "Email verified successfully"}
+    # Generate tokens for auto-login
+    access_token = create_access_token(
+        data={"sub": str(user.id), "type": "access"}
+    )
+    refresh_token = create_access_token(
+        data={"sub": user.email, "type": "refresh"},
+        expires_delta=timedelta(days=30),
+    )
+
+    return {
+        "message": "Email verified successfully",
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
 
 @router.post("/refresh")
 def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
