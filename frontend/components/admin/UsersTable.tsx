@@ -38,7 +38,9 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
     const [rejectPendingUserId, setRejectPendingUserId] = useState<string | null>(null)
     const [activateUserId, setActivateUserId] = useState<string | null>(null)
     const [removeRoleTarget, setRemoveRoleTarget] = useState<{ userId: string; role: string } | null>(null)
+
     const [editingUser, setEditingUser] = useState<UserResponse | null>(null)
+    const [showRoleEdit, setShowRoleEdit] = useState<Record<string, boolean>>({})
 
     const [profiles, setProfiles] = useState<Record<string, import('@/services/api.types').ProfileResponse>>({})
     const [onboardingSettings, setOnboardingSettings] = useState<{ enabled_fields: string[]; required_fields: string[] } | null>(null)
@@ -128,7 +130,16 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                         <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                                             <PersonIcon className="w-4 h-4 text-gray-500" />
                                         </div>
-                                        <div className="text-sm font-medium text-gray-900">{user.email}</div>
+                                        <div className="text-sm font-medium text-gray-900">
+                                            {profiles[user.id]?.full_name ? (
+                                                <div className="flex flex-col">
+                                                    <span>{profiles[user.id].full_name}</span>
+                                                    <span className="text-xs text-gray-500 font-normal">{user.email}</span>
+                                                </div>
+                                            ) : (
+                                                user.email
+                                            )}
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -211,7 +222,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                     <div>
                                                         <span className="text-gray-500">Joined:</span>
                                                         <span className="ml-2 text-gray-700">
-                                                            {user.created_at ? format(new Date(user.created_at), 'PPP pp') : 'N/A'}
+                                                            {user.created_at ? format(new Date(user.created_at), 'PPP') : 'N/A'}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -230,42 +241,59 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                     )}
                                                 </div>
                                                 {onAssignRole && onRemoveRole && (
-                                                    <div className="mt-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                                                        <select
-                                                            value={selectedRoles[user.id] || ''}
-                                                            onChange={(e) => setSelectedRoles((prev) => ({ ...prev, [user.id]: e.target.value }))}
-                                                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm transition-all outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                        >
-                                                            <option value="">Select role</option>
-                                                            {/* Removed 'admin' to prevent accidental assignment */}
-                                                            <option value="student">student</option>
-                                                            <option value="expert">expert</option>
-                                                            <option value="organizer">organizer</option>
-                                                            <option value="sponsor">sponsor</option>
-                                                            <option value="committee">committee</option>
-                                                            <option value="customer_support">customer_support</option>
-                                                            <option value="content_moderator">content_moderator</option>
-                                                        </select>
-                                                        <div className="flex gap-2">
+                                                    <div className="mt-4">
+                                                        {!showRoleEdit[user.id] ? (
                                                             <button
-                                                                onClick={() => {
-                                                                    const role = selectedRoles[user.id]
-                                                                    if (role) onAssignRole(user.id, role)
-                                                                }}
-                                                                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+                                                                onClick={() => setShowRoleEdit(prev => ({ ...prev, [user.id]: true }))}
+                                                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
                                                             >
-                                                                Assign
+                                                                Edit Roles & Permissions
                                                             </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    const role = selectedRoles[user.id]
-                                                                    if (role) setRemoveRoleTarget({ userId: user.id, role })
-                                                                }}
-                                                                className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-all"
-                                                            >
-                                                                Remove
-                                                            </button>
-                                                        </div>
+                                                        ) : (
+                                                            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                                                <select
+                                                                    value={selectedRoles[user.id] || ''}
+                                                                    onChange={(e) => setSelectedRoles((prev) => ({ ...prev, [user.id]: e.target.value }))}
+                                                                    className="text-gray-700 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm transition-all outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                                >
+                                                                    <option value="">Select role</option>
+                                                                    {/* Removed 'admin' to prevent accidental assignment */}
+                                                                    <option value="student">student</option>
+                                                                    <option value="expert">expert</option>
+                                                                    <option value="organizer">organizer</option>
+                                                                    <option value="sponsor">sponsor</option>
+                                                                    <option value="committee">committee</option>
+                                                                    <option value="customer_support">customer_support</option>
+                                                                    <option value="content_moderator">content_moderator</option>
+                                                                </select>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const role = selectedRoles[user.id]
+                                                                            if (role) onAssignRole(user.id, role)
+                                                                        }}
+                                                                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all"
+                                                                    >
+                                                                        Assign
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const role = selectedRoles[user.id]
+                                                                            if (role) setRemoveRoleTarget({ userId: user.id, role })
+                                                                        }}
+                                                                        className="px-3 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-all"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => setShowRoleEdit(prev => ({ ...prev, [user.id]: false }))}
+                                                                    className="text-xs text-gray-400 hover:text-gray-600 ml-auto"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -274,6 +302,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                                 {(() => {
                                                     const p = profiles[user.id]
                                                     const { percent, missing } = computeCompleteness(p, user)
+                                                    if (percent === 100) return <div className="text-sm text-green-600 font-medium flex items-center gap-2"><CheckIcon /> 100% Completed</div>
                                                     return (
                                                         <div className="space-y-3">
                                                             <div className="h-3 bg-gray-200 rounded-full overflow-hidden">

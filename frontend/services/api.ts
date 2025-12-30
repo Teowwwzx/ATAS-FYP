@@ -306,6 +306,11 @@ export const scanAttendance = async (eventId: string, token: string) => {
   return response.data
 }
 
+export const walkInAttendance = async (eventId: string, data: import('./api.types').WalkInAttendanceRequest) => {
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/attendance/walk_in`, data)
+  return response.data
+}
+
 export interface AttendanceStats {
   total_participants: number
   total_attended: number
@@ -341,8 +346,13 @@ export const generateAttendanceQR = async (eventId: string) => {
   return response.data
 }
 
-export const scanAttendanceToken = async (data: AttendanceScanRequest) => {
-  const response = await api.post<EventParticipantDetails>(`/events/attendance/scan`, data)
+export const markAttendance = async (data: AttendanceScanRequest) => {
+  const response = await api.post<EventParticipantDetails>('/attendance/scan', data)
+  return response.data
+}
+
+export const selfCheckIn = async (eventId: string) => {
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/self-checkin`)
   return response.data
 }
 

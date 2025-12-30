@@ -2,8 +2,8 @@
 
 from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Float
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func, select
+from sqlalchemy.orm import relationship, column_property
 import enum
 import uuid
 from app.database.database import Base
@@ -78,6 +78,7 @@ class Event(Base):
     description = Column(Text, nullable=True)
     logo_url = Column(String, nullable=True)
     cover_url = Column(String, nullable=True)
+    meeting_url = Column(String, nullable=True)
     payment_qr_url = Column(String, nullable=True)
     format = Column(Enum(EventFormat), nullable=False)
     type = Column(Enum(EventType), nullable=False)
@@ -244,3 +245,19 @@ class EventProposalComment(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+# Inject participant_count property to Event model
+# Counts all participants who are accepted or attended (or organizer)
+Event.participant_count = column_property(
+    select(func.count(EventParticipant.id))
+    .where(EventParticipant.event_id == Event.id)
+    .where(EventParticipant.status.in_([
+        EventParticipantStatus.accepted,
+        EventParticipantStatus.attended,
+        EventParticipantStatus.pending # Optional: Include pending if "Registered" typically means signed up
+    ]))
+    .correlate_except(EventParticipant)
+    .scalar_subquery()
+)
+

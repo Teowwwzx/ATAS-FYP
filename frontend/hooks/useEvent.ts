@@ -8,7 +8,7 @@ import api, {
   leaveEvent,
   bulkInviteEventParticipants,
   generateAttendanceQR,
-  scanAttendanceToken,
+
   scanAttendance,
   setEventReminder,
   getEventChecklist,

@@ -293,11 +293,11 @@ function DashboardPageInner() {
                                                     {/* Image or Date Box */}
                                                     {evt.cover_url ? (
                                                         <div className="w-16 h-16 rounded-xl bg-zinc-100 flex-shrink-0 overflow-hidden relative">
-                                                            <ImageWithFallback 
-                                                                src={evt.cover_url} 
+                                                            <ImageWithFallback
+                                                                src={evt.cover_url}
                                                                 fallbackSrc={`https://placehold.co/64x64/png?text=${encodeURIComponent(evt.title.substring(0, 2))}`}
-                                                                alt="" 
-                                                                className="object-cover group-hover:scale-110 transition-transform" 
+                                                                alt=""
+                                                                className="object-cover group-hover:scale-110 transition-transform"
                                                                 fill
                                                                 sizes="64px"
                                                             />

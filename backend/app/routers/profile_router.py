@@ -12,7 +12,7 @@ from app.services import profile_service, user_service
 from app.dependencies import get_current_user, get_current_user_optional
 from typing import List
 from fastapi import File, UploadFile
-from sqlalchemy import or_, text
+from sqlalchemy import or_, text, select, insert, update
 from app.services.ai_service import generate_text_embedding, _vec_to_pg
 from sqlalchemy.sql import func
 from app.models.profile_model import Profile, ProfileVisibility, Tag, profile_tags, Education, JobExperience
@@ -526,6 +526,10 @@ def search_profiles(
     db: Session = Depends(get_db),
 ):
     q = db.query(Profile).filter(Profile.visibility == ProfileVisibility.public)
+    
+    # Exclude admins
+    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    q = q.filter(Profile.user_id.notin_(admin_subquery))
 
     if email:
         from sqlalchemy.sql import func as sa_func
@@ -925,10 +929,29 @@ def delete_my_education(edu_id: uuid.UUID, db: Session = Depends(get_db), curren
 
 # --- Job Experience ---
 
+from app.models.organization_model import organization_members, OrganizationRole
+
 @router.post("/me/job_experiences", response_model=JobExperienceResponse)
 def add_my_job_experience(body: JobExperienceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     item = JobExperience(**body.model_dump(), user_id=current_user.id)
     db.add(item)
+    
+    # Auto-follow logic: If org_id is present, add user as member if not already
+    if body.org_id:
+        existing_member = db.execute(
+            select(organization_members).where(
+                organization_members.c.org_id == body.org_id,
+                organization_members.c.user_id == current_user.id
+            )
+        ).first()
+        
+        if not existing_member:
+            db.execute(insert(organization_members).values(
+                org_id=body.org_id,
+                user_id=current_user.id,
+                role=OrganizationRole.member
+            ))
+
     db.commit()
     db.refresh(item)
     return item

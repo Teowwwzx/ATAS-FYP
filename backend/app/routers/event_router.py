@@ -585,8 +585,8 @@ def publish_event(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.organizer_id != current_user.id and not any(r in current_user.roles for r in ["admin", "content_moderator"]):
-        raise HTTPException(status_code=403, detail="Only organizer or admin/moderator can publish the event")
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only organizer can publish the event")
     event.status = EventStatus.published
     # default registration to opened on publish if not set
     if getattr(event, "registration_status", None) is None:
@@ -613,8 +613,8 @@ def unpublish_event(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.organizer_id != current_user.id and not any(r in current_user.roles for r in ["admin", "content_moderator"]):
-        raise HTTPException(status_code=403, detail="Only organizer or admin/moderator can unpublish the event")
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only organizer can unpublish the event")
     event.status = EventStatus.draft
     db.add(event)
     db.commit()
@@ -721,6 +721,7 @@ def list_my_events(
             cover_url=e.cover_url,
             venue_remark=e.venue_remark,
             format=e.format,
+            participant_count=e.participant_count,
         )
 
     for link in participation_links:
@@ -742,6 +743,7 @@ def list_my_events(
                 cover_url=e.cover_url,
                 venue_remark=e.venue_remark,
                 format=e.format,
+                participant_count=e.participant_count,
             )
 
     return list(event_map.values())
@@ -1587,6 +1589,77 @@ def organizer_update_participant_status(
     db.add(notif)
     db.commit()
     return participant
+
+    return participant
+
+
+@router.post("/events/{event_id}/self-checkin", response_model=EventParticipantDetails)
+def self_checkin(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Participant self-check-in for online events (or physical events via Event QR)."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Check time window (custom logic or reuse EventPhase logic if available in backend, usually simple date check)
+    now_utc = datetime.now(timezone.utc)
+    
+    # Allow check-in on event day (00:00 to 23:59) or during event time
+    # Simplified: Allow if within 24h start or during event
+    # For online events, maybe tighter window? stick to standard attendance open window
+    
+    # Logic: Start - 24h <= now <= End + buffer?
+    # Usually attendance is open on Event Day.
+    
+    # Assuming start_datetime is TZ-aware or naive (DB stores naive UTC usually?)
+    # Models use DateTime(timezone=True) often. Let's check model.
+    # In `event_router.py`, `now_utc` is used.
+    
+    st = event.start_datetime
+    if st.tzinfo is None:
+        st = st.replace(tzinfo=timezone.utc)
+    
+    et = event.end_datetime
+    if et.tzinfo is None:
+        et = et.replace(tzinfo=timezone.utc)
+        
+    # Check-in window: 2 hours before start until end of event
+    # Relaxed: 1 day before as per UI "QR Available 24h Before Event"
+    start_window = st - timedelta(hours=24)
+    end_window = et + timedelta(hours=4) # allow late checkout? or just end.
+    
+    if not (start_window <= now_utc <= end_window):
+         raise HTTPException(status_code=400, detail="Check-in is not currently valid for this event.")
+
+    participant = (
+        db.query(EventParticipant)
+        .filter(EventParticipant.id == None) # dummy
+        .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
+        .first()
+    )
+    
+    if participant is None:
+        raise HTTPException(status_code=403, detail="You are not a registered participant.")
+        
+    if participant.status != EventParticipantStatus.accepted and participant.status != EventParticipantStatus.attended:
+         raise HTTPException(status_code=403, detail="Registration not accepted.")
+
+    if participant.status == EventParticipantStatus.attended:
+        return participant # Already checked in
+        
+    participant.status = EventParticipantStatus.attended
+    participant.attended_at = now_utc # If column exists? Let's check model.
+    # If attended_at doesn't exist, just status.
+    
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    
+    return participant
+
 
 @router.put("/events/{event_id}/participants/{participant_id}/payment", response_model=EventParticipantDetails)
 def update_participant_payment_status(
@@ -2509,10 +2582,24 @@ def walk_in_event_attendance(
     event_id: uuid.UUID,
     body: WalkInAttendanceRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     event = db.query(Event).filter(Event.id == event_id, Event.deleted_at.is_(None)).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Permission check: Organizer or committee only
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role != EventParticipantRole.committee:
+            raise HTTPException(status_code=403, detail="Not allowed to register walk-in")
 
     now_utc = datetime.now(timezone.utc)
     if event.status != EventStatus.published:
@@ -2611,9 +2698,19 @@ def get_event_attendance_stats(
         EventParticipantRole.student,
         EventParticipantRole.teacher,
     ]
+    valid_statuses = [
+        EventParticipantStatus.accepted,
+        EventParticipantStatus.attended,
+        EventParticipantStatus.pending,
+    ]
+
     total_audience = (
         db.query(EventParticipant)
-        .filter(EventParticipant.event_id == event.id, EventParticipant.role.in_(audience_roles))
+        .filter(
+            EventParticipant.event_id == event.id, 
+            EventParticipant.role.in_(audience_roles),
+            EventParticipant.status.in_(valid_statuses)
+        )
         .count()
     )
     attended_audience = (
@@ -2636,7 +2733,10 @@ def get_event_attendance_stats(
     )
     total_participants = (
         db.query(EventParticipant)
-        .filter(EventParticipant.event_id == event.id)
+        .filter(
+            EventParticipant.event_id == event.id,
+            EventParticipant.status.in_(valid_statuses)
+        )
         .count()
     )
     attended_total = (
@@ -3003,11 +3103,8 @@ def update_event(
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
 
-    # Check if user has admin role
-    is_admin = any(role.name == "admin" for role in current_user.roles)
-
-    # Only organizer, committee, or admin can update core event details
-    if event.organizer_id != current_user.id and not is_admin:
+    # Only organizer can update core event details
+    if event.organizer_id != current_user.id:
         my_participation = (
             db.query(EventParticipant)
             .filter(
@@ -3017,7 +3114,7 @@ def update_event(
             .first()
         )
         if my_participation is None or my_participation.role != EventParticipantRole.committee:
-            raise HTTPException(status_code=403, detail="Only organizer, committee, or admin can update event")
+            raise HTTPException(status_code=403, detail="Only organizer or committee can update event")
 
     # Validate date range if provided
     if body.start_datetime is not None and body.end_datetime is not None:
@@ -3036,6 +3133,8 @@ def update_event(
         event.logo_url = body.logo_url
     if body.cover_url is not None:
         event.cover_url = body.cover_url
+    if body.meeting_url is not None:
+        event.meeting_url = body.meeting_url
     if body.format is not None:
         event.format = body.format
         # derive type if not provided

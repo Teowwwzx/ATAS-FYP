@@ -282,11 +282,52 @@ export function ProfileEdit(props: ProfileEditProps) {
                                                 onClick={() => { setSelectedOrg(null); setNewJob({ ...newJob, org_id: undefined }); setOrgSearch(''); }}
                                                 className="text-xs font-bold px-3 py-1.5 rounded-full bg-white border border-gray-200 text-zinc-600 hover:bg-gray-50"
                                             >
-                                                Clear
+                                                Change
+                                            </button>
+                                        </div>
+                                    ) : showCreateOrg ? (
+                                        <div className="space-y-3 bg-white rounded-xl border border-gray-200 p-4 animate-fadeIn">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h5 className="font-bold text-sm text-zinc-900">Create New Organization</h5>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCreateOrg(false)}
+                                                    className="text-xs font-bold text-zinc-500 hover:text-zinc-700"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Organization Name"
+                                                    className="bg-gray-50 border-0 rounded-xl px-4 py-3 font-bold text-zinc-900 focus:ring-2 focus:ring-yellow-400"
+                                                    value={newOrgName}
+                                                    onChange={e => setNewOrgName(e.target.value)}
+                                                />
+                                                <select
+                                                    className="bg-gray-50 border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 focus:ring-2 focus:ring-yellow-400"
+                                                    value={newOrgType}
+                                                    onChange={e => setNewOrgType(e.target.value as any)}
+                                                >
+                                                    <option value="company">Company</option>
+                                                    <option value="university">University</option>
+                                                    <option value="community">Community</option>
+                                                    <option value="nonprofit">Nonprofit</option>
+                                                    <option value="government">Government</option>
+                                                </select>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                disabled={creatingOrg || !newOrgName.trim()}
+                                                onClick={onCreateOrg}
+                                                className="w-full py-3 rounded-xl bg-zinc-900 text-yellow-400 text-sm font-bold disabled:opacity-50 hover:bg-zinc-800 transition-all"
+                                            >
+                                                {creatingOrg ? 'Creating...' : 'Create & Select'}
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="space-y-2 relative">
                                             <input
                                                 type="text"
                                                 placeholder="Search organization..."
@@ -294,19 +335,21 @@ export function ProfileEdit(props: ProfileEditProps) {
                                                 value={orgSearch}
                                                 onChange={e => setOrgSearch(e.target.value)}
                                             />
-                                            {orgLoading && <div className="text-xs text-zinc-500 px-1">Searching...</div>}
-                                            {!orgLoading && orgSearch && (
-                                                <div className="space-y-2">
+                                            {orgLoading && <div className="absolute right-4 top-3.5 text-xs text-zinc-400">Searching...</div>}
+
+                                            {/* Dropdown Results */}
+                                            {orgSearch && !selectedOrg && (
+                                                <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-100 z-10 overflow-hidden max-h-60 overflow-y-auto">
                                                     {orgOptions.length > 0 ? (
-                                                        <div className="grid gap-2">
+                                                        <>
                                                             {orgOptions.map(o => (
                                                                 <button
                                                                     key={o.id}
                                                                     type="button"
-                                                                    onClick={() => { setSelectedOrg(o); setNewJob({ ...newJob, org_id: o.id }) }}
-                                                                    className="w-full text-left flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 transition-colors"
+                                                                    onClick={() => { setSelectedOrg(o); setNewJob({ ...newJob, org_id: o.id }); setOrgSearch(''); }}
+                                                                    className="w-full text-left flex items-center gap-3 p-3 hover:bg-yellow-50 transition-colors border-b border-gray-50 last:border-0"
                                                                 >
-                                                                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center overflow-hidden">
+                                                                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center overflow-hidden shrink-0">
                                                                         {o.logo_url ? <img src={o.logo_url} alt={o.name} className="w-full h-full object-cover" /> : <span className="text-zinc-900 font-bold text-sm">{o.name.charAt(0)}</span>}
                                                                     </div>
                                                                     <div>
@@ -315,60 +358,29 @@ export function ProfileEdit(props: ProfileEditProps) {
                                                                     </div>
                                                                 </button>
                                                             ))}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
-                                                            <div className="text-sm text-zinc-600">No organization found</div>
+                                                            {/* Option to create even if results exist, in case user doesn't see theirs */}
                                                             <button
                                                                 type="button"
-                                                                onClick={() => { setNewOrgName(orgSearch.trim()); setShowCreateOrg(true) }}
-                                                                className="text-xs font-bold px-3 py-1.5 rounded-full bg-zinc-900 text-yellow-400 hover:bg-zinc-800"
+                                                                onClick={() => { setNewOrgName(orgSearch); setShowCreateOrg(true); }}
+                                                                className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-zinc-600 border-t border-gray-100 flex items-center gap-2"
                                                             >
-                                                                Create
+                                                                <span className="w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-600">+</span>
+                                                                Not found? Create "{orgSearch}"
                                                             </button>
-                                                        </div>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setNewOrgName(orgSearch); setShowCreateOrg(true); }}
+                                                            className="w-full text-left p-4 hover:bg-gray-50 transition-colors group"
+                                                        >
+                                                            <div className="text-sm text-zinc-500 mb-1">No organization found matching "{orgSearch}"</div>
+                                                            <div className="text-yellow-600 font-bold flex items-center gap-2 group-hover:underline">
+                                                                Create "{orgSearch}" as a new organization
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                                            </div>
+                                                        </button>
                                                     )}
-                                                </div>
-                                            )}
-                                            {showCreateOrg && (
-                                                <div className="space-y-2 bg-white rounded-xl border border-gray-200 p-4">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Organization name"
-                                                            className="bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 focus:ring-2 focus:ring-yellow-400"
-                                                            value={newOrgName}
-                                                            onChange={e => setNewOrgName(e.target.value)}
-                                                        />
-                                                        <select
-                                                            className="bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 focus:ring-2 focus:ring-yellow-400"
-                                                            value={newOrgType}
-                                                            onChange={e => setNewOrgType(e.target.value as any)}
-                                                        >
-                                                            <option value="company">Company</option>
-                                                            <option value="university">University</option>
-                                                            <option value="community">Community</option>
-                                                            <option value="nonprofit">Nonprofit</option>
-                                                            <option value="government">Government</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            type="button"
-                                                            disabled={creatingOrg || !newOrgName.trim()}
-                                                            onClick={onCreateOrg}
-                                                            className="px-4 py-2 rounded-xl bg-zinc-900 text-yellow-400 text-sm font-bold disabled:opacity-50"
-                                                        >
-                                                            {creatingOrg ? 'Creating...' : 'Create & Select'}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowCreateOrg(false)}
-                                                            className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-zinc-700 text-sm font-bold"
-                                                        >
-                                                            Cancel
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             )}
                                         </div>

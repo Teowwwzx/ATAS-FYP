@@ -38,10 +38,12 @@ class EventCreate(BaseModel):
 class EventUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
+    organizer_id: uuid.UUID | None = None
     title: str | None = None
     description: str | None = None
     logo_url: str | None = None
     cover_url: str | None = None
+    meeting_url: str | None = None
     payment_qr_url: str | None = None
     format: EventFormat | None = None
     type: EventType | None = None
@@ -63,6 +65,7 @@ class EventDetails(BaseModel):
     description: str | None = None
     logo_url: str | None = None
     cover_url: str | None = None
+    meeting_url: str | None = None
     payment_qr_url: str | None = None
     format: EventFormat
     type: EventType
@@ -204,6 +207,10 @@ class MyEventItem(BaseModel):
     status: EventStatus
     my_role: EventParticipantRole | None = None
     my_status: EventParticipantStatus | None = None
+    cover_url: str | None = None
+    venue_remark: str | None = None
+    format: EventFormat | None = None
+    participant_count: int = 0
 
 
 # --- Organizer Dashboard Schemas ---

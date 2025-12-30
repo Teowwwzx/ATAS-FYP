@@ -28,10 +28,19 @@ class OrganizationUpdate(BaseModel):
     location: Optional[str] = None
     visibility: Optional[OrganizationVisibility] = None
     bank_details: Optional[dict] = None
+    owner_id: Optional[UUID] = None
+
+class OrganizationOwner(BaseModel):
+    id: UUID
+    email: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
 
 class OrganizationResponse(OrganizationBase):
     id: UUID
     owner_id: UUID
+    owner: Optional[OrganizationOwner] = None
     status: OrganizationStatus
     bank_details: Optional[dict] = None
     created_at: datetime

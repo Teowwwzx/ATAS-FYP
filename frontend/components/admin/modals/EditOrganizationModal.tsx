@@ -32,8 +32,28 @@ export function EditOrganizationModal({ isOpen, onClose, organization, onSuccess
         type: 'community' as OrganizationType,
         visibility: 'public' as OrganizationVisibility,
         logo_url: '',
-        cover_url: ''
+        cover_url: '',
+        owner_id: ''
     })
+
+    // Owner Search State
+    const [ownerSearch, setOwnerSearch] = useState('')
+    const [ownerOptions, setOwnerOptions] = useState<any[]>([])
+    const [selectedNewOwner, setSelectedNewOwner] = useState<{ full_name?: string, email: string } | null>(null)
+
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (ownerSearch.length >= 2) {
+                try {
+                    const res = await adminService.getUsers({ name: ownerSearch, page_size: 5 })
+                    setOwnerOptions(res)
+                } catch (e) { console.error(e) }
+            } else {
+                setOwnerOptions([])
+            }
+        }, 400)
+        return () => clearTimeout(timer)
+    }, [ownerSearch])
 
     useEffect(() => {
         if (isOpen && organization) {
@@ -45,7 +65,8 @@ export function EditOrganizationModal({ isOpen, onClose, organization, onSuccess
                 type: organization.type || 'community',
                 visibility: organization.visibility || 'public',
                 logo_url: organization.logo_url || '',
-                cover_url: organization.cover_url || ''
+                cover_url: organization.cover_url || '',
+                owner_id: organization.owner_id || ''
             })
         }
     }, [isOpen, organization])
@@ -200,9 +221,63 @@ export function EditOrganizationModal({ isOpen, onClose, organization, onSuccess
                                     value={formData.location}
                                     onChange={e => setFormData({ ...formData, location: e.target.value })}
                                     className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                    placeholder="Loading Maps..."
                                     disabled
                                 />
+                            )}
+                        </div>
+
+                        <div className="relative z-10">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Organization Owner (Transfer)</label>
+
+                            {/* Current Owner Display */}
+                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                                    {(selectedNewOwner?.full_name || organization.owner?.full_name || organization.owner?.email || 'U').charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <div className="text-sm font-bold text-gray-900 truncate">
+                                        {selectedNewOwner ? (selectedNewOwner.full_name || 'Selected User') : (organization.owner?.full_name || organization.owner?.email || 'No Name Set')}
+                                        {selectedNewOwner && <span className="ml-2 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">New</span>}
+                                    </div>
+                                    <div className="text-xs text-gray-500 truncate">
+                                        {selectedNewOwner?.email || organization.owner?.email || organization.owner_id}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Search Input */}
+                            <input
+                                value={ownerSearch}
+                                onChange={e => setOwnerSearch(e.target.value)}
+                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                                placeholder="Search & Transfer Ownership..."
+                            />
+
+                            {/* Search Results */}
+                            {ownerOptions.length > 0 && (
+                                <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
+                                    {ownerOptions.map(u => (
+                                        <button
+                                            key={u.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setFormData({ ...formData, owner_id: u.id })
+                                                setSelectedNewOwner(u)
+                                                setOwnerSearch('')
+                                                setOwnerOptions([])
+                                            }}
+                                            className="w-full text-left flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                                        >
+                                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                                                {u.full_name?.charAt(0) || u.email.charAt(0)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-medium text-gray-900 truncate">{u.full_name || 'No Name'}</div>
+                                                <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             )}
                         </div>
 

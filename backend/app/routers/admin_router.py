@@ -1,8 +1,8 @@
 # app/routers/admin_router.py
 
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.sql import func
 from typing import List
 import app.database.database
@@ -19,8 +19,217 @@ from app.services.email_service import _wrap_html
 from app.models.email_template_model import EmailTemplate as EmailTemplateModel
 from app.schemas.email_schema import EmailTemplateCreate, EmailTemplateUpdate
 from app.seeders.email_template_seeder import seed_default_email_templates
+from app.models.event_model import (
+    Event,
+    EventParticipant,
+    EventParticipantRole,
+    EventParticipantStatus,
+    EventType,
+    EventFormat,
+    EventVisibility,
+    EventStatus,
+    EventRegistrationStatus
+)
+from app.schemas.event_schema import EventUpdate, EventDetails
+from app.services.cloudinary_service import upload_file
 
 router = APIRouter()
+
+@router.put("/events/{event_id}", response_model=EventDetails)
+def admin_update_event(
+    event_id: str,
+    body: EventUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    event = db.query(Event).filter(Event.id == event_uuid).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Handle ownership transfer
+    if body.organizer_id is not None:
+        if body.organizer_id != event.organizer_id:
+            # Verify new owner exists
+            new_owner = db.query(User).filter(User.id == body.organizer_id).first()
+            if not new_owner:
+                raise HTTPException(status_code=404, detail="New organizer user not found")
+
+            # Update event owner
+            event.organizer_id = body.organizer_id
+
+            # Ensure new owner is a participant with 'organizer' role
+            new_owner_participant = db.query(EventParticipant).filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == body.organizer_id
+            ).first()
+
+            if new_owner_participant:
+                new_owner_participant.role = EventParticipantRole.organizer
+                new_owner_participant.status = EventParticipantStatus.accepted
+            else:
+                db.add(EventParticipant(
+                    event_id=event.id,
+                    user_id=body.organizer_id,
+                    role=EventParticipantRole.organizer,
+                    status=EventParticipantStatus.accepted,
+                    join_method="seed" 
+                ))
+
+    # Apply partial updates
+    if body.title is not None:
+        event.title = body.title
+    if body.description is not None:
+        event.description = body.description
+    if body.logo_url is not None:
+        event.logo_url = body.logo_url
+    if body.cover_url is not None:
+        event.cover_url = body.cover_url
+    if body.meeting_url is not None:
+        event.meeting_url = body.meeting_url
+    if body.format is not None:
+        event.format = body.format
+        if body.type is None:
+            event.type = EventType.online if event.format == EventFormat.webinar else EventType.physical
+    if body.type is not None:
+        event.type = body.type
+    if body.start_datetime is not None:
+        event.start_datetime = body.start_datetime
+    if body.end_datetime is not None:
+        event.end_datetime = body.end_datetime
+    if body.registration_type is not None:
+        event.registration_type = body.registration_type
+    if body.visibility is not None:
+        event.visibility = body.visibility
+    if body.max_participant is not None:
+        event.max_participant = body.max_participant
+    if body.venue_place_id is not None:
+        event.venue_place_id = body.venue_place_id
+    if body.venue_remark is not None:
+        event.venue_remark = body.venue_remark
+    if body.remark is not None:
+        event.remark = body.remark
+    if body.price is not None:
+        event.price = body.price
+    if body.currency is not None:
+        event.currency = body.currency
+
+    # Validate dates
+    if event.end_datetime <= event.start_datetime:
+        raise HTTPException(status_code=400, detail="End datetime must be after start datetime")
+        
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    # Re-index for search if needed (best effort)
+    try:
+        from app.services.ai_service import upsert_event_embedding
+        src = f"{event.title}\n{event.description or ''}\nformat:{event.format} type:{event.type}"
+        upsert_event_embedding(db, event.id, src)
+    except Exception:
+        pass
+
+    return event
+
+@router.put("/events/{event_id}/publish", response_model=EventDetails)
+def admin_publish_event(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.status = EventStatus.published
+    # default registration to opened on publish if not set
+    if getattr(event, "registration_status", None) is None:
+        event.registration_status = EventRegistrationStatus.opened
+        
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    try:
+        from app.services.ai_service import upsert_event_embedding
+        src = f"{event.title}\n{event.description or ''}\nformat:{event.format} type:{event.type}"
+        upsert_event_embedding(db, event.id, src)
+    except Exception:
+        db.rollback()
+        
+    log_admin_action(db, current_user.id, "event.publish", "event", event.id)
+    return event
+
+
+@router.put("/events/{event_id}/unpublish", response_model=EventDetails)
+def admin_unpublish_event(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.status = EventStatus.draft
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    log_admin_action(db, current_user.id, "event.unpublish", "event", event.id)
+    return event
+
+@router.put("/events/{event_id}/images/logo", response_model=EventDetails)
+def admin_update_event_logo(
+    event_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    event = db.query(Event).filter(Event.id == event_uuid).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    url = upload_file(file, "event_logos")
+    event.logo_url = url
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.put("/events/{event_id}/images/cover", response_model=EventDetails)
+def admin_update_event_cover(
+    event_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    event = db.query(Event).filter(Event.id == event_uuid).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    url = upload_file(file, "event_covers")
+    event.cover_url = url
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
 
 @router.get("/ping")
 def read_admin_root():
@@ -40,7 +249,7 @@ def admin_list_organizations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"]))
 ):
-    query = db.query(Organization)
+    query = db.query(Organization).options(joinedload(Organization.owner).joinedload(User.profile))
     # Admin sees all visibilities by default
     
     # Filter out soft-deleted

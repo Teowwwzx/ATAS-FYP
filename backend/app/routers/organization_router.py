@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 import os
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, update, delete, insert
 from typing import List
 import uuid
@@ -82,7 +82,7 @@ def get_organization(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional)
 ):
-    org = db.query(Organization).filter(Organization.id == org_id, Organization.deleted_at.is_(None)).first()
+    org = db.query(Organization).options(joinedload(Organization.owner).joinedload(User.profile)).filter(Organization.id == org_id, Organization.deleted_at.is_(None)).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     # Hide non-approved orgs from public unless owner or admin (skip in testing)
@@ -118,6 +118,15 @@ def create_organization(
         status=OrganizationStatus.approved # Auto-approve for MVP
     )
     db.add(org)
+    db.flush() # Flush to get org.id before commit if needed, though commit handles it. 
+    
+    # Auto-add creator as member with owner role
+    db.execute(insert(organization_members).values(
+        org_id=org.id,
+        user_id=current_user.id,
+        role=OrganizationRole.owner
+    ))
+    
     db.commit()
     db.refresh(org)
     log_admin_action(db, current_user.id, "organization.create", "organization", org.id)
@@ -173,7 +182,32 @@ def update_organization(
         print("DEBUG: 403 Raised")
         raise HTTPException(status_code=403, detail="Not authorized to update this organization")
         
-    for key, value in body.dict(exclude_unset=True).items():
+    update_data = body.dict(exclude_unset=True)
+    
+    # Handle ownership transfer
+    if "owner_id" in update_data and update_data["owner_id"] is not None:
+        new_owner_id = update_data["owner_id"]
+        # Ensure new owner is a member with owner role
+        existing_member = db.execute(select(organization_members).where(
+                organization_members.c.org_id == org.id,
+                organization_members.c.user_id == new_owner_id
+        )).first()
+        
+        if existing_member:
+                # Update role if not already owner (optional optimization: check role first)
+                if getattr(existing_member, 'role', None) != OrganizationRole.owner: 
+                    db.execute(update(organization_members).where(
+                        organization_members.c.org_id == org.id,
+                        organization_members.c.user_id == new_owner_id
+                    ).values(role=OrganizationRole.owner))
+        else:
+                db.execute(insert(organization_members).values(
+                    org_id=org.id,
+                    user_id=new_owner_id,
+                    role=OrganizationRole.owner
+                ))
+
+    for key, value in update_data.items():
         setattr(org, key, value)
         
     db.commit()

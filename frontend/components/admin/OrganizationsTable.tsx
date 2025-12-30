@@ -18,7 +18,9 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 // ... imports
 import { EditOrganizationModal } from './modals/EditOrganizationModal'
+
 import { Pencil1Icon } from '@radix-ui/react-icons'
+import { StatusPill } from '@/components/ui/StatusPill'
 
 interface OrganizationsTableProps {
     organizations: OrganizationResponse[]
