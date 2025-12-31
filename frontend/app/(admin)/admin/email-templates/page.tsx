@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast'
 import { adminService } from '@/services/admin.service'
 import type { EmailTemplate } from '@/services/api.types'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
+import { Pagination } from '@/components/ui/Pagination'
 
 export default function AdminEmailTemplatesPage() {
   const toTitle = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -26,9 +27,19 @@ export default function AdminEmailTemplatesPage() {
   const [testSend, setTestSend] = useState<{ id: string; email: string; vars: string } | null>(null)
   const [form, setForm] = useState<{ name: string; subject: string; body_html: string; sample_vars: string }>({ name: '', subject: '', body_html: '', sample_vars: '{"user_name":"Alice","event_title":"Tech Week"}' })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const templates = (data || []) as EmailTemplate[]
   const filtered = useMemo(() => templates.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.subject.toLowerCase().includes(search.toLowerCase())), [templates, search])
+
+  // Client-side pagination
+  const paginated = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filtered.slice(start, start + pageSize)
+  }, [filtered, page, pageSize])
+
+  const totalPages = Math.ceil(filtered.length / pageSize)
 
   useEffect(() => {
     if (editing) {
@@ -51,12 +62,12 @@ export default function AdminEmailTemplatesPage() {
       Object.entries(vars).forEach(([k, v]) => {
         html = html.replaceAll(`{{${k}}}`, String(v))
       })
-    } catch {}
+    } catch { }
     const cta = vars['verification_link']
       ? `<p style="text-align:center;margin-top:16px;"><a href="${vars['verification_link']}" style="display:inline-block;background:#facc15;color:#0f172a;padding:12px 20px;border-radius:9999px;font-weight:800;text-decoration:none">Verify Email</a></p>`
       : vars['reset_link']
-      ? `<p style="text-align:center;margin-top:16px;"><a href="${vars['reset_link']}" style="display:inline-block;background:#facc15;color:#0f172a;padding:12px 20px;border-radius:9999px;font-weight:800;text-decoration:none">Reset Password</a></p>`
-      : ''
+        ? `<p style="text-align:center;margin-top:16px;"><a href="${vars['reset_link']}" style="display:inline-block;background:#facc15;color:#0f172a;padding:12px 20px;border-radius:9999px;font-weight:800;text-decoration:none">Reset Password</a></p>`
+        : ''
     const wrapped = `<!DOCTYPE html><html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="color-scheme" content="light"/><title>${form.subject || 'ATAS'}</title></head>
     <body style="background:#fafafa;margin:0;padding:24px;font-family:Inter,Arial,sans-serif;color:#0f172a">
       <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;padding:0;border:1px solid #e5e7eb">
@@ -128,38 +139,21 @@ export default function AdminEmailTemplatesPage() {
             className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 text-base focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-all"
           />
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setEditing({ id: '', name: '', subject: '', body_html: '', variables: [] })}
-            className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-300"
-          >
-            + New Template
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                await adminService.createEmailTemplate({
-                  name: 'email_verification',
-                  subject: 'Verify your email',
-                  body_html: '<p>Hello {{user_name}},</p><p>Please verify your email by clicking <a href="{{verification_link}}">this link</a>.</p>'
-                })
-                await adminService.createEmailTemplate({
-                  name: 'forgot_password',
-                  subject: 'Reset your password',
-                  body_html: '<p>Hello {{user_name}},</p><p>Reset your password using <a href="{{reset_link}}">this link</a>.</p>'
-                })
-                toast.success('Default templates added')
-                mutate()
-              } catch (e) {
-                toast.error('Failed to add defaults')
-                console.error(e)
-              }
-            }}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-xl font-bold hover:bg-gray-50"
-          >
-            Add Defaults
-          </button>
-        </div>
+        <button
+          onClick={() => setEditing({ id: '', name: '', subject: '', body_html: '', variables: [] })}
+          className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-300"
+        >
+          + New Template
+        </button>
+        <select
+          value={pageSize}
+          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+          className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-900 font-medium"
+        >
+          <option value={10}>10 per page</option>
+          <option value={20}>20 per page</option>
+          <option value={50}>50 per page</option>
+        </select>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -180,7 +174,7 @@ export default function AdminEmailTemplatesPage() {
               {error && (
                 <tr><td colSpan={4} className="px-6 py-6 text-gray-700">No templates available</td></tr>
               )}
-              {filtered.map(t => (
+              {paginated.map(t => (
                 <tr key={t.id}>
                   <td className="px-6 py-4 text-gray-900 font-medium">{toTitle(t.name)}</td>
                   <td className="px-6 py-4 text-gray-800">{t.subject}</td>
@@ -195,12 +189,19 @@ export default function AdminEmailTemplatesPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && !isLoading && !error && (
+              {paginated.length === 0 && !isLoading && !error && (
                 <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-700">No templates</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+        />
       </div>
 
       <Dialog.Root open={!!editing} onOpenChange={() => setEditing(null)}>
@@ -212,20 +213,20 @@ export default function AdminEmailTemplatesPage() {
               {!editing?.id && (
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Name</label>
-                  <input value={form.name} onChange={(e)=>setForm(prev=>({...prev, name: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" placeholder="welcome_email" required />
+                  <input value={form.name} onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" placeholder="welcome_email" required />
                 </div>
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-800 mb-1">Subject</label>
-                <input value={form.subject} onChange={(e)=>setForm(prev=>({...prev, subject: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" placeholder="Welcome to ATAS" required />
+                <input value={form.subject} onChange={(e) => setForm(prev => ({ ...prev, subject: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" placeholder="Welcome to ATAS" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-800 mb-1">Body HTML</label>
-                <textarea value={form.body_html} onChange={(e)=>setForm(prev=>({...prev, body_html: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-48 font-mono text-sm text-gray-900" placeholder="<p>Hello {{user_name}}</p>" required />
+                <textarea value={form.body_html} onChange={(e) => setForm(prev => ({ ...prev, body_html: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-48 font-mono text-sm text-gray-900" placeholder="<p>Hello {{user_name}}</p>" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-800 mb-1">Sample Variables (JSON)</label>
-                <textarea value={form.sample_vars} onChange={(e)=>setForm(prev=>({...prev, sample_vars: e.target.value}))} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-24 font-mono text-sm text-gray-900" />
+                <textarea value={form.sample_vars} onChange={(e) => setForm(prev => ({ ...prev, sample_vars: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-24 font-mono text-sm text-gray-900" />
               </div>
               <div className="flex items-center justify-end gap-2">
                 <button type="button" onClick={compilePreview} className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900">Preview</button>
@@ -278,11 +279,11 @@ export default function AdminEmailTemplatesPage() {
               }}>
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Recipient Email</label>
-                  <input value={testSend.email} onChange={(e)=>setTestSend(prev=>prev?{...prev, email: e.target.value}:prev)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" type="email" required />
+                  <input value={testSend.email} onChange={(e) => setTestSend(prev => prev ? { ...prev, email: e.target.value } : prev)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900" type="email" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-800 mb-1">Variables (JSON)</label>
-                  <textarea value={testSend.vars} onChange={(e)=>setTestSend(prev=>prev?{...prev, vars: e.target.value}:prev)} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-24 font-mono text-sm text-gray-900" />
+                  <textarea value={testSend.vars} onChange={(e) => setTestSend(prev => prev ? { ...prev, vars: e.target.value } : prev)} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-24 font-mono text-sm text-gray-900" />
                 </div>
                 <div className="flex items-center justify-end gap-2">
                   <button type="button" onClick={() => setTestSend(null)} className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900">Cancel</button>

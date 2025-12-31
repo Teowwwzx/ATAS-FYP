@@ -7,6 +7,8 @@ import { EventsTable } from '@/components/admin/EventsTable'
 import { MagnifyingGlassIcon, PlusIcon } from '@radix-ui/react-icons'
 import { Pagination } from '@/components/ui/Pagination'
 import { CreateEventModal } from '@/components/admin/modals/CreateEventModal'
+import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
+import { UserResponse } from '@/services/api.types'
 
 const DEFAULT_PAGE_SIZE = 10
 
@@ -18,6 +20,7 @@ export default function AdminEventsPage() {
     const [statusFilter, setStatusFilter] = useState('')
     const [typeFilter, setTypeFilter] = useState('')
     const [organizerFilter, setOrganizerFilter] = useState('')
+    const [selectedOrganizer, setSelectedOrganizer] = useState<UserResponse | null>(null)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
 
     useEffect(() => {
@@ -32,7 +35,7 @@ export default function AdminEventsPage() {
         status: statusFilter || undefined,
         type: typeFilter || undefined,
         include_all_visibility: true,
-        organizer_id: organizerFilter || undefined
+        organizer_id: selectedOrganizer?.id || undefined
     }
 
     const { data: events, mutate } = useSWR(
@@ -80,12 +83,12 @@ export default function AdminEventsPage() {
                         className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                 </div>
-                <input
-                    type="text"
-                    placeholder="Organizer user id..."
-                    value={organizerFilter}
-                    onChange={(e) => { setOrganizerFilter(e.target.value); setPage(1) }}
-                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                <UserSearchSelect
+                    onSelect={(user) => {
+                        setSelectedOrganizer(user)
+                        setPage(1)
+                    }}
+                    placeholder="Search organizer by name or email..."
                 />
                 <select
                     value={statusFilter}

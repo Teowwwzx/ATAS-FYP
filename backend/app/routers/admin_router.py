@@ -184,6 +184,40 @@ def admin_unpublish_event(
     log_admin_action(db, current_user.id, "event.unpublish", "event", event.id)
     return event
 
+@router.put("/events/{event_id}/registration/open", response_model=EventDetails)
+def admin_open_event_registration(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.registration_status = EventRegistrationStatus.opened
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    log_admin_action(db, current_user.id, "event.registration.open", "event", event.id)
+    return event
+
+@router.put("/events/{event_id}/registration/close", response_model=EventDetails)
+def admin_close_event_registration(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    event.registration_status = EventRegistrationStatus.closed
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    log_admin_action(db, current_user.id, "event.registration.close", "event", event.id)
+    return event
+
 @router.put("/events/{event_id}/images/logo", response_model=EventDetails)
 def admin_update_event_logo(
     event_id: str,

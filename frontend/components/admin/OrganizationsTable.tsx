@@ -100,9 +100,36 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
                                             <div className="text-sm font-medium text-gray-900">{org.name}</div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{org.type}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{org.visibility}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{org.status}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${(org.type as string) === 'club' ? 'bg-purple-100 text-purple-700' :
+                                            (org.type as string) === 'society' ? 'bg-indigo-100 text-indigo-700' :
+                                                org.type === 'community' ? 'bg-teal-100 text-teal-700' :
+                                                    org.type === 'company' ? 'bg-cyan-100 text-cyan-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                            }`}>
+                                            {org.type}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${org.visibility === 'public' ? 'bg-blue-100 text-blue-700' :
+                                            org.visibility === 'private' ? 'bg-purple-100 text-purple-700' :
+                                                'bg-orange-100 text-orange-700'
+                                            }`}>
+                                            {org.visibility}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${(org.status as string) === 'active' ? 'bg-green-100 text-green-800' :
+                                            org.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                org.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                    'bg-gray-100 text-gray-700'
+                                            }`}>
+                                            {(org.status as string) === 'active' && '✓ '}
+                                            {org.status === 'pending' && '⏳ '}
+                                            {org.status === 'rejected' && '✕ '}
+                                            {org.status}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                                             <button

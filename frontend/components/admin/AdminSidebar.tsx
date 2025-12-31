@@ -6,11 +6,13 @@ import {
     DashboardIcon,
     PersonIcon,
     BackpackIcon,
-    ReaderIcon,
-    ExitIcon,
     CalendarIcon,
+    BookmarkIcon,
     BellIcon,
+    ClipboardIcon,
     EnvelopeClosedIcon,
+    PaperPlaneIcon,
+    ExitIcon,
     ChevronLeftIcon,
     ChevronRightIcon
 } from '@radix-ui/react-icons'
@@ -25,11 +27,11 @@ const menuItems = [
     { name: 'Users', href: '/admin/users', icon: PersonIcon, roles: ['admin', 'customer_support'] },
     { name: 'Organizations', href: '/admin/organizations', icon: BackpackIcon, roles: ['admin', 'customer_support'] },
     { name: 'Events', href: '/admin/events', icon: CalendarIcon, roles: ['admin', 'content_moderator'] },
-    { name: 'Categories', href: '/admin/categories', icon: ReaderIcon, roles: ['admin'] },
+    { name: 'Categories', href: '/admin/categories', icon: BookmarkIcon, roles: ['admin'] },
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon, roles: ['admin'] },
-    { name: 'Audit Logs', href: '/admin/audit-logs', icon: ReaderIcon, roles: ['admin'] },
+    { name: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardIcon, roles: ['admin'] },
     { name: 'Email Templates', href: '/admin/email-templates', icon: EnvelopeClosedIcon, roles: ['admin'] },
-    { name: 'Communication Logs', href: '/admin/communications', icon: EnvelopeClosedIcon, roles: ['admin'] },
+    { name: 'Communication Logs', href: '/admin/communications', icon: PaperPlaneIcon, roles: ['admin'] },
 ]
 
 export function AdminSidebar() {

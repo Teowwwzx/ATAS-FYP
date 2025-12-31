@@ -1,253 +1,224 @@
+
+
 'use client'
 
-import { useState, useEffect } from 'react'
-import { adminService } from '@/services/admin.service'
+import { useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { toast } from 'react-hot-toast'
-import { PaperPlaneIcon } from '@radix-ui/react-icons'
+import { adminService } from '@/services/admin.service'
+import { SendNotificationModal } from '@/components/admin/modals/SendNotificationModal'
+import { Pagination } from '@/components/ui/Pagination'
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
 
 export default function AdminNotificationsPage() {
-    const [isLoading, setIsLoading] = useState(false)
-    const [formData, setFormData] = useState({
-        title: '',
-        content: '',
-        target_role: '',
-        link_url: ''
-    })
-    const [history, setHistory] = useState<any[]>([])
-    const { data: templates } = useSWR('admin-email-templates', () => adminService.getEmailTemplates())
-    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
-    const [templateVars, setTemplateVars] = useState<string>('')
-    const [sendBoth, setSendBoth] = useState<boolean>(false)
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
+    const [search, setSearch] = useState('')
+    const [roleFilter, setRoleFilter] = useState('')
+    const [isSendOpen, setIsSendOpen] = useState(false)
 
-    const fetchHistory = async () => {
-        try {
-            const logs = await adminService.getAuditLogs({
-                action: 'broadcast_notification',
-                page_size: 10
-            })
-            setHistory(logs)
-        } catch (error) {
-            console.error('Failed to fetch history', error)
-        }
+    const queryParams = {
+        action: 'broadcast_notification',
+        page,
+        page_size: pageSize,
     }
 
-    // Fetch history on mount
-    useEffect(() => {
-        fetchHistory()
-    }, [])
+    const { data: logs, mutate } = useSWR(
+        ['/admin/audit-logs', queryParams],
+        () => adminService.getAuditLogs(queryParams)
+    )
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!selectedTemplateId) {
-            if (!formData.title || !formData.content) {
-                toast.error('Title and content are required')
-                return
+    const { data: totalCount } = useSWR(
+        ['/admin/audit-logs/count', { action: 'broadcast_notification' }],
+        () => adminService.getAuditLogsCount({ action: 'broadcast_notification' })
+    )
+
+    // Parse audit logs to extract notification details
+    const notifications = useMemo(() => {
+        return (logs || []).map(log => {
+            let details: any = {}
+            try {
+                details = JSON.parse(log.details || '{}')
+            } catch { }
+
+            return {
+                id: log.id,
+                title: details.title || 'Untitled',
+                content: details.content || '',
+                target_role: details.target_role || 'All',
+                recipient_count: details.recipient_count || details.count || 0,
+                link_url: details.link_url || '',
+                created_at: log.created_at,
+                actor_email: log.actor_email || 'System'
             }
+        })
+    }, [logs])
+
+    // Filter notifications
+    const filtered = useMemo(() => {
+        let result = notifications
+
+        if (search) {
+            result = result.filter(n =>
+                n.title.toLowerCase().includes(search.toLowerCase()) ||
+                n.content.toLowerCase().includes(search.toLowerCase())
+            )
         }
 
-        setIsLoading(true)
-        try {
-            if (selectedTemplateId) {
-                let vars: Record<string, string> = {}
-                try { vars = JSON.parse(templateVars || '{}') } catch {}
-                const res = await adminService.broadcastEmailTemplate({
-                    template_id: selectedTemplateId,
-                    variables: vars,
-                    target_role: formData.target_role || undefined,
-                })
-                toast.success(`Email broadcast queued to ${res.count} users`)
-                setSelectedTemplateId('')
-                setTemplateVars('')
-                if (sendBoth) {
-                    const res2 = await adminService.broadcastNotification({
-                        title: formData.title || 'Notification',
-                        content: formData.content || 'You have a new email message. Please check your inbox.',
-                        target_role: formData.target_role || undefined,
-                        link_url: formData.link_url || undefined
-                    })
-                    toast.success(`Notification sent to ${res2.count} users`)
-                }
-                setFormData(prev => ({ ...prev, title: '', content: '' }))
-            } else {
-                const res = await adminService.broadcastNotification({
-                    title: formData.title,
-                    content: formData.content,
-                    target_role: formData.target_role || undefined,
-                    link_url: formData.link_url || undefined
-                })
-                toast.success(`Notification sent to ${res.count} users`)
-                setFormData({ title: '', content: '', target_role: '', link_url: '' })
-            }
-            fetchHistory()
-        } catch (error) {
-            toast.error('Failed to send')
-            console.error(error)
-        } finally {
-            setIsLoading(false)
+        if (roleFilter) {
+            result = result.filter(n =>
+                n.target_role.toLowerCase() === roleFilter.toLowerCase() ||
+                (roleFilter === 'all' && (n.target_role === 'All' || !n.target_role))
+            )
         }
+
+        return result
+    }, [notifications, search, roleFilter])
+
+    const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 0
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString)
+        const now = new Date()
+        const diff = now.getTime() - date.getTime()
+        const hours = Math.floor(diff / (1000 * 60 * 60))
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+        if (hours < 1) return 'Just now'
+        if (hours < 24) return `${hours}h ago`
+        if (days < 7) return `${days}d ago`
+        return date.toLocaleDateString()
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">Notification Center</h1>
-                <p className="text-gray-500 mt-1">Broadcast system-wide notifications to users</p>
+        <div className="space-y-8">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Sent Notifications</h1>
+                    <p className="text-gray-500 mt-1">View and send in-app notifications to users</p>
+                </div>
+                <button
+                    onClick={() => setIsSendOpen(true)}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                >
+                    + Send Notification
+                </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-6">Send Broadcast</h2>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* Filters */}
+            <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div className="relative flex-1">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by title or content..."
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    />
+                </div>
+                <select
+                    value={roleFilter}
+                    onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                >
+                    <option value="">All Roles</option>
+                    <option value="all">All Users</option>
+                    <option value="student">Students</option>
+                    <option value="teacher">Teachers</option>
+                    <option value="organizer">Organizers</option>
+                    <option value="admin">Admins</option>
+                </select>
+                <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                >
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                </select>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Title
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
-                                    placeholder="e.g., System Maintenance"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Message Content
-                                </label>
-                                <textarea
-                                    value={formData.content}
-                                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                    className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors h-32 resize-none"
-                                    placeholder="Type your message here..."
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Or choose an Email Template
-                                </label>
-                                <select
-                                    value={selectedTemplateId}
-                                    onChange={(e) => setSelectedTemplateId(e.target.value)}
-                                    className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
-                                >
-                                    <option value="">None</option>
-                                    {(templates || []).map(t => (
-                                        <option key={t.id} value={t.id}>{t.name} — {t.subject}</option>
-                                    ))}
-                                </select>
-                                {selectedTemplateId && (
-                                    <div className="mt-3">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Template Variables (JSON)</label>
-                                        <textarea
-                                            value={templateVars}
-                                            onChange={(e) => setTemplateVars(e.target.value)}
-                                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors h-24 font-mono text-xs"
-                                            placeholder='{"user_name":"Alice","verification_link":"https://..."}'
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Target Role (Optional)
-                                    </label>
-                                    <select
-                                        value={formData.target_role}
-                                        onChange={(e) => setFormData({ ...formData, target_role: e.target.value })}
-                                        className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
-                                    >
-                                        <option value="">All Users</option>
-                                        <option value="student">Students</option>
-                                        <option value="teacher">Teachers</option>
-                                        <option value="organizer">Organizers</option>
-                                        <option value="admin">Admins</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Link URL (Optional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.link_url}
-                                        onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                                        className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-yellow-400 focus:ring-0 transition-colors"
-                                        placeholder="/dashboard"
-                                    />
-                                    <div className="mt-3 flex items-center gap-2">
-                                        <input id="sendBoth" type="checkbox" checked={sendBoth} onChange={(e)=>setSendBoth(e.target.checked)} />
-                                        <label htmlFor="sendBoth" className="text-sm text-gray-700">Also send in-app notification</label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4">
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full flex items-center justify-center px-6 py-3 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-                                >
-                                    {isLoading ? (
-                                        'Sending...'
-                                    ) : (
-                                        <>
-                                            <PaperPlaneIcon className="w-4 h-4 mr-2" />
-                                            Send Broadcast
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <h2 className="text-lg font-semibold text-gray-900">Recent History</h2>
-                    <div className="space-y-4">
-                        {history.length === 0 ? (
-                            <p className="text-gray-500 text-sm">No recent broadcasts found.</p>
-                        ) : (
-                            history.map((log) => {
-                                let details: any = {}
-                                try {
-                                    details = log.details ? JSON.parse(log.details) : {}
-                                } catch (e) {
-                                    details = {}
-                                }
-
-                                return (
-                                    <div key={log.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-sm">
-                                        <div className="font-medium text-gray-900 mb-1">{details.title || 'Untitled Broadcast'}</div>
-                                        <p className="text-gray-600 line-clamp-2 mb-2">{details.content || 'No content'}</p>
-                                        <div className="flex items-center justify-between text-xs text-gray-400">
-                                            <span>
-                                                Target: <span className="font-medium text-gray-600 capitalize">{details.target_role || 'All Users'}</span>
-                                            </span>
-                                            <span>
-                                                {new Date(log.created_at).toLocaleDateString()}
-                                            </span>
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Content
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Target Role
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Recipients
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Sent By
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Sent At
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {filtered.map((notification) => (
+                                <tr key={notification.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {notification.title}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                        <div className="max-w-xs truncate" title={notification.content}>
+                                            {notification.content}
                                         </div>
-                                        {details.recipient_count !== undefined && (
-                                            <div className="mt-2 text-xs text-blue-600 bg-blue-50 inline-block px-2 py-1 rounded">
-                                                Sent to {details.recipient_count} users
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            })
-                        )}
-                    </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <span className="capitalize">{notification.target_role}</span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {notification.recipient_count}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {notification.actor_email}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {formatDate(notification.created_at)}
+                                    </td>
+                                </tr>
+                            ))}
+                            {filtered.length === 0 && (
+                                <tr>
+                                    <td className="px-6 py-12 text-center text-sm text-gray-500" colSpan={6}>
+                                        {search || roleFilter ? 'No notifications found matching your filters' : 'No notifications sent yet'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    totalItems={totalCount || 0}
+                    pageSize={pageSize}
+                />
             </div>
+
+            {/* Modal */}
+            <SendNotificationModal
+                isOpen={isSendOpen}
+                onClose={() => setIsSendOpen(false)}
+                onSuccess={() => {
+                    mutate()
+                    setIsSendOpen(false)
+                }}
+            />
         </div>
     )
 }

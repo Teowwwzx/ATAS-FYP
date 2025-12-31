@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { EventDetails } from '@/services/api.types'
+import React, { useMemo, useState } from 'react'
+import { EventDetails, EventParticipantDetails } from '@/services/api.types'
 import { adminService } from '@/services/admin.service'
-import { getProfileByUserId } from '@/services/api'
+import { getProfileByUserId, getEventParticipants, verifyParticipantPayment, getMe } from '@/services/api'
 import useSWR from 'swr'
 import { toast } from 'react-hot-toast'
 import { toastError } from '@/lib/utils'
@@ -16,10 +16,9 @@ import {
     ImageIcon,
     Pencil1Icon
 } from '@radix-ui/react-icons'
-import { format } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
-import { getMe, openRegistration, closeRegistration } from '@/services/api'
 
 interface EventsTableProps {
     events: EventDetails[]
@@ -28,6 +27,184 @@ interface EventsTableProps {
 
 import { CreateEventModal } from './modals/CreateEventModal'
 import { EditEventModal } from './modals/EditEventModal'
+
+function ParticipantList({ eventId, event, onRefresh }: { eventId: string, event: EventDetails, onRefresh: () => void }) {
+    const { data: participants, error, mutate, isLoading } = useSWR<EventParticipantDetails[]>(
+        eventId ? `/events/${eventId}/participants` : null,
+        () => getEventParticipants(eventId),
+        { revalidateOnFocus: true }
+    )
+
+    const handleVerify = async (participantId: string, status: 'accepted' | 'rejected') => {
+        try {
+            await verifyParticipantPayment(eventId, participantId, status)
+            toast.success(`Payment ${status}`)
+            mutate()
+            onRefresh() // Refresh parent metrics
+        } catch (error) {
+            toastError(error)
+        }
+    }
+
+    const [activeRoleFilter, setActiveRoleFilter] = useState<string>('all')
+    const [previewImage, setPreviewImage] = useState<string | null>(null)
+
+    const filteredParticipants = useMemo(() => {
+        if (!participants) return []
+        if (activeRoleFilter === 'all') return participants
+        return participants.filter(p => p.role.toLowerCase() === activeRoleFilter)
+    }, [participants, activeRoleFilter])
+
+    const roleCounts = useMemo(() => {
+        if (!participants) return { all: 0 }
+        const counts: Record<string, number> = { all: participants.length }
+        participants.forEach(p => {
+            const role = p.role.toLowerCase()
+            counts[role] = (counts[role] || 0) + 1
+        })
+        return counts
+    }, [participants])
+
+    if (isLoading) return <div className="py-4 text-center text-gray-500 text-xs">Loading participants...</div>
+    if (error) return <div className="py-4 text-center text-red-500 text-xs font-medium">Failed to load participants</div>
+    if (!participants || participants.length === 0) return <div className="py-6 text-center text-gray-500 italic text-sm bg-gray-50/50 rounded-xl border border-dashed">No participants registered yet</div>
+
+    return (
+        <div className="mt-6 border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+                <h4 className="font-bold text-gray-900">Participants & Payments</h4>
+
+                <div className="flex items-center gap-3">
+                    {/* Event Type Badge */}
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${event.registration_type === 'paid'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                        {event.registration_type === 'paid' ? '💰 Paid' : '🆓 Free'}
+                    </span>
+
+                    {/* Capacity Display */}
+                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-mono font-bold">
+                        {participants.length}/{event.max_participant || '∞'}
+                    </span>
+                </div>
+            </div>
+
+            {/* Role Filter Tabs */}
+            <div className="flex gap-2 mb-4 border-b border-gray-200">
+                {(['all', 'student', 'committee', 'speaker', 'sponsor'] as const).map(role => (
+                    <button
+                        key={role}
+                        onClick={() => setActiveRoleFilter(role)}
+                        className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${activeRoleFilter === role
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        <span className="capitalize">{role}</span>
+                        <span className="ml-2 text-xs opacity-75">({roleCounts[role] || 0})</span>
+                    </button>
+                ))}
+            </div>
+            <div className="max-h-[400px] overflow-y-auto border border-gray-100 rounded-xl shadow-sm">
+                <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50/80 backdrop-blur-sm sticky top-0 z-10">
+                        <tr>
+                            <th className="px-4 py-3 font-semibold text-gray-700">Name / Email</th>
+                            <th className="px-4 py-3 font-semibold text-gray-700">Role</th>
+                            <th className="px-4 py-3 font-semibold text-gray-700">Payment Status</th>
+                            <th className="px-4 py-3 font-semibold text-gray-700">Proof</th>
+                            <th className="px-4 py-3 font-semibold text-gray-700 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {filteredParticipants.map(p => (
+                            <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-4 py-3">
+                                    <div className="font-semibold text-gray-900">{p.name || 'Anonymous'}</div>
+                                    <div className="text-gray-500">{p.email}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="capitalize px-2 py-1 bg-gray-100 text-gray-600 rounded-md">
+                                        {p.role}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1 ${p.payment_status === 'accepted' ? 'bg-green-100 text-green-700' :
+                                        p.payment_status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                            p.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-blue-50 text-blue-700'
+                                        }`}>
+                                        {p.payment_status === 'accepted' && '✅ Verified'}
+                                        {p.payment_status === 'rejected' && '❌ Rejected'}
+                                        {p.payment_status === 'pending' && '⏳ Pending'}
+                                        {!p.payment_status && '—'}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    {p.payment_proof_url ? (
+                                        <button
+                                            onClick={() => setPreviewImage(p.payment_proof_url || null)}
+                                            className="relative group"
+                                        >
+                                            <img
+                                                src={p.payment_proof_url}
+                                                alt="Payment proof"
+                                                className="w-12 h-12 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-400 transition-all cursor-pointer"
+                                            />
+                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all" />
+                                        </button>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs">N/A</span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                    {p.payment_status === 'pending' && (
+                                        <div className="flex gap-2 justify-end">
+                                            <button
+                                                onClick={() => handleVerify(p.id, 'accepted')}
+                                                className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition-colors border border-green-200"
+                                                title="Accept Payment"
+                                            >
+                                                <CheckIcon className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleVerify(p.id, 'rejected')}
+                                                className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors border border-red-200"
+                                                title="Reject Payment"
+                                            >
+                                                <Cross2Icon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Image Preview Modal */}
+            {previewImage && (
+                <Dialog.Root open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+                    <Dialog.Portal>
+                        <Dialog.Overlay className="fixed inset-0 bg-black/70 z-50" />
+                        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 max-w-4xl max-h-[90vh] outline-none">
+                            <Dialog.Title className="sr-only">Payment Proof Preview</Dialog.Title>
+                            <Dialog.Description className="sr-only">A large preview of the uploaded payment proof image.</Dialog.Description>
+                            <div className="relative">
+                                <Dialog.Close className="absolute -top-10 right-0 text-white hover:text-gray-300">
+                                    <Cross2Icon className="w-6 h-6" />
+                                </Dialog.Close>
+                                <img src={previewImage} alt="Payment proof preview" className="max-w-full max-h-[85vh] rounded-lg" />
+                            </div>
+                        </Dialog.Content>
+                    </Dialog.Portal>
+                </Dialog.Root>
+            )}
+        </div>
+    )
+}
 
 export function EventsTable({ events, onRefresh }: EventsTableProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -132,7 +309,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {events.map((event) => (
-                                <片 key={event.id}>
+                                <React.Fragment key={event.id}>
                                     <tr
                                         onClick={() => toggleExpand(event.id)}
                                         className={`hover:bg-gray-50/50 transition-colors cursor-pointer ${expandedEventId === event.id ? 'bg-gray-50' : ''}`}
@@ -182,16 +359,47 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                         <td className="px-6 py-4 text-gray-600">
                                             <OrganizerName userId={event.organizer_id} />
                                         </td>
-                                        <td className="px-6 py-4 text-gray-600">
-                                            {format(new Date(event.start_datetime), 'MMM d, yyyy')}
+                                        <td className="px-6 py-4">
+                                            <div className="space-y-0.5">
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {format(new Date(event.start_datetime), 'MMM d, yyyy')}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    to {format(new Date(event.end_datetime), 'MMM d, yyyy')}
+                                                </div>
+                                                <div className="text-xs text-blue-600 font-medium">
+                                                    {(() => {
+                                                        const days = differenceInDays(
+                                                            new Date(event.end_datetime),
+                                                            new Date(event.start_datetime)
+                                                        )
+                                                        return days === 0 ? 'Same day' : `${days} day${days > 1 ? 's' : ''}`
+                                                    })()}
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                ${event.status === 'published' ? 'bg-green-100 text-green-800' :
-                                                    event.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                                                        'bg-red-100 text-red-800'}`}>
-                                                {event.status}
-                                            </span>
+                                            <div className="flex flex-col gap-1">
+                                                {/* Publication Status */}
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${event.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {event.status === 'published' ? '✓ Published' : '○ Draft'}
+                                                </span>
+
+                                                {/* Registration Status */}
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${event.registration_status === 'opened' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                    }`}>
+                                                    {event.registration_status === 'opened' ? '● Open' : '● Closed'}
+                                                </span>
+
+                                                {/* Visibility Status */}
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${event.visibility === 'public' ? 'bg-blue-100 text-blue-700' :
+                                                    event.visibility === 'private' ? 'bg-purple-100 text-purple-700' :
+                                                        'bg-orange-100 text-orange-700'
+                                                    }`}>
+                                                    {event.visibility}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
@@ -255,46 +463,16 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                         <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
                                                         <p className="text-gray-600 whitespace-pre-wrap">{event.description || 'No description provided.'}</p>
                                                     </div>
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Status & Registration</h4>
-                                                            <div className="space-y-2">
-                                                                <p className="text-gray-600 capitalize">
-                                                                    Visibility: {event.visibility}
-                                                                </p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-gray-600">Registration:</span>
-                                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${event.registration_status === 'opened' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                                        {event.registration_status === 'opened' ? 'Open' : 'Closed'}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Metrics</h4>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Participants</p>
-                                                                    <p className="font-mono text-gray-700">{event.participant_count || 0}</p>
-                                                                </div>
-                                                                {event.registration_type === 'paid' && (
-                                                                    <div>
-                                                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Price</p>
-                                                                        <p className="font-mono text-gray-700">RM {event.price?.toFixed(2) || '0.00'}</p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Location</h4>
-                                                            <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
-                                                        </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 mb-1">Venue</h4>
+                                                        <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
                                                     </div>
                                                 </div>
+                                                <ParticipantList eventId={event.id} event={event} onRefresh={onRefresh} />
                                             </td>
                                         </tr>
                                     )}
-                                </片>
+                                </React.Fragment>
                             ))}
                             {events.length === 0 && (
                                 <tr>
