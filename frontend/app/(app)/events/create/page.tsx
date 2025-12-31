@@ -9,6 +9,8 @@ import { toast } from 'react-hot-toast'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
 import { UserCreateOrganizationModal } from '@/components/modals/UserCreateOrganizationModal'
+import { ImageUpload } from '@/components/ui/ImageUpload'
+import { ChevronDownIcon, UpdateIcon } from '@radix-ui/react-icons'
 
 const libraries: ("places")[] = ["places"]
 
@@ -16,6 +18,8 @@ export default function CreateEventPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [showOptional, setShowOptional] = useState(false)
+    const [activeTab, setActiveTab] = useState<'payment' | 'organization' | 'media'>('payment')
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -34,6 +38,12 @@ export default function CreateEventPage() {
         venue_remark: 'Asia Pacific University',
         venue_place_id: '',
         meeting_url: '',
+        price: undefined,
+        currency: 'MYR',  // Always MYR, not exposed in UI
+        payment_qr_url: undefined,
+        max_participant: undefined,
+        cover_url: undefined,
+        logo_url: undefined,
     })
 
     const [organizations, setOrganizations] = useState<OrganizationResponse[]>([])
@@ -105,6 +115,20 @@ export default function CreateEventPage() {
                 toast.error('End date must be after start date')
                 setLoading(false)
                 return
+            }
+
+            // Validate paid event fields
+            if (formData.registration_type === 'paid') {
+                if (!formData.price || formData.price <= 0) {
+                    toast.error('Price must be greater than 0 for paid events')
+                    setLoading(false)
+                    return
+                }
+                if (!formData.payment_qr_url) {
+                    toast.error('Payment QR code is required for paid events')
+                    setLoading(false)
+                    return
+                }
             }
 
             // Clean up payload
@@ -184,10 +208,10 @@ export default function CreateEventPage() {
 
     return (
         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-sm border border-yellow-100">
-            <UserCreateOrganizationModal 
-                isOpen={showOrgModal} 
-                onClose={() => setShowOrgModal(false)} 
-                onSuccess={handleOrgCreated} 
+            <UserCreateOrganizationModal
+                isOpen={showOrgModal}
+                onClose={() => setShowOrgModal(false)}
+                onSuccess={handleOrgCreated}
             />
             <div className="mb-10 text-center">
                 <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Create New Event</h1>
@@ -195,7 +219,7 @@ export default function CreateEventPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                
+
 
                 <FormInput
                     id="title"
@@ -405,42 +429,222 @@ export default function CreateEventPage() {
                     )}
                 </div>
 
-                <div>
-                    <label htmlFor="organization" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
-                        Organization (Optional)
-                    </label>
-                    <select
-                        id="organization"
-                        className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
-                        value={formData.organization_id || ''}
-                        onChange={(e) => {
-                            if (e.target.value === 'create_new') {
-                                setShowOrgModal(true)
-                            } else {
-                                setFormData(prev => ({ ...prev, organization_id: e.target.value || null }))
-                            }
-                        }}
+                {/* Optional Settings with Tabs */}
+                <div className="mt-8">
+                    <button
+                        type="button"
+                        onClick={() => setShowOptional(!showOptional)}
+                        className="flex items-center justify-between w-full p-5 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors border-2 border-transparent hover:border-zinc-200"
                     >
-                        <option value="">Personal (No Organization)</option>
-                        {organizations.map(org => (
-                            <option key={org.id} value={org.id}>{org.name}</option>
-                        ))}
-                        <option value="create_new" className="font-bold text-yellow-600">+ Create New Organization...</option>
-                    </select>
+                        <div className="flex items-center gap-3">
+                            <span className="text-base font-black text-zinc-900">
+                                Optional Settings
+                            </span>
+                            <span className="text-xs text-zinc-500 font-medium">
+                                (Payment, organization, media, etc.)
+                            </span>
+                        </div>
+                        <ChevronDownIcon
+                            className={`w-5 h-5 text-zinc-600 transition-transform duration-200 ${showOptional ? 'rotate-180' : ''
+                                }`}
+                        />
+                    </button>
+
+                    {showOptional && (
+                        <div className="mt-4 bg-white rounded-2xl border-2 border-zinc-100">
+                            {/* Tabs */}
+                            <div className="flex border-b border-zinc-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('payment')}
+                                    className={`flex-1 px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'payment'
+                                        ? 'text-zinc-900 border-b-2 border-yellow-400 bg-yellow-50'
+                                        : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'
+                                        }`}
+                                >
+                                    💰 Payment
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('organization')}
+                                    className={`flex-1 px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'organization'
+                                        ? 'text-zinc-900 border-b-2 border-yellow-400 bg-yellow-50'
+                                        : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'
+                                        }`}
+                                >
+                                    🏢 Organization
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('media')}
+                                    className={`flex-1 px-6 py-4 font-bold text-sm transition-colors ${activeTab === 'media'
+                                        ? 'text-zinc-900 border-b-2 border-yellow-400 bg-yellow-50'
+                                        : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'
+                                        }`}
+                                >
+                                    🎨 Media
+                                </button>
+                            </div>
+
+                            {/* Tab Content */}
+                            <div className="p-6">
+                                {/* Payment Tab */}
+                                {activeTab === 'payment' && (
+                                    <div className="space-y-6">
+                                        {formData.registration_type === 'paid' ? (
+                                            <>
+                                                <div>
+                                                    <label htmlFor="price" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                                                        Price (RM) *
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        id="price"
+                                                        name="price"
+                                                        min="0"
+                                                        step="0.01"
+                                                        required
+                                                        className="block w-full rounded-2xl bg-white border-gray-300 focus:border-yellow-400 focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
+                                                        placeholder="e.g., 50.00"
+                                                        value={formData.price || ''}
+                                                        onChange={handleChange}
+                                                    />
+                                                    <p className="text-xs text-zinc-500 mt-2 ml-1">
+                                                        Price in Malaysian Ringgit (MYR)
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                                                        Payment QR Code *
+                                                    </label>
+                                                    <ImageUpload
+                                                        value={formData.payment_qr_url || null}
+                                                        onChange={(url) => setFormData(prev => ({ ...prev, payment_qr_url: url || undefined }))}
+                                                        placeholder="Upload Payment QR"
+                                                        helpText="Upload your DuitNow, TNG, or bank transfer QR code"
+                                                        maxSizeMB={2}
+                                                    />
+                                                    {!formData.payment_qr_url && (
+                                                        <p className="text-xs text-red-600 mt-2 ml-1 font-medium">
+                                                            Payment QR code is required for paid events
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center py-8 text-zinc-500">
+                                                <p className="text-sm font-medium">
+                                                    This event is set to <span className="font-bold text-zinc-700">Free</span> registration.
+                                                </p>
+                                                <p className="text-xs mt-2">
+                                                    Change to "Paid" registration above to set pricing.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Organization Tab */}
+                                {activeTab === 'organization' && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label htmlFor="organization" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                                                Organization
+                                            </label>
+                                            <select
+                                                id="organization"
+                                                className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
+                                                value={formData.organization_id || ''}
+                                                onChange={(e) => {
+                                                    if (e.target.value === 'create_new') {
+                                                        setShowOrgModal(true)
+                                                    } else {
+                                                        setFormData(prev => ({ ...prev, organization_id: e.target.value || undefined }))
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">Personal (No Organization)</option>
+                                                {organizations.map(org => (
+                                                    <option key={org.id} value={org.id}>{org.name}</option>
+                                                ))}
+                                                <option value="create_new" className="font-bold text-yellow-600">+ Create New Organization...</option>
+                                            </select>
+                                            <p className="text-xs text-zinc-500 mt-2 ml-1">
+                                                Associate this event with an organization (optional)
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Media Tab */}
+                                {activeTab === 'media' && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label htmlFor="max_participant" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                                                Maximum Participants
+                                            </label>
+                                            <input
+                                                type="number"
+                                                id="max_participant"
+                                                name="max_participant"
+                                                min="1"
+                                                className="block w-full rounded-2xl bg-white border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
+                                                placeholder="Leave empty for unlimited"
+                                                value={formData.max_participant || ''}
+                                                onChange={handleChange}
+                                            />
+                                            <p className="text-xs text-zinc-500 mt-2 ml-1">
+                                                Set a cap on registrations. Leave empty for no limit.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                                                Event Cover Image
+                                            </label>
+                                            <ImageUpload
+                                                value={formData.cover_url || null}
+                                                onChange={(url) => setFormData(prev => ({ ...prev, cover_url: url || undefined }))}
+                                                placeholder="Upload Cover Image"
+                                                helpText="Recommended: 1920x1080px. Used in event cards and detail pages."
+                                                maxSizeMB={5}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                                                Event Logo/Icon
+                                            </label>
+                                            <ImageUpload
+                                                value={formData.logo_url || null}
+                                                onChange={(url) => setFormData(prev => ({ ...prev, logo_url: url || undefined }))}
+                                                placeholder="Upload Logo"
+                                                helpText="Recommended: 512x512px. Used in navigation and as event icon."
+                                                maxSizeMB={2}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {error && (
-                    <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
-                        <div className="flex">
-                            <div className="ml-3">
-                                <h3 className="text-sm font-bold text-red-800">Error</h3>
-                                <div className="mt-1 text-sm text-red-700 font-medium">
-                                    <p>{error}</p>
+                {
+                    error && (
+                        <div className="rounded-2xl bg-red-50 p-4 border border-red-100">
+                            <div className="flex">
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-bold text-red-800">Error</h3>
+                                    <div className="mt-1 text-sm text-red-700 font-medium">
+                                        <p>{error}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 <div className="flex flex-col items-end gap-2 pt-4">
                     <div className="flex gap-4">
@@ -454,8 +658,9 @@ export default function CreateEventPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-8 py-3 bg-yellow-400 text-zinc-900 rounded-full shadow-lg font-bold hover:bg-yellow-300 hover:scale-105 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="px-8 py-3 bg-yellow-400 text-zinc-900 rounded-full shadow-lg font-bold hover:bg-yellow-300 hover:scale-105 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                         >
+                            {loading && <UpdateIcon className="w-4 h-4 animate-spin" />}
                             {loading ? 'Creating...' : 'Create Event'}
                         </button>
                     </div>
@@ -463,7 +668,7 @@ export default function CreateEventPage() {
                         <span className="text-yellow-400">Publish</span> later <br /> to make it visible to public
                     </p>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     )
 }

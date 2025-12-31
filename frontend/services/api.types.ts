@@ -227,7 +227,6 @@ export interface EventCreate {
     max_participant?: number | null
     venue_place_id?: string | null
     venue_remark?: string | null
-    // ... (skipping unchanged parts)
     venue_name?: string | null
     remark?: string | null
     price?: number | null

@@ -36,6 +36,7 @@ class EventCreate(BaseModel):
     remark: str | None = None
     price: float | None = 0.0
     currency: str | None = "MYR"
+    payment_qr_url: str | None = None
     organization_id: uuid.UUID | None = None
 
 
