@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
-import { walkInAttendance } from '@/services/api'
+import { organizerWalkInAttendance } from '@/services/api'
 import { EventDetails } from '@/services/api.types'
 
 interface WalkInModalProps {
@@ -27,7 +27,7 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
 
         setLoading(true)
         try {
-            await walkInAttendance(event.id, { name, email })
+            await organizerWalkInAttendance(event.id, { name, email })
             toast.success('Attendance recorded')
             setName('')
             setEmail('')

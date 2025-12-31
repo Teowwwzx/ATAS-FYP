@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { scanAttendance } from '@/services/api'
+import { scanAttendance, getEventParticipants } from '@/services/api'
+import { EventParticipantDetails } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import dynamic from 'next/dynamic'
 
@@ -18,9 +19,25 @@ function AttendanceScanInner() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [lastScanned, setLastScanned] = useState<string | null>(null)
+  const [participants, setParticipants] = useState<EventParticipantDetails[]>([])
+  const [showHint, setShowHint] = useState(true)
 
   // Guard to prevent spam processing of the same scan event
   const processingRef = useRef(false)
+
+  const fetchParticipants = async () => {
+    if (!eventId) return
+    try {
+      const data = await getEventParticipants(eventId)
+      setParticipants(data)
+    } catch (error) {
+      console.error('Failed to fetch participants', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchParticipants()
+  }, [eventId])
 
   const handleScan = async (scannedToken: string) => {
     const cleanToken = scannedToken?.trim()
@@ -44,6 +61,7 @@ function AttendanceScanInner() {
           fontWeight: 'bold',
         }
       })
+      fetchParticipants() // Refresh list
       // Reset after 3 seconds to allow next scan
       setTimeout(() => {
         setLastScanned(null)
@@ -65,6 +83,13 @@ function AttendanceScanInner() {
     await handleScan(token)
     setToken('') // Clear input after scan
   }
+
+  const attendedParticipants = participants.filter(p => p.status === 'attended')
+  // Sort by most recently updated/attended if possible, or just reverse to show newest first?
+  // Since we don't have explicit 'attended_at' in the type (only updated_at), we can try to sort by updated_at
+  const sortedAttended = [...attendedParticipants].sort((a, b) => {
+    return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-8 px-4">
@@ -193,27 +218,68 @@ function AttendanceScanInner() {
         </div>
 
         {/* Instructions */}
-        <div className="mt-6 bg-zinc-50 rounded-2xl p-6 border border-zinc-200">
-          <h4 className="text-sm font-bold text-zinc-900 mb-3 uppercase tracking-wider flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            How to Use
-          </h4>
-          <ul className="space-y-2 text-sm text-zinc-700">
-            <li className="flex gap-2">
-              <span className="text-blue-600 font-bold">1.</span>
-              <span>Ask participants to show their attendance QR code</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-blue-600 font-bold">2.</span>
-              <span>Use Camera Scan mode for quick scanning, or Manual Entry for pasted tokens</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-blue-600 font-bold">3.</span>
-              <span>Successful scans will show a green confirmation message</span>
-            </li>
-          </ul>
+        {showHint && (
+          <div className="mt-6 bg-zinc-50 rounded-2xl p-6 border border-zinc-200 relative group">
+            <button 
+                onClick={() => setShowHint(false)}
+                className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 p-1 hover:bg-zinc-200 rounded-full transition-all"
+            >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h4 className="text-sm font-bold text-zinc-900 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              How to Use
+            </h4>
+            <ul className="space-y-2 text-sm text-zinc-700">
+              <li className="flex gap-2">
+                <span className="text-blue-600 font-bold">1.</span>
+                <span>Ask participants to show their attendance QR code</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-blue-600 font-bold">2.</span>
+                <span>Use Camera Scan mode for quick scanning, or Manual Entry for pasted tokens</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-blue-600 font-bold">3.</span>
+                <span>Successful scans will show a green confirmation message</span>
+              </li>
+            </ul>
+          </div>
+        )}
+
+        {/* Attended List */}
+        <div className="mt-8">
+            <h3 className="text-xl font-black text-zinc-900 mb-4 flex items-center justify-between">
+                <span>Recent Attendees</span>
+                <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">{sortedAttended.length}</span>
+            </h3>
+            
+            {sortedAttended.length === 0 ? (
+                <div className="text-center py-8 bg-zinc-50 rounded-2xl border border-zinc-100">
+                    <p className="text-zinc-400 font-medium">No attendees yet</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {sortedAttended.map((p) => (
+                        <div key={p.id} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4 animate-fadeIn">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                                {p.name?.charAt(0) || p.email?.charAt(0) || '?'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-zinc-900 truncate">{p.name || 'Unknown User'}</h4>
+                                <p className="text-sm text-zinc-500 truncate">{p.email}</p>
+                            </div>
+                            <div className="text-xs font-medium text-zinc-400">
+                                {new Date(p.updated_at || p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { Dialog, Transition } from '@headlessui/react'
 import { StreamCommunicationLog } from '@/components/dashboard/StreamCommunicationLog'
 import { EventPhase } from '@/lib/eventPhases'
 import { WalkInModal } from '@/components/admin/modals/WalkInModal'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 interface DashboardTabPeopleProps {
     event: EventDetails
@@ -22,6 +23,10 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
     const [chatParticipant, setChatParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
     const [receiptParticipant, setReceiptParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
     const [showWalkInModal, setShowWalkInModal] = useState(false)
+    
+    // Modal state for verify
+    const [verifyModalOpen, setVerifyModalOpen] = useState(false)
+    const [verifyAction, setVerifyAction] = useState<{id: string, status: 'accepted' | 'rejected'} | null>(null)
 
     const fetchParticipants = async () => {
         try {
@@ -51,8 +56,15 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
         fetchParticipants()
     }, [event.id])
 
-    const handleVerifyParams = async (id: string, status: 'accepted' | 'rejected') => {
-        if (!confirm(`Are you sure you want to ${status} this payment?`)) return
+    const confirmVerify = (id: string, status: 'accepted' | 'rejected') => {
+        setVerifyAction({ id, status })
+        setVerifyModalOpen(true)
+    }
+
+    const handleVerifyParams = async () => {
+        if (!verifyAction) return
+        const { id, status } = verifyAction
+        
         try {
             await verifyParticipantPayment(event.id, id, status);
             toast.success(`Payment ${status}`)
@@ -69,6 +81,9 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
             if (receiptParticipant?.id === id) setReceiptParticipant(null);
         } catch (e) {
             toast.error('Failed to update status')
+        } finally {
+            setVerifyModalOpen(false)
+            setVerifyAction(null)
         }
     }
 
@@ -310,13 +325,13 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
 
                                     <div className="flex gap-3">
                                         <button
-                                            onClick={() => handleVerifyParams(receiptParticipant?.id!, 'rejected')}
+                                            onClick={() => confirmVerify(receiptParticipant?.id!, 'rejected')}
                                             className="flex-1 py-3 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
                                         >
                                             Reject
                                         </button>
                                         <button
-                                            onClick={() => handleVerifyParams(receiptParticipant?.id!, 'accepted')}
+                                            onClick={() => confirmVerify(receiptParticipant?.id!, 'accepted')}
                                             className="flex-1 py-3 text-white font-bold bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-lg shadow-green-200"
                                         >
                                             Approve & Accept
@@ -385,6 +400,16 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                 onClose={() => setShowWalkInModal(false)}
                 event={event}
                 onSuccess={fetchParticipants}
+            />
+
+            <ConfirmationModal
+                isOpen={verifyModalOpen}
+                onClose={() => setVerifyModalOpen(false)}
+                onConfirm={handleVerifyParams}
+                title="Confirm Payment Status"
+                message={`Are you sure you want to mark this payment as ${verifyAction?.status}?`}
+                confirmText={verifyAction?.status === 'accepted' ? 'Approve' : 'Reject'}
+                variant={verifyAction?.status === 'accepted' ? 'primary' : 'danger'}
             />
         </div>
     )

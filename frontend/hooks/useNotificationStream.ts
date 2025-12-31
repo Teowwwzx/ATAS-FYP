@@ -32,7 +32,8 @@ export function useNotificationStream() {
         }
 
         // Create EventSource connection
-        const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/notifications/stream?token=${token}`;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        const url = `${API_URL}/api/v1/notifications/stream?token=${token}`;
 
         // EventSource doesn't support custom headers directly, so we append token as query param
         // OR we can use a different approach - fetch with ReadableStream
@@ -75,11 +76,14 @@ export function useNotificationStream() {
                     setIsConnected(false);
                     es.close();
 
-                    // Retry connection after 5 seconds
-                    setTimeout(() => {
-                        console.log('Attempting to reconnect SSE...');
-                        connectSSE();
-                    }, 5000);
+                    // Only retry if we have a valid token
+                    if (token) {
+                        // Retry connection after 5 seconds
+                        setTimeout(() => {
+                            console.log('Attempting to reconnect SSE...');
+                            connectSSE();
+                        }, 5000);
+                    }
                 };
 
                 eventSourceRef.current = es;

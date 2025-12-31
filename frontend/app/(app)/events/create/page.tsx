@@ -96,8 +96,21 @@ export default function CreateEventPage() {
                 return
             }
 
+            // Clean up payload
+            const payload = {
+                ...formData,
+                venue_place_id: formData.venue_place_id || null,
+                venue_remark: formData.venue_remark || null,
+                meeting_url: formData.meeting_url || null,
+                max_participant: formData.max_participant || null,
+                price: formData.price || 0,
+                description: formData.description || undefined,
+                logo_url: formData.logo_url || undefined,
+                cover_url: formData.cover_url || null,
+            }
+
             await pingApi()
-            const newEvent = await createEvent(formData)
+            const newEvent = await createEvent(payload)
             localStorage.removeItem('event_create_draft')
             toast.success('Event created successfully')
             router.push(`/events/${newEvent.id}`)

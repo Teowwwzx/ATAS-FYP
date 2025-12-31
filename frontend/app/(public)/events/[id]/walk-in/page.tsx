@@ -18,6 +18,7 @@ export default function WalkInRegistrationPage() {
     const [submitting, setSubmitting] = useState(false)
     const [success, setSuccess] = useState(false)
     const [formData, setFormData] = useState({ name: '', email: '' })
+    const [file, setFile] = useState<File | null>(null)
 
     useEffect(() => {
         if (id) {
@@ -43,14 +44,23 @@ export default function WalkInRegistrationPage() {
             return
         }
 
+        if (event?.price && event.price > 0 && !file) {
+            toast.error('Please upload payment receipt')
+            return
+        }
+
         setSubmitting(true)
         try {
-            await walkInAttendance(id, {
-                name: formData.name,
-                email: formData.email
-            })
+            const data = new FormData()
+            data.append('name', formData.name)
+            data.append('email', formData.email)
+            if (file) {
+                data.append('receipt', file)
+            }
+            
+            await walkInAttendance(id, data)
             setSuccess(true)
-            toast.success('Registration successful!')
+            toast.success(event?.price && event.price > 0 ? 'Registration pending approval!' : 'Registration successful!')
         } catch (error: any) {
             toast.error(error?.response?.data?.detail || 'Registration failed')
         } finally {
@@ -140,6 +150,20 @@ export default function WalkInRegistrationPage() {
                         </p>
                     </div>
 
+                    {event.price && event.price > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                            <p className="text-sm text-yellow-800 font-medium flex items-center gap-2">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Paid Event: {event.currency} {event.price.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-yellow-600 mt-1 ml-7">
+                                Please upload your payment receipt to complete registration.
+                            </p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -171,6 +195,46 @@ export default function WalkInRegistrationPage() {
                             />
                         </div>
 
+                        {event.price && event.price > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Payment Receipt
+                                </label>
+                                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-indigo-500 transition-colors cursor-pointer bg-gray-50 hover:bg-white relative">
+                                    <input
+                                        type="file"
+                                        accept="image/*,.pdf"
+                                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        required
+                                    />
+                                    <div className="space-y-1 text-center">
+                                        {file ? (
+                                            <div className="flex items-center justify-center gap-2 text-indigo-600">
+                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span className="text-sm font-medium truncate max-w-[200px]">{file.name}</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                                <div className="flex text-sm text-gray-600 justify-center">
+                                                    <span className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                                        Upload a file
+                                                    </span>
+                                                    <p className="pl-1">or drag and drop</p>
+                                                </div>
+                                                <p className="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <button
                             type="submit"
                             disabled={submitting}
@@ -185,7 +249,7 @@ export default function WalkInRegistrationPage() {
                                     Registering...
                                 </>
                             ) : (
-                                'Check In'
+                                event.price && event.price > 0 ? 'Submit & Upload Receipt' : 'Check In'
                             )}
                         </button>
                     </form>

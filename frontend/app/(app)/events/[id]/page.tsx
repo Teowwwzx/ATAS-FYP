@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, deleteEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary, getMyReminders, getEventExternalChecklist } from '@/services/api'
+import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, deleteEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary, getMyReminders, getEventExternalChecklist, uploadPaymentProof } from '@/services/api'
 import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse, EventReminderResponse, EventReminderOption, EventChecklistItemResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -44,6 +44,30 @@ export default function EventDetailsPage() {
     const [currentPhase, setCurrentPhase] = useState<EventPhase>(EventPhase.DRAFT)
     const [showImageModal, setShowImageModal] = useState(false)
     const [externalChecklist, setExternalChecklist] = useState<EventChecklistItemResponse[]>([])
+    const [uploadingProof, setUploadingProof] = useState(false)
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File size must be less than 5MB')
+            return
+        }
+
+        setUploadingProof(true)
+        try {
+            await uploadPaymentProof(id, file)
+            toast.success('Payment proof uploaded successfully!')
+            fetchData() // Refresh status
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || 'Failed to upload payment proof')
+        } finally {
+            setUploadingProof(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -78,106 +102,115 @@ export default function EventDetailsPage() {
         }
     }, [id])
 
-    useEffect(() => {
-        const loadHostOrg = async () => {
-            if (!event?.organizer_id) return
-            try {
-                const orgs = await getPublicOrganizations()
-                const match = orgs.find(o => o.owner_id === event.organizer_id) || null
-                setHostOrg(match)
-            } catch {
-                setHostOrg(null)
-            }
-        }
-        loadHostOrg()
-    }, [event?.organizer_id])
+    // Removed separate useEffects for hostOrg and reviews to prevent waterfalls
+    // They are now integrated into fetchData
 
     const [myRole, setMyRole] = useState<string | null>(null)
 
-    useEffect(() => {
-        const loadReviews = async () => {
-            // Only load reviews if Post-Event
-            if (!event?.id) return
-            try {
-                setReviewsLoading(true)
-                const data = await getReviewsByEvent(event.id)
-                setReviews(data)
-                const count = data.length
-                const avg = count > 0 ? data.reduce((s, r) => s + (r.rating || 0), 0) / count : 0
-                setReviewsCount(count)
-                setReviewsAvg(Number(avg.toFixed(1)))
-            } catch {
-                setReviews([])
-                setReviewsAvg(0)
-                setReviewsCount(0)
-            } finally {
-                setReviewsLoading(false)
-            }
-        }
-        loadReviews()
-    }, [event?.id])
-
     const fetchData = async () => {
         try {
+            // Batch 1: Core Event & User Data (Parallel)
             const [eventData, userData] = await Promise.all([
                 getEventById(id),
                 getMe().catch(() => null)
             ])
+
             setEvent(eventData)
             setUser(userData)
             setCurrentPhase(getEventPhase(eventData))
 
+            // Batch 2: Dependent Data (Parallel)
+            // We use a promise array to fetch everything else simultaneously
+            const promises: Promise<any>[] = []
+
+            // 2a. User-specific data (only if logged in)
             if (userData) {
-                try {
-                    const summary: any = await getMyParticipationSummary(id)
-                    // setIsParticipant(!!summary?.is_participant) // Removed state
-                    setIsJoinedAccepted(summary?.my_status === 'accepted' || summary?.my_status === 'attended')
-                    setParticipantStatus(summary?.my_status || null)
-                    setPaymentStatus(summary?.payment_status || null)
-                    setMyRole(summary?.my_role || null)
-                } catch {
-                    // setIsParticipant(false) // Removed state
-                    setIsJoinedAccepted(false)
-                    setParticipantStatus(null)
-                    setPaymentStatus(null)
-                    setMyRole(null)
-                }
-
-
-                try {
-                    const reminders = await getMyReminders()
-                    const existing = reminders.find(r => r.event_id === id)
-                    setMyReminder(existing || null)
-                } catch {
-                    setMyReminder(null)
-                }
-
-                try {
-                    const s = await getEventAttendanceStats(id)
-                    setStats(s)
-                } catch {
-                    setStats(null)
-                }
-            } else {
-                // setIsParticipant(false) // Removed state
-                setIsJoinedAccepted(false)
-                setParticipantStatus(null)
-                setPaymentStatus(null)
-                setMyRole(null)
-                setStats(null)
+                promises.push(
+                    getMyParticipationSummary(id)
+                        .then(res => ({ type: 'participation', data: res }))
+                        .catch(() => ({ type: 'participation', data: null }))
+                )
+                promises.push(
+                    getMyReminders()
+                        .then(res => ({ type: 'reminders', data: res }))
+                        .catch(() => ({ type: 'reminders', data: [] }))
+                )
+                promises.push(
+                    getEventAttendanceStats(id)
+                        .then(res => ({ type: 'stats', data: res }))
+                        .catch(() => ({ type: 'stats', data: null }))
+                )
             }
-            try {
-                const external = await getEventExternalChecklist(id)
-                setExternalChecklist(external)
-            } catch {
-                setExternalChecklist([])
+
+            // 2b. Public data
+            promises.push(
+                getEventExternalChecklist(id)
+                    .then(res => ({ type: 'checklist', data: res }))
+                    .catch(() => ({ type: 'checklist', data: [] }))
+            )
+            promises.push(
+                getReviewsByEvent(id)
+                    .then(res => ({ type: 'reviews', data: res }))
+                    .catch(() => ({ type: 'reviews', data: [] }))
+            )
+            
+            if (eventData.organizer_id) {
+                promises.push(
+                    getPublicOrganizations()
+                        .then(orgs => ({ type: 'hostOrg', data: orgs.find((o: OrganizationResponse) => o.owner_id === eventData.organizer_id) || null }))
+                        .catch(() => ({ type: 'hostOrg', data: null }))
+                )
             }
+
+            // Execute all secondary requests
+            const results = await Promise.all(promises)
+
+            // Process results
+            results.forEach(({ type, data }) => {
+                switch (type) {
+                    case 'participation':
+                        if (data) {
+                            setIsJoinedAccepted(data.my_status === 'accepted' || data.my_status === 'attended')
+                            setParticipantStatus(data.my_status || null)
+                            setPaymentStatus(data.payment_status || null)
+                            setMyRole(data.my_role || null)
+                        } else {
+                            setIsJoinedAccepted(false)
+                            setParticipantStatus(null)
+                            setPaymentStatus(null)
+                            setMyRole(null)
+                        }
+                        break
+                    case 'reminders':
+                        const existing = Array.isArray(data) ? data.find((r: EventReminderResponse) => r.event_id === id) : null
+                        setMyReminder(existing || null)
+                        break
+                    case 'stats':
+                        setStats(data)
+                        break
+                    case 'checklist':
+                        setExternalChecklist(data)
+                        break
+                    case 'reviews':
+                        setReviews(data)
+                        const count = data.length
+                        const avg = count > 0 ? data.reduce((s: number, r: ReviewResponse) => s + (r.rating || 0), 0) / count : 0
+                        setReviewsCount(count)
+                        setReviewsAvg(Number(avg.toFixed(1)))
+                        break
+                    case 'hostOrg':
+                        setHostOrg(data)
+                        break
+                }
+            })
+
         } catch (error) {
             console.error(error)
             toast.error('Failed to load event details')
             router.push('/dashboard')
         } finally {
             setLoading(false)
+            setReviewsLoading(false)
         }
     }
 
@@ -292,7 +325,8 @@ export default function EventDetailsPage() {
 
     const isOrganizer = user?.id === event.organizer_id
     const isCommittee = myRole === 'committee'
-    const isParticipant = myRole === 'participant' && isJoinedAccepted
+    const isRegistered = myRole === 'participant' || myRole === 'expert' || myRole === 'audience' || myRole === 'student' || myRole === 'teacher'
+    const isParticipant = isRegistered && isJoinedAccepted
     const isSpeaker = myRole === 'speaker' && isJoinedAccepted
     const isSponsor = myRole === 'sponsor' && isJoinedAccepted
     const isRegistrationOpen = event.registration_status === 'opened'
@@ -520,7 +554,7 @@ export default function EventDetailsPage() {
                                         <div className="mb-6">
                                             <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Ticket Price</p>
                                             <div className="flex items-baseline gap-1">
-                                                <span className="text-4xl font-black text-zinc-900">$$$</span>
+                                                <span className="text-4xl font-black text-zinc-900">RM {event.price?.toFixed(2) || '0.00'}</span>
                                             </div>
                                         </div>
                                     )}
@@ -537,6 +571,9 @@ export default function EventDetailsPage() {
                                         <div className="space-y-4">
                                             {isParticipant || isSpeaker || isSponsor ? (
                                                 <>
+                                                    <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
+                                                        Joined
+                                                    </div>
                                                     <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                                                             <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -552,8 +589,6 @@ export default function EventDetailsPage() {
                                                             </p>
                                                         </div>
                                                     </div>
-
-
 
                                                     {event.type === 'online' && (
                                                         event.meeting_url ? (
@@ -602,6 +637,36 @@ export default function EventDetailsPage() {
                                                         {registering ? 'Processing...' : 'Cancel Registration'}
                                                     </button>
                                                 </>
+                                            ) : isRegistered && participantStatus === 'pending' ? (
+                                                <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-yellow-800 space-y-3">
+                                                    <p className="text-sm font-bold">
+                                                        {event.registration_type === 'paid'
+                                                            ? 'Settle the payment and verified by organizer first.'
+                                                            : 'Waiting organizer approval'}
+                                                    </p>
+                                                    {event.registration_type === 'paid' && (
+                                                        <div>
+                                                            <input
+                                                                type="file"
+                                                                ref={fileInputRef}
+                                                                className="hidden"
+                                                                accept="image/*,.pdf"
+                                                                onChange={handleUploadProof}
+                                                            />
+                                                            <button
+                                                                onClick={() => fileInputRef.current?.click()}
+                                                                disabled={uploadingProof}
+                                                                className="px-4 py-2 bg-yellow-100 text-yellow-800 text-sm font-bold rounded-lg hover:bg-yellow-200 transition-colors w-full border border-yellow-200"
+                                                            >
+                                                                {uploadingProof ? 'Uploading...' : 'Upload Receipt'}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : isRegistered && participantStatus === 'rejected' ? (
+                                                <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700">
+                                                    <p className="text-sm font-bold">Please contact organizer</p>
+                                                </div>
                                             ) : isFull ? (
                                                 <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-2xl font-bold text-center text-lg cursor-not-allowed border border-zinc-200">
                                                     Event Full
@@ -717,7 +782,7 @@ export default function EventDetailsPage() {
                             )}
 
                             {/* Payment QR Box */}
-                            {isParticipant && event.payment_qr_url && (
+                            {isRegistered && event.payment_qr_url && (
                                 <div className="bg-white rounded-3xl border border-zinc-200 p-6 shadow-sm">
                                     <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wide mb-4">Payment</h3>
                                     <div className="bg-zinc-50 p-4 rounded-xl flex flex-col items-center border border-zinc-100">

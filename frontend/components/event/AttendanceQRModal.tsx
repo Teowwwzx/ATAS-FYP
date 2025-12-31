@@ -20,6 +20,7 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
     const [loading, setLoading] = useState(false)
     const [expiresIn, setExpiresIn] = useState<string>('')
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null)
+    const [isEnlarged, setIsEnlarged] = useState(false)
 
     useEffect(() => {
         if (isOpen && !qrData) {
@@ -143,12 +144,17 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
                                     ) : qrData ? (
                                         <>
                                             {/* QR Code */}
-                                            <div id="attendance-qr" className="bg-white p-6 rounded-2xl shadow-lg border-4 border-blue-100 mb-6">
+                                            <div 
+                                                id="attendance-qr" 
+                                                className="bg-white p-6 rounded-2xl shadow-lg border-4 border-blue-100 mb-6 cursor-zoom-in transition-transform active:scale-95"
+                                                onClick={() => qrImageUrl && setIsEnlarged(true)}
+                                            >
                                                 {qrImageUrl ? (
-                                                    <img src={qrImageUrl} alt="Attendance QR" width={240} height={240} />
+                                                    <img src={qrImageUrl} alt="Attendance QR" width={240} height={240} className="mx-auto" />
                                                 ) : (
-                                                    <div className="w-[240px] h-[240px] flex items-center justify-center text-zinc-500">QR unavailable</div>
+                                                    <div className="w-[240px] h-[240px] flex items-center justify-center text-zinc-500 mx-auto">QR unavailable</div>
                                                 )}
+                                                <p className="text-xs text-center mt-2 text-blue-400 font-bold uppercase tracking-wider">Tap to enlarge</p>
                                             </div>
 
                                             {/* Expiration Info */}
@@ -233,6 +239,48 @@ export function AttendanceQRModal({ eventId, eventTitle, eventEndTime, isOpen, o
                     </div>
                 </div>
             </Dialog>
+
+            {/* Enlarged View */}
+            <Transition appear show={isEnlarged} as={Fragment}>
+                <Dialog as="div" className="relative z-[60]" onClose={() => setIsEnlarged(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4 text-center" onClick={() => setIsEnlarged(false)}>
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-8 text-left align-middle shadow-xl transition-all">
+                                    {qrImageUrl && (
+                                        <img 
+                                            src={qrImageUrl} 
+                                            alt="Enlarged QR" 
+                                            className="w-full h-auto aspect-square object-contain"
+                                        />
+                                    )}
+                                    <p className="text-center mt-6 text-zinc-500 font-bold uppercase tracking-widest text-sm">Tap anywhere to close</p>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </Transition>
     )
 }

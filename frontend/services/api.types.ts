@@ -225,6 +225,7 @@ export interface EventCreate {
     // ... (skipping unchanged parts)
     venue_name?: string | null
     remark?: string | null
+    price?: number | null
 }
 
 export interface EventDetails extends EventCreate {
@@ -245,6 +246,7 @@ export interface EventDetails extends EventCreate {
     organizer_avatar?: string | null
     participant_count?: number
     meeting_url?: string | null
+    currency?: string
 }
 
 // --- Participant Types ---

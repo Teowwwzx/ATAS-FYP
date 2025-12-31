@@ -307,8 +307,15 @@ export const scanAttendance = async (eventId: string, token: string) => {
   return response.data
 }
 
-export const walkInAttendance = async (eventId: string, data: import('./api.types').WalkInAttendanceRequest) => {
-  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/walk-in`, data)
+export const walkInAttendance = async (eventId: string, data: FormData | import('./api.types').WalkInAttendanceRequest) => {
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/walk-in`, data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  })
+  return response.data
+}
+
+export const organizerWalkInAttendance = async (eventId: string, data: import('./api.types').WalkInAttendanceRequest) => {
+  const response = await api.post<EventParticipantDetails>(`/events/${eventId}/attendance/walk_in`, data)
   return response.data
 }
 
@@ -722,6 +729,13 @@ api.interceptors.response.use(
     if (error && error.message === 'Network Error') {
       // Normalize network errors to a consistent shape
       error.response = error.response || { status: 0, data: { detail: 'Network Error' } }
+    }
+    const msg = String(error?.response?.data?.detail || error?.message || '')
+    const isTransient = error?.response?.status === 0 || msg.includes('SSL connection has been closed')
+    const cfg = error?.config || {}
+    if (isTransient && !cfg._retryOnce) {
+      ;(cfg as any)._retryOnce = true
+      return api.request(cfg)
     }
     if (error?.response?.status === 401) {
       try {

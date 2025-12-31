@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Request, Form
 from fastapi.responses import Response
 import uuid
 import base64
@@ -36,6 +36,7 @@ from app.services.email_service import (
     send_event_reminder_email,
     send_event_proposal_comment_email,
 )
+from app.services.cloudinary_service import upload_file
 from app.schemas.event_schema import (
     EventDetails,
     EventCreate,
@@ -491,6 +492,13 @@ def create_event(
         type=derived_type,
         venue_place_id=venue_place_id,
     )
+    # For paid events, do not auto-accept registrations
+    try:
+        from app.models.event_model import EventRegistrationType
+        if db_event.registration_type == EventRegistrationType.paid:
+            db_event.auto_accept_registration = False
+    except Exception:
+        pass
 
     db.add(db_event)
     db.commit()
@@ -946,6 +954,12 @@ def get_event_details(
             .first()
         )
         is_participant = participant is not None
+        
+    # Security Check: Unpublished events (Draft) should NOT be visible to public
+    # Only Organizer, Admin, or Committee (if implemented) can see drafts
+    if event.status != EventStatus.published:
+        if event.status == EventStatus.draft and not (is_organizer or is_admin):
+             raise HTTPException(status_code=404, detail="Event not found")
 
     # Hide payment QR unless organizer, participant, or admin
     if not (is_organizer or is_participant or is_admin):
@@ -1073,7 +1087,7 @@ def join_public_event(
         # The user specifically mentioned "Join by walk-in (for physical event)" or "Contact organizer".
         # We will return a specific 400 so frontend can handle it, or just a descriptive message.
         if event.location_type == "physical":
-             raise HTTPException(
+            raise HTTPException(
                 status_code=400, 
                 detail="Event has started. Please use Walk-in Registration at the venue or contact the organizer team to join."
             )
@@ -1167,13 +1181,16 @@ def join_public_event(
 @router.post("/events/{event_id}/walk-in", response_model=EventParticipantDetails)
 def walk_in_attendance(
     event_id: uuid.UUID,
-    body: WalkInAttendanceRequest,
+    name: str = Form(...),
+    email: str = Form(...),
+    receipt: UploadFile = File(None),
     db: Session = Depends(get_db),
 ):
     """
     Register a walk-in participant.
     - If email exists in participants, update status to attended.
     - If not, create new participant (linking User if exists).
+    - If event is paid, receipt is required and status becomes pending.
     """
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
@@ -1182,7 +1199,7 @@ def walk_in_attendance(
     # Check if participant exists by email
     participant = db.query(EventParticipant).filter(
         EventParticipant.event_id == event_id,
-        EventParticipant.email == body.email
+        EventParticipant.email == email
     ).first()
 
     if participant:
@@ -1193,25 +1210,39 @@ def walk_in_attendance(
         )
 
     # Check if user exists
-    user = db.query(User).filter(User.email == body.email).first()
+    user = db.query(User).filter(User.email == email).first()
 
     if user and user.id == event.organizer_id:
          raise HTTPException(status_code=400, detail="Organizer cannot register as a walk-in participant")
     
-    # Handle paid events logic if needed? 
-    # For walk-in, we assume they paid on spot or it's free.
-    # Let's set payment_status to verified if it's paid? Or pending?
-    # User didn't specify payment logic, so we assume standard attendance.
+    status = EventParticipantStatus.attended
+    payment_status = None
+    payment_proof_url = None
+
+    # Handle paid events logic
+    if event.price and event.price > 0:
+        if not receipt:
+            raise HTTPException(status_code=400, detail="Payment receipt is required for paid events")
+        
+        # Upload receipt
+        try:
+            payment_proof_url = upload_file(receipt, "receipts")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Failed to upload receipt")
+
+        status = EventParticipantStatus.pending
+        payment_status = "pending"
     
     participant = EventParticipant(
         event_id=event_id,
         user_id=user.id if user else None,
-        name=body.name,
-        email=body.email,
+        name=name,
+        email=email,
         role=EventParticipantRole.audience,
-        status=EventParticipantStatus.attended,
+        status=status,
         join_method="walk_in",
-        payment_status=None # Defaults to None
+        payment_status=payment_status,
+        payment_proof_url=payment_proof_url
     )
     db.add(participant)
     db.commit()
@@ -3222,6 +3253,13 @@ def update_event(
         event.end_datetime = body.end_datetime
     if body.registration_type is not None:
         event.registration_type = body.registration_type
+        # For paid events, enforce non auto-accept registration
+        try:
+            from app.models.event_model import EventRegistrationType
+            if event.registration_type == EventRegistrationType.paid:
+                event.auto_accept_registration = False
+        except Exception:
+            pass
     if body.visibility is not None:
         event.visibility = body.visibility
     if body.max_participant is not None:

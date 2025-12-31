@@ -21,6 +21,7 @@ class EventCreate(BaseModel):
     description: str | None = None
     logo_url: str | None = None
     cover_url: str | None = None
+    meeting_url: str | None = None
     format: EventFormat
     type: EventType | None = None
     start_datetime: datetime

@@ -82,12 +82,12 @@ function DashboardPageInner() {
 
     // Calculations
     const upcomingBookings = events.filter(e =>
-        !['organizer', 'committee'].includes(e.my_role) &&
+        e.my_role && !['organizer', 'committee'].includes(e.my_role) &&
         e.my_status === 'accepted' &&
         new Date(e.start_datetime) > new Date()
     )
 
-    const organizedCount = events.filter(e => ['organizer', 'committee'].includes(e.my_role)).length
+    const organizedCount = events.filter(e => e.my_role && ['organizer', 'committee'].includes(e.my_role)).length
     // Note: Removed "end date > now" filter for count to show ALL organized events count? 
     // Or keep consistent? Old code: events.filter(e => e.my_role === 'organizer' && new Date(e.end_datetime) > new Date()).length
     // But organized tab shows all. Let's show TOTAL organized count in sidebar badge.
@@ -352,7 +352,7 @@ function DashboardPageInner() {
                                         <button onClick={() => setActiveTab('organized')} className="text-sm font-bold text-zinc-400 hover:text-zinc-900">View all</button>
                                     </div>
                                     <div className={`${layoutView === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'space-y-4'}`}>
-                                        {events.filter(e => ['organizer', 'committee'].includes(e.my_role) && new Date(e.end_datetime) > new Date()).slice(0, 4).map((evt) => {
+                                        {events.filter(e => e.my_role && ['organizer', 'committee'].includes(e.my_role) && new Date(e.end_datetime) > new Date()).slice(0, 4).map((evt) => {
                                             const eventDate = new Date(evt.start_datetime)
                                             const daysRemaining = Math.ceil((eventDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
                                             // Determine colors
