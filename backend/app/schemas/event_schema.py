@@ -28,12 +28,15 @@ class EventCreate(BaseModel):
     end_datetime: datetime
     registration_type: EventRegistrationType
     visibility: EventVisibility = EventVisibility.public
+    auto_accept_registration: bool = True
+    is_attendance_enabled: bool = True
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
     remark: str | None = None
     price: float | None = 0.0
     currency: str | None = "MYR"
+    organization_id: uuid.UUID | None = None
 
 
 class EventUpdate(BaseModel):
@@ -52,12 +55,15 @@ class EventUpdate(BaseModel):
     end_datetime: datetime | None = None
     registration_type: EventRegistrationType | None = None
     visibility: EventVisibility | None = None
+    auto_accept_registration: bool | None = None
+    is_attendance_enabled: bool | None = None
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
     remark: str | None = None
     price: float | None = None
     currency: str | None = None
+    organization_id: uuid.UUID | None = None
 
 class EventDetails(BaseModel):
     id: uuid.UUID
@@ -77,6 +83,7 @@ class EventDetails(BaseModel):
     status: EventStatus
     visibility: EventVisibility
     auto_accept_registration: bool
+    is_attendance_enabled: bool
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
@@ -89,6 +96,8 @@ class EventDetails(BaseModel):
     organizer_avatar: str | None = None
     participant_count: int = 0
     meeting_url: str | None = None
+    organization_id: uuid.UUID | None = None
+    organization_name: str | None = None
 
     model_config = {"from_attributes": True}
 

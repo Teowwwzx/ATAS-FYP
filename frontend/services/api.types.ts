@@ -222,6 +222,7 @@ export interface EventCreate {
     end_datetime: string // ISO string
     registration_type: EventRegistrationType
     visibility: EventVisibility
+    is_attendance_enabled?: boolean
     max_participant?: number | null
     venue_place_id?: string | null
     venue_remark?: string | null
@@ -229,6 +230,8 @@ export interface EventCreate {
     venue_name?: string | null
     remark?: string | null
     price?: number | null
+    currency?: string
+    organization_id?: string
 }
 
 export interface EventDetails extends EventCreate {
@@ -250,6 +253,33 @@ export interface EventDetails extends EventCreate {
     participant_count?: number
     meeting_url?: string | null
     currency?: string
+    organization_name?: string
+}
+
+// --- Organization Types ---
+
+export type OrganizationType = 'community' | 'company' | 'non_profit' | 'education'
+export type OrganizationVisibility = 'public' | 'private'
+
+export interface OrganizationResponse {
+    id: string
+    owner_id: string
+    name: string
+    type: OrganizationType
+    visibility: OrganizationVisibility
+    description?: string
+    logo_url?: string
+    website_url?: string
+    created_at: string
+}
+
+export interface OrganizationCreate {
+    name: string
+    type: OrganizationType
+    visibility: OrganizationVisibility
+    description?: string
+    logo_url?: string
+    website_url?: string
 }
 
 // --- Participant Types ---

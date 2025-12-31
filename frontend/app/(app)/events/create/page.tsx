@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createEvent, pingApi } from '@/services/api'
+import { createEvent, pingApi, getMyOrganizations } from '@/services/api'
 import { FormInput } from '@/components/auth/FormInput'
-import { EventCreate, EventType } from '@/services/api.types'
+import { EventCreate, EventType, OrganizationResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
+import { UserCreateOrganizationModal } from '@/components/modals/UserCreateOrganizationModal'
 
 const libraries: ("places")[] = ["places"]
 
@@ -35,6 +36,9 @@ export default function CreateEventPage() {
         meeting_url: '',
     })
 
+    const [organizations, setOrganizations] = useState<OrganizationResponse[]>([])
+    const [showOrgModal, setShowOrgModal] = useState(false)
+
     // Load draft on mount
     useEffect(() => {
         const draft = localStorage.getItem('event_create_draft')
@@ -45,6 +49,13 @@ export default function CreateEventPage() {
                 toast.success('Restored draft from previous session', { id: 'draft-restore' })
             } catch { }
         }
+    }, [])
+
+    // Fetch organizations on mount
+    useEffect(() => {
+        getMyOrganizations()
+            .then(setOrganizations)
+            .catch(console.error)
     }, [])
 
     // Save draft on change
@@ -164,14 +175,28 @@ export default function CreateEventPage() {
         fetchDefaultPlaceId()
     }, [isLoaded, formData.venue_remark])
 
+    const handleOrgCreated = (orgId: string) => {
+        getMyOrganizations().then(orgs => {
+            setOrganizations(orgs)
+            setFormData(prev => ({ ...prev, organization_id: orgId }))
+        })
+    }
+
     return (
         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-sm border border-yellow-100">
+            <UserCreateOrganizationModal 
+                isOpen={showOrgModal} 
+                onClose={() => setShowOrgModal(false)} 
+                onSuccess={handleOrgCreated} 
+            />
             <div className="mb-10 text-center">
                 <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Create New Event</h1>
                 <p className="text-zinc-700 mt-2 font-medium">Fill in the details to host your awesome event.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
+                
+
                 <FormInput
                     id="title"
                     label="Event Title"
@@ -378,6 +403,30 @@ export default function CreateEventPage() {
                             </div>
                         )
                     )}
+                </div>
+
+                <div>
+                    <label htmlFor="organization" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                        Organization (Optional)
+                    </label>
+                    <select
+                        id="organization"
+                        className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-4 px-5 transition-all duration-200"
+                        value={formData.organization_id || ''}
+                        onChange={(e) => {
+                            if (e.target.value === 'create_new') {
+                                setShowOrgModal(true)
+                            } else {
+                                setFormData(prev => ({ ...prev, organization_id: e.target.value || null }))
+                            }
+                        }}
+                    >
+                        <option value="">Personal (No Organization)</option>
+                        {organizations.map(org => (
+                            <option key={org.id} value={org.id}>{org.name}</option>
+                        ))}
+                        <option value="create_new" className="font-bold text-yellow-600">+ Create New Organization...</option>
+                    </select>
                 </div>
 
                 {error && (

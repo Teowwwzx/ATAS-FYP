@@ -1,17 +1,20 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { getEventById, walkInAttendance } from '@/services/api'
 import { EventDetails } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 import { formatEventDate } from '@/lib/date'
 import Link from 'next/link'
+import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 
 export default function WalkInRegistrationPage() {
     const params = useParams()
+    const searchParams = useSearchParams()
     const id = params?.id as string
+    const ref = searchParams.get('ref') || ''
 
     const [event, setEvent] = useState<EventDetails | null>(null)
     const [loading, setLoading] = useState(true)
@@ -19,6 +22,7 @@ export default function WalkInRegistrationPage() {
     const [success, setSuccess] = useState(false)
     const [formData, setFormData] = useState({ name: '', email: '' })
     const [file, setFile] = useState<File | null>(null)
+    const [allowed, setAllowed] = useState(false)
 
     useEffect(() => {
         if (id) {
@@ -30,6 +34,12 @@ export default function WalkInRegistrationPage() {
         try {
             const data = await getEventById(id)
             setEvent(data)
+            const phase = getEventPhase(data.start_datetime, data.end_datetime)
+            const physical = data.type === 'physical'
+            const enabled = !!data.is_attendance_enabled
+            const windowOpen = phase === EventPhase.EVENT_DAY || phase === EventPhase.ONGOING
+            const hasRef = !!ref
+            setAllowed(physical && enabled && windowOpen && hasRef)
         } catch (error) {
             toast.error('Event not found or access denied')
         } finally {
@@ -39,6 +49,10 @@ export default function WalkInRegistrationPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!allowed) {
+            toast.error('Walk-in registration is restricted for this event')
+            return
+        }
         if (!formData.name || !formData.email) {
             toast.error('Please fill in all fields')
             return
@@ -54,6 +68,7 @@ export default function WalkInRegistrationPage() {
             const data = new FormData()
             data.append('name', formData.name)
             data.append('email', formData.email)
+            data.append('ref_code', ref)
             if (file) {
                 data.append('receipt', file)
             }
@@ -84,6 +99,27 @@ export default function WalkInRegistrationPage() {
                 <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-medium">
                     Go to Home
                 </Link>
+            </div>
+        )
+    }
+
+    if (!allowed) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Walk-in Restricted</h2>
+                    <p className="text-gray-600 mb-6">
+                        Walk-in registration is restricted to onsite participants with organizer-issued links.
+                    </p>
+                    <div className="space-y-3">
+                        <div className="w-full py-3 bg-zinc-50 text-zinc-400 rounded-xl font-bold text-sm cursor-not-allowed border border-zinc-100">
+                            Request link from organizer team
+                        </div>
+                        <Link href={`/events/${event.id}`} className="block w-full text-indigo-600 font-bold py-2">
+                            Back to Event
+                        </Link>
+                    </div>
+                </div>
             </div>
         )
     }

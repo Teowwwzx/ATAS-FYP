@@ -76,6 +76,24 @@ def count_organizations(
     total = query.with_entities(Organization.id).distinct().count()
     return {"total_count": total}
 
+@router.get("/me/organizations", response_model=List[OrganizationResponse])
+def get_my_organizations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Get organizations where user is a member or owner
+    # Using explicit join on the association table
+    query = db.query(Organization).join(
+        organization_members, 
+        Organization.id == organization_members.c.org_id
+    ).filter(
+        organization_members.c.user_id == current_user.id
+    ).filter(
+        Organization.deleted_at.is_(None)
+    )
+    
+    return query.order_by(Organization.created_at.desc()).all()
+
 @router.get("/organizations/{org_id}", response_model=OrganizationResponse)
 def get_organization(
     org_id: uuid.UUID,

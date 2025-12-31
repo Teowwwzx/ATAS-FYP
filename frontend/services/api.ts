@@ -44,7 +44,7 @@ import {
 
 // 1. Create an Axios instance
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.2:8000') + '/api/v1',
+  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -510,6 +510,11 @@ export const getMyChecklistItems = async (onlyOpen: boolean = true) => {
 }
 
 // --- Organizations ---
+
+export const getMyOrganizations = async () => {
+  const response = await api.get<import('./api.types').OrganizationResponse[]>('/me/organizations')
+  return response.data
+}
 
 export const getPublicOrganizations = async (params?: { q?: string; type?: string; page?: number; page_size?: number }) => {
   const response = await api.get<import('./api.types').OrganizationResponse[]>(`/organizations`, { params })

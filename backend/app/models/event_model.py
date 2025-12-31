@@ -74,6 +74,8 @@ class Event(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
+    organization = relationship("Organization")
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     logo_url = Column(String, nullable=True)
@@ -89,6 +91,7 @@ class Event(Base):
     status = Column(Enum(EventStatus), default=EventStatus.draft, nullable=False)
     visibility = Column(Enum(EventVisibility), default=EventVisibility.public, nullable=False)
     auto_accept_registration = Column(Boolean, nullable=False, default=True)
+    is_attendance_enabled = Column(Boolean, nullable=False, default=True)
     max_participant = Column(Integer, nullable=True)
     venue_place_id = Column(String, nullable=True)
     venue_remark = Column(String, nullable=True)

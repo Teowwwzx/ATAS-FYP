@@ -24,6 +24,12 @@ export default function EventCheckInPage() {
                 const event = await getEventById(id)
                 setEventTitle(event.title)
 
+                const open = event.registration_status === 'opened' && !!event.is_attendance_enabled
+                if (!open) {
+                    setStatus('error')
+                    setMessage('Attendance is closed for this event')
+                    return
+                }
                 await selfCheckIn(id)
                 setStatus('success')
                 toast.success('You are successfully checked in!')

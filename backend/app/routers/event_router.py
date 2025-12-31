@@ -27,6 +27,7 @@ from app.models.event_model import (
 
 )
 from app.models.event_model import ChecklistVisibility
+from app.models.organization_model import Organization, organization_members
 from app.models.notification_model import Notification, NotificationType
 from app.services.email_service import (
     send_event_invitation_email,
@@ -378,10 +379,16 @@ def get_my_requests(
     """
     List pending invitations (bookings) for the current user.
     """
-    participants = db.query(EventParticipant).filter(
-        EventParticipant.user_id == current_user.id,
-        EventParticipant.status == EventParticipantStatus.pending
-    ).order_by(EventParticipant.created_at.desc()).all()
+    participants = (
+        db.query(EventParticipant)
+        .filter(
+            EventParticipant.user_id == current_user.id,
+            EventParticipant.status == EventParticipantStatus.pending,
+            EventParticipant.join_method == "invited",
+        )
+        .order_by(EventParticipant.created_at.desc())
+        .all()
+    )
     
 
     return participants
@@ -404,7 +411,7 @@ def get_sent_requests(
         .filter(
             Event.organizer_id == current_user.id,
             EventParticipant.status == EventParticipantStatus.pending,
-            # Filter out organizers (the user themselves) just in case
+            EventParticipant.join_method == "invited",
             EventParticipant.user_id != current_user.id
         )
         .order_by(EventParticipant.created_at.desc())
@@ -478,6 +485,21 @@ def create_event(
         else:
             # Most non-webinar formats are physical by default
             derived_type = EventType.physical
+
+    # Validate organization if provided
+    if event.organization_id:
+        org = db.query(Organization).filter(Organization.id == event.organization_id).first()
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        
+        # Check if user is owner or member of the organization
+        if org.owner_id != current_user.id:
+             is_member = db.query(organization_members).filter(
+                 organization_members.c.organization_id == org.id,
+                 organization_members.c.user_id == current_user.id
+             ).first()
+             if not is_member:
+                 raise HTTPException(status_code=403, detail="You must be a member of the organization to create events for it")
 
     # Default venue to APU if not provided
     venue_place_id = event.venue_place_id if event.venue_place_id else DEFAULT_APU_PLACE_ID
@@ -643,6 +665,9 @@ def open_event_registration(
     if event.organizer_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only organizer can manage registration")
     event.registration_status = EventRegistrationStatus.opened
+    # Coupled behavior: opening registration enables attendance scanning
+    if hasattr(event, "is_attendance_enabled"):
+        event.is_attendance_enabled = True
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -662,6 +687,9 @@ def close_event_registration(
     if event.organizer_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only organizer can manage registration")
     event.registration_status = EventRegistrationStatus.closed
+    # Coupled behavior: closing registration disables attendance scanning
+    if hasattr(event, "is_attendance_enabled"):
+        event.is_attendance_enabled = False
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -1709,6 +1737,10 @@ def self_checkin(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
+    if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
+        raise HTTPException(status_code=400, detail="Registration is closed; attendance scanning is disabled")
 
     # Check time window (custom logic or reuse EventPhase logic if available in backend, usually simple date check)
     now_utc = datetime.now(timezone.utc)
@@ -2562,6 +2594,10 @@ def generate_event_attendance_qr(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
+    if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
+        raise HTTPException(status_code=400, detail="Registration is closed; attendance scanning is disabled")
 
     # Organizer or committee only
     if event.organizer_id != current_user.id:
@@ -2634,6 +2670,10 @@ def scan_event_attendance(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
+    if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
+        raise HTTPException(status_code=400, detail="Registration is closed; attendance scanning is disabled")
 
     # Attendance only during event live window for published events
     now_utc = datetime.now(timezone.utc)
@@ -2693,6 +2733,10 @@ def walk_in_event_attendance(
     event = db.query(Event).filter(Event.id == event_id, Event.deleted_at.is_(None)).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
+    if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
+        raise HTTPException(status_code=400, detail="Registration is closed; attendance scanning is disabled")
     
     # Permission check: Organizer or committee only
     if event.organizer_id != current_user.id:
@@ -3346,6 +3390,10 @@ def generate_user_attendance_qr(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
+    if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
+        raise HTTPException(status_code=400, detail="Registration is closed; attendance scanning is disabled")
     participant = (
         db.query(EventParticipant)
         .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
@@ -3367,6 +3415,10 @@ def get_user_attendance_qr_png(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
+    if getattr(event, "registration_status", None) != EventRegistrationStatus.opened:
+        raise HTTPException(status_code=400, detail="Registration is closed; attendance scanning is disabled")
     participant = (
         db.query(EventParticipant)
         .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
@@ -3393,6 +3445,8 @@ def scan_user_attendance(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
+    if not getattr(event, "is_attendance_enabled", True):
+        raise HTTPException(status_code=400, detail="Attendance is disabled for this event")
     if event.organizer_id != current_user.id:
         my_participation = (
             db.query(EventParticipant)
@@ -3603,4 +3657,3 @@ def create_proposal_comment(
             pass
 
     return comment
-

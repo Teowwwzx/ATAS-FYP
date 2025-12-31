@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { scanAttendance, getEventParticipants } from '@/services/api'
+import { scanAttendance, getEventParticipants, getEventById } from '@/services/api'
 import { EventParticipantDetails } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import dynamic from 'next/dynamic'
@@ -21,6 +21,8 @@ function AttendanceScanInner() {
   const [lastScanned, setLastScanned] = useState<string | null>(null)
   const [participants, setParticipants] = useState<EventParticipantDetails[]>([])
   const [showHint, setShowHint] = useState(true)
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState<boolean>(true)
+  const [eventTitle, setEventTitle] = useState<string>('')
 
   // Guard to prevent spam processing of the same scan event
   const processingRef = useRef(false)
@@ -39,6 +41,24 @@ function AttendanceScanInner() {
     fetchParticipants()
   }, [eventId])
 
+  useEffect(() => {
+    const loadEvent = async () => {
+      if (!eventId) {
+        setIsAttendanceOpen(false)
+        return
+      }
+      try {
+        const evt = await getEventById(eventId)
+        setEventTitle(evt.title || '')
+        const open = evt.registration_status === 'opened' && !!evt.is_attendance_enabled
+        setIsAttendanceOpen(open)
+      } catch {
+        setIsAttendanceOpen(false)
+      }
+    }
+    loadEvent()
+  }, [eventId])
+
   const handleScan = async (scannedToken: string) => {
     const cleanToken = scannedToken?.trim()
 
@@ -46,6 +66,10 @@ function AttendanceScanInner() {
     if (!cleanToken) return
     if (processingRef.current) return
     if (cleanToken === lastScanned) return
+    if (!isAttendanceOpen) {
+      toast.error('Attendance scanning is disabled')
+      return
+    }
 
     processingRef.current = true
     setLoading(true)
@@ -103,6 +127,14 @@ function AttendanceScanInner() {
           </div>
           <h1 className="text-3xl font-black text-zinc-900 mb-2">Scan Attendance</h1>
           <p className="text-zinc-600 font-medium">Scan participant QR codes to record attendance</p>
+          {!isAttendanceOpen && (
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-50 border-2 border-yellow-200">
+              <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M12 9v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-bold text-yellow-700">Attendance scanning is disabled</span>
+            </div>
+          )}
         </div>
 
         {/* Mode Toggle */}
@@ -148,12 +180,18 @@ function AttendanceScanInner() {
               </div>
 
               <div className="relative">
-                <Html5QrcodePlugin
-                  fps={10}
-                  qrbox={250}
-                  disableFlip={false}
-                  qrCodeSuccessCallback={handleScan}
-                />
+                {isAttendanceOpen ? (
+                  <Html5QrcodePlugin
+                    fps={10}
+                    qrbox={250}
+                    disableFlip={false}
+                    qrCodeSuccessCallback={handleScan}
+                  />
+                ) : (
+                  <div className="w-full h-64 rounded-2xl border-2 border-zinc-200 bg-zinc-50 flex items-center justify-center">
+                    <span className="text-zinc-500 font-bold">Scanning disabled</span>
+                  </div>
+                )}
               </div>
 
               {loading && (
@@ -196,7 +234,7 @@ function AttendanceScanInner() {
 
               <button
                 onClick={handleManualScan}
-                disabled={loading || !token.trim()}
+                disabled={loading || !token.trim() || !isAttendanceOpen}
                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
               >
                 {loading ? (
@@ -209,7 +247,7 @@ function AttendanceScanInner() {
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
-                    Record Attendance
+                    {isAttendanceOpen ? 'Record Attendance' : 'Scanning Disabled'}
                   </>
                 )}
               </button>

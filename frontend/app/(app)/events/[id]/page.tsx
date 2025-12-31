@@ -43,6 +43,7 @@ export default function EventDetailsPage() {
     const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
     const [currentPhase, setCurrentPhase] = useState<EventPhase>(EventPhase.DRAFT)
     const [showImageModal, setShowImageModal] = useState(false)
+    const [showPaymentQRModal, setShowPaymentQRModal] = useState(false)
     const [externalChecklist, setExternalChecklist] = useState<EventChecklistItemResponse[]>([])
     const [uploadingProof, setUploadingProof] = useState(false)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -570,73 +571,78 @@ export default function EventDetailsPage() {
                                     ) : (
                                         <div className="space-y-4">
                                             {isParticipant || isSpeaker || isSponsor ? (
-                                                <>
-                                                    <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
-                                                        Joined
-                                                    </div>
-                                                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                                                            <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-bold text-emerald-800">You are going!</p>
-                                                            <p className="text-xs text-emerald-600">
-                                                                {myRole === 'speaker' ? 'Speaker' : 
-                                                                 myRole === 'sponsor' ? 'Sponsor' : 
-                                                                 participantStatus === 'attended' ? 'Attendance marked' : 'Ticket confirmed'}
-                                                            </p>
+                                                participantStatus === 'attended' ? (
+                                                    <div className="space-y-4">
+                                                        <div className="w-full py-4 bg-emerald-100 text-emerald-700 rounded-2xl font-bold text-center text-lg border border-emerald-200">
+                                                            Attended
                                                         </div>
                                                     </div>
-
-                                                    {event.type === 'online' && (
-                                                        event.meeting_url ? (
-                                                            <a
-                                                                href={event.meeting_url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className={`w-full py-4 rounded-xl font-bold text-center text-lg shadow-lg mb-4 flex items-center justify-center gap-2 transition-all ${(new Date().getTime() >= new Date(event.start_datetime).getTime() - 30 * 60 * 1000) && (new Date() < new Date(event.end_datetime))
-                                                                    ? 'bg-violet-600 text-white hover:bg-violet-700 hover:-translate-y-1 hover:shadow-xl animate-pulse'
-                                                                    : 'bg-zinc-100 text-zinc-400 cursor-not-allowed pointer-events-none'
+                                                ) : (
+                                                    <>
+                                                        <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
+                                                            Joined
+                                                        </div>
+                                                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                                                                <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-emerald-800">You are going!</p>
+                                                                <p className="text-xs text-emerald-600">
+                                                                    {myRole === 'speaker' ? 'Speaker' : 
+                                                                     myRole === 'sponsor' ? 'Sponsor' : 
+                                                                     participantStatus === 'attended' ? 'Attendance marked' : 'Ticket confirmed'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        {event.type === 'online' && (
+                                                            event.meeting_url ? (
+                                                                <a
+                                                                    href={event.meeting_url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className={`w-full py-4 rounded-xl font-bold text-center text-lg shadow-lg mb-4 flex items-center justify-center gap-2 transition-all ${(new Date().getTime() >= new Date(event.start_datetime).getTime() - 30 * 60 * 1000) && (new Date() < new Date(event.end_datetime))
+                                                                        ? 'bg-violet-600 text-white hover:bg-violet-700 hover:-translate-y-1 hover:shadow-xl animate-pulse'
+                                                                        : 'bg-zinc-100 text-zinc-400 cursor-not-allowed pointer-events-none'
+                                                                        }`}
+                                                                >
+                                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                    </svg>
+                                                                    {(new Date().getTime() >= new Date(event.start_datetime).getTime() - 30 * 60 * 1000)
+                                                                        ? 'Join Meeting Now'
+                                                                        : 'Meeting Link Available 30m Before'}
+                                                                </a>
+                                                            ) : (
+                                                                <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-2xl font-bold text-center text-lg shadow-sm mb-4 border border-zinc-200">
+                                                                    Meeting Link Pending
+                                                                </div>
+                                                            )
+                                                        )}
+                                                        {isJoinedAccepted && event.type !== 'online' && (
+                                                            <button
+                                                                onClick={() => setShowQRModal(true)}
+                                                                disabled={!isAttendanceOpen || !event.is_attendance_enabled}
+                                                                className={`w-full py-3 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all ${isAttendanceOpen && event.is_attendance_enabled
+                                                                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg hover:-translate-y-0.5'
+                                                                    : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
                                                                     }`}
                                                             >
-                                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                </svg>
-                                                                {(new Date().getTime() >= new Date(event.start_datetime).getTime() - 30 * 60 * 1000)
-                                                                    ? 'Join Meeting Now'
-                                                                    : 'Meeting Link Available 30m Before'}
-                                                            </a>
-                                                        ) : (
-                                                            <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-xl font-bold text-center text-lg shadow-sm mb-4 border border-zinc-200">
-                                                                Meeting Link Pending
-                                                            </div>
-                                                        )
-                                                    )}
-
-                                                    {isJoinedAccepted && event.type !== 'online' && (
+                                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                                                                {isAttendanceOpen && event.is_attendance_enabled ? 'Show Attendance QR' : !event.is_attendance_enabled ? 'Attendance Disabled' : 'QR Available 24h Before Event'}
+                                                            </button>
+                                                        )}
                                                         <button
-                                                            onClick={() => setShowQRModal(true)}
-                                                            disabled={!isAttendanceOpen}
-                                                            className={`w-full py-3 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all ${isAttendanceOpen
-                                                                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg hover:-translate-y-0.5'
-                                                                : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                                                                }`}
+                                                            onClick={handleLeaveClick}
+                                                            disabled={registering}
+                                                            className="w-full py-2 text-zinc-400 text-xs font-bold hover:text-red-500 transition-colors disabled:opacity-50"
                                                         >
-                                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-                                                            {isAttendanceOpen ? 'Show Attendance QR' : 'QR Available 24h Before Event'}
+                                                            {registering ? 'Processing...' : 'Cancel Registration'}
                                                         </button>
-                                                    )}
-
-                                                    <button
-                                                        onClick={handleLeaveClick}
-                                                        disabled={registering}
-                                                        className="w-full py-2 text-zinc-400 text-xs font-bold hover:text-red-500 transition-colors disabled:opacity-50"
-                                                    >
-                                                        {registering ? 'Processing...' : 'Cancel Registration'}
-                                                    </button>
-                                                </>
+                                                    </>
+                                                )
                                             ) : isRegistered && participantStatus === 'pending' ? (
                                                 <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-yellow-800 space-y-3">
                                                     <p className="text-sm font-bold">
@@ -677,12 +683,9 @@ export default function EventDetailsPage() {
                                                         Event Ongoing
                                                     </div>
                                                     {event.type !== 'online' ? (
-                                                        <Link
-                                                            href={`/events/${event.id}/walk-in`}
-                                                            className="block w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-center text-sm hover:bg-indigo-700 transition-colors shadow-md"
-                                                        >
-                                                            Join by Walk-in or contact organizaer team to join
-                                                        </Link>
+                                                        <div className="w-full py-3 bg-zinc-50 text-zinc-400 rounded-xl font-bold text-center text-sm cursor-not-allowed border border-zinc-100">
+                                                            Walk-in is restricted. Request organizer-issued link.
+                                                        </div>
                                                     ) : (
                                                         <button
                                                             disabled
@@ -757,37 +760,50 @@ export default function EventDetailsPage() {
                                             </ul>
                                         </div>
                                     )}
-                                    <div className="relative z-10">
-                                        {myReminder ? (
-                                            <button
-                                                onClick={handleReminderClick}
-                                                className="w-full py-3 bg-amber-100 border border-amber-200 text-amber-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-200 transition-colors cursor-pointer"
-                                            >
-                                                <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                Reminder: {myReminder.option === 'one_day' ? '1 Day Before' : myReminder.option === 'three_days' ? '3 Days Before' : '1 Week Before'}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={handleReminderClick}
-                                                disabled={reminding}
-                                                className="w-full py-2 bg-white border border-amber-200 text-amber-800 rounded-xl font-bold text-xs hover:bg-amber-100 transition-colors shadow-sm"
-                                            >
-                                                Set Reminder
-                                            </button>
-                                        )}
-                                    </div>
+                                    {participantStatus !== 'attended' && (
+                                        <div className="relative z-10">
+                                            {myReminder ? (
+                                                <button
+                                                    onClick={handleReminderClick}
+                                                    className="w-full py-3 bg-amber-100 border border-amber-200 text-amber-900 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-200 transition-colors cursor-pointer"
+                                                >
+                                                    <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Reminder: {myReminder.option === 'one_day' ? '1 Day Before' : myReminder.option === 'three_days' ? '3 Days Before' : '1 Week Before'}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={handleReminderClick}
+                                                    disabled={reminding}
+                                                    className="w-full py-2 bg-white border border-amber-200 text-amber-800 rounded-xl font-bold text-xs hover:bg-amber-100 transition-colors shadow-sm"
+                                                >
+                                                    Set Reminder
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
                             {/* Payment QR Box */}
-                            {isRegistered && event.payment_qr_url && (
+                            {isRegistered && event.payment_qr_url && participantStatus !== 'attended' && (
                                 <div className="bg-white rounded-3xl border border-zinc-200 p-6 shadow-sm">
                                     <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wide mb-4">Payment</h3>
-                                    <div className="bg-zinc-50 p-4 rounded-xl flex flex-col items-center border border-zinc-100">
-                                        <img src={event.payment_qr_url} alt="Payment QR" className="max-w-[150px] border border-zinc-200 rounded-lg mb-2" />
+                                    <div className="bg-zinc-50 p-4 rounded-xl flex flex-col items-center border border-zinc-100 group">
+                                        <img
+                                            src={event.payment_qr_url}
+                                            alt="Payment QR"
+                                            className="max-w-[240px] border border-zinc-200 rounded-lg mb-3 transition-transform duration-200 group-hover:scale-105 cursor-pointer"
+                                            onClick={() => setShowPaymentQRModal(true)}
+                                        />
                                         <p className="text-xs text-zinc-500 text-center">Scan to pay</p>
+                                        <button
+                                            onClick={() => setShowPaymentQRModal(true)}
+                                            className="mt-4 w-full py-3 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-transform hover:scale-[1.02] shadow-md"
+                                        >
+                                            Open Payment QR
+                                        </button>
                                     </div>
                                     {paymentStatus === 'rejected' && (
                                         <div className="mt-4 p-3 bg-red-50 text-red-700 text-xs font-bold rounded-lg border border-red-100 text-center">
@@ -885,6 +901,28 @@ export default function EventDetailsPage() {
                         <button
                             className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition-colors"
                             onClick={() => setShowImageModal(false)}
+                        >
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+            {showPaymentQRModal && event && event.payment_qr_url && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+                    onClick={() => setShowPaymentQRModal(false)}
+                >
+                    <div className="relative max-w-3xl w-full flex items-center justify-center">
+                        <img
+                            src={event.payment_qr_url}
+                            alt="Payment QR"
+                            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-white p-4"
+                        />
+                        <button
+                            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 transition-colors"
+                            onClick={() => setShowPaymentQRModal(false)}
                         >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

@@ -25,6 +25,11 @@ app = FastAPI(
 def startup_db():
     Base.metadata.create_all(bind=engine)
 
+@app.on_event("shutdown")
+def shutdown_db():
+    # Close database connections gracefully to prevent "stuck" reloads
+    engine.dispose()
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,

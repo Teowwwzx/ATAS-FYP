@@ -12,6 +12,7 @@ import { DashboardTabs } from '../../dashboard/DashboardTabs'
 import { EventPreviewModal } from '../../dashboard/EventPreviewModal'
 import { EventReviewModal } from '@/components/event/EventReviewModal'
 import { getEventPhase, EventPhase } from '@/lib/eventPhases'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 export default function ManageEventPage() {
     const params = useParams()
@@ -26,6 +27,9 @@ export default function ManageEventPage() {
     const [currentPhase, setCurrentPhase] = useState<EventPhase>(EventPhase.DRAFT)
     const [attendanceStats, setAttendanceStats] = useState<EventAttendanceStats | null>(null)
     const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+    const [showPublishModal, setShowPublishModal] = useState(false)
+    const [showUnpublishModal, setShowUnpublishModal] = useState(false)
+    const [publishing, setPublishing] = useState(false)
 
     // Review State (Post-Event Only)
     const [isReviewOpen, setIsReviewOpen] = useState(false)
@@ -149,18 +153,21 @@ export default function ManageEventPage() {
                                 </div>
                             )}
                             <Link
-                                href={`/attendance/scan?eventId=${event.id}`}
-                                className={`px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl transition-all shadow-lg flex items-center gap-2 ${currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING
-                                        ? 'hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl'
-                                        : 'opacity-50 cursor-not-allowed grayscale'
-                                    }`}
-                                onClick={(e) => {
-                                    if (currentPhase !== EventPhase.EVENT_DAY && currentPhase !== EventPhase.ONGOING) {
-                                        e.preventDefault()
-                                        toast.error('Attendance scanning is only available 24 hours before and during the event.')
-                                    }
-                                }}
-                            >
+                                    href={`/attendance/scan?eventId=${event.id}`}
+                                    className={`px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl transition-all shadow-lg flex items-center gap-2 ${(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) && event.is_attendance_enabled
+                                            ? 'hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl'
+                                            : 'opacity-50 cursor-not-allowed grayscale'
+                                        }`}
+                                    onClick={(e) => {
+                                        if (currentPhase !== EventPhase.EVENT_DAY && currentPhase !== EventPhase.ONGOING) {
+                                            e.preventDefault()
+                                            toast.error('Attendance scanning is only available 24 hours before and during the event.')
+                                        } else if (!event.is_attendance_enabled) {
+                                            e.preventDefault()
+                                            toast.error('Attendance is currently disabled for this event.')
+                                        }
+                                    }}
+                                >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                                 </svg>
@@ -186,25 +193,9 @@ export default function ManageEventPage() {
                                 <button
                                     onClick={async () => {
                                         if (event.status === 'published') {
-                                            if (confirm('Unpublish this event? It will be hidden from Discover.')) {
-                                                try {
-                                                    await unpublishEvent(event.id)
-                                                    toast.success('Event Unpublished')
-                                                    refreshData()
-                                                } catch (e) {
-                                                    toast.error('Failed to unpublish event')
-                                                }
-                                            }
+                                            setShowUnpublishModal(true)
                                         } else {
-                                            if (confirm('Are you ready to publish this event?')) {
-                                                try {
-                                                    await publishEvent(event.id)
-                                                    toast.success('Event Published!')
-                                                    refreshData()
-                                                } catch (e) {
-                                                    toast.error('Failed to publish event')
-                                                }
-                                            }
+                                            setShowPublishModal(true)
                                         }
                                     }}
                                     className="px-6 py-2.5 bg-zinc-900 text-yellow-400 font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-md flex items-center gap-2"
@@ -247,6 +238,70 @@ export default function ManageEventPage() {
                 onClose={() => setIsPreviewOpen(false)}
                 event={event}
             />
+            <PublishModal
+                open={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                onConfirm={async () => {
+                    setPublishing(true)
+                    try {
+                        await publishEvent(event.id)
+                        toast.success('Event Published!')
+                        setShowPublishModal(false)
+                        refreshData()
+                    } catch (e) {
+                        toast.error('Failed to publish event')
+                    } finally {
+                        setPublishing(false)
+                    }
+                }}
+                loading={publishing}
+            />
+            <UnpublishModal
+                open={showUnpublishModal}
+                onClose={() => setShowUnpublishModal(false)}
+                onConfirm={async () => {
+                    setPublishing(true)
+                    try {
+                        await unpublishEvent(event.id)
+                        toast.success('Event Unpublished')
+                        setShowUnpublishModal(false)
+                        refreshData()
+                    } catch (e) {
+                        toast.error('Failed to unpublish event')
+                    } finally {
+                        setPublishing(false)
+                    }
+                }}
+                loading={publishing}
+            />
         </div>
+    )
+}
+function PublishModal({ open, onClose, onConfirm, loading }: { open: boolean; onClose: () => void; onConfirm: () => void; loading: boolean }) {
+    return (
+        <ConfirmationModal
+            isOpen={open}
+            onClose={onClose}
+            onConfirm={onConfirm}
+            title="Publish Event"
+            message="Are you ready to publish this event? It will be visible on Discover."
+            confirmText="Publish"
+            variant="primary"
+            isLoading={loading}
+        />
+    )
+}
+function UnpublishModal({ open, onClose, onConfirm, loading }: { open: boolean; onClose: () => void; onConfirm: () => void; loading: boolean }) {
+    return (
+        <ConfirmationModal
+            isOpen={open}
+            onClose={onClose}
+            onConfirm={onConfirm}
+            title="Unpublish Event"
+            message="Unpublish this event? It will be hidden from Discover."
+            confirmText="Unpublish"
+            variant="danger"
+            isLoading={loading}
+        />
     )
 }
