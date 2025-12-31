@@ -19,7 +19,7 @@ export function AiAssistantFab() {
 
   return (
     <>
-      <div className="fixed bottom-8 right-8 z-50">
+      <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[60]">
         <Menu as="div" className="relative inline-block text-left">
           <div>
             <Menu.Button className="flex items-center justify-center w-14 h-14 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full shadow-lg transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
@@ -36,54 +36,51 @@ export function AiAssistantFab() {
             leaveTo="transform opacity-0 scale-95"
           >
             <Menu.Items className="absolute bottom-16 right-0 w-64 origin-bottom-right bg-white divide-y divide-gray-100 rounded-xl shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none overflow-hidden">
-               <div className="px-1 py-1">
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        onClick={() => setIsOpen(true)}
-                        className={`${
-                          active ? 'bg-yellow-50 text-yellow-700' : 'text-gray-900'
+              <div className="px-1 py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setIsOpen(true)}
+                      className={`${active ? 'bg-yellow-50 text-yellow-700' : 'text-gray-900'
                         } group flex w-full items-center rounded-lg px-3 py-3 text-sm font-medium`}
-                      >
-                        <MagnifyingGlassIcon className="mr-3 h-5 w-5 text-yellow-500" />
-                        Search Expert Availability
-                      </button>
-                    )}
-                  </Menu.Item>
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        className={`${
-                          active ? 'bg-gray-50' : 'text-gray-400'
+                    >
+                      <MagnifyingGlassIcon className="mr-3 h-5 w-5 text-yellow-500" />
+                      Search Expert Availability
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      className={`${active ? 'bg-gray-50' : 'text-gray-400'
                         } group flex w-full items-center rounded-lg px-3 py-3 text-sm font-medium cursor-not-allowed`}
-                        disabled
-                      >
-                        <LightningBoltIcon className="mr-3 h-5 w-5" />
-                        AI Chat (Coming Soon)
-                      </button>
-                    )}
-                  </Menu.Item>
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        className={`${
-                          active ? 'bg-gray-50' : 'text-gray-400'
+                      disabled
+                    >
+                      <LightningBoltIcon className="mr-3 h-5 w-5" />
+                      AI Chat (Coming Soon)
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      className={`${active ? 'bg-gray-50' : 'text-gray-400'
                         } group flex w-full items-center rounded-lg px-3 py-3 text-sm font-medium cursor-not-allowed`}
-                        disabled
-                      >
-                        <LightningBoltIcon className="mr-3 h-5 w-5" />
-                        AI Event Planner (Coming Soon)
-                      </button>
-                    )}
-                  </Menu.Item>
-               </div>
+                      disabled
+                    >
+                      <LightningBoltIcon className="mr-3 h-5 w-5" />
+                      AI Event Planner (Coming Soon)
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
             </Menu.Items>
           </Transition>
         </Menu>
       </div>
 
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setIsOpen(false)}>
+        <Dialog as="div" className="relative z-[60]" onClose={() => setIsOpen(false)}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -109,34 +106,34 @@ export function AiAssistantFab() {
               >
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-2xl transition-all">
                   <div className="flex justify-between items-center mb-5">
-                      <Dialog.Title
-                        as="h3"
-                        className="text-lg font-bold leading-6 text-gray-900 flex items-center gap-2"
-                      >
-                        <MagicWandIcon className="w-5 h-5 text-yellow-500" />
-                        AI Availability Search
-                      </Dialog.Title>
-                      <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <Cross2Icon className="w-5 h-5" />
-                      </button>
+                    <Dialog.Title
+                      as="h3"
+                      className="text-lg font-bold leading-6 text-gray-900 flex items-center gap-2"
+                    >
+                      <MagicWandIcon className="w-5 h-5 text-yellow-500" />
+                      AI Availability Search
+                    </Dialog.Title>
+                    <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                      <Cross2Icon className="w-5 h-5" />
+                    </button>
                   </div>
-                  
+
                   <div className="mt-2">
                     <p className="text-sm text-gray-600 mb-4 font-medium">
                       Tell us when you need an expert. Our AI will match you with professionals available at your specific times.
                     </p>
                     <textarea
-                        className="w-full p-4 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none resize-none transition-all shadow-sm text-base"
-                        rows={3}
-                        placeholder="e.g. I need someone for a panel discussion on Saturday night after 8pm..."
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                            if(e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault()
-                                handleSearch()
-                            }
-                        }}
+                      className="w-full p-4 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-500 focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none resize-none transition-all shadow-sm text-base"
+                      rows={3}
+                      placeholder="e.g. I need someone for a panel discussion on Saturday night after 8pm..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSearch()
+                        }
+                      }}
                     />
                   </div>
 

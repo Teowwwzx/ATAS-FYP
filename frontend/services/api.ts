@@ -44,7 +44,7 @@ import {
 
 // 1. Create an Axios instance
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/api/v1',
+  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.2:8000') + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -546,6 +546,24 @@ export const joinOrganization = async (id: string) => {
 
 export const leaveOrganization = async (id: string) => {
   const response = await api.delete<void>(`/organizations/${id}/members/me`)
+  return response.data
+}
+
+export const updateOrganizationLogo = async (orgId: string, file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}/images/logo`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export const updateOrganizationCover = async (orgId: string, file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}/images/cover`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return response.data
 }
 

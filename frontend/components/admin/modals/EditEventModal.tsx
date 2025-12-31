@@ -11,6 +11,7 @@ import PlacesAutocomplete, { geocodeByAddress } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
 import api from '@/services/api'
 import { UserResponse } from '@/services/api.types'
+import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
 
 const libraries: ("places")[] = ["places"]
 
@@ -28,9 +29,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
     })
     const [isLoading, setIsLoading] = useState(false)
     const [venueSearch, setVenueSearch] = useState('')
-    const [ownerSearch, setOwnerSearch] = useState('')
-    const [ownerSearchResults, setOwnerSearchResults] = useState<UserResponse[]>([])
-    const [selectedNewOwner, setSelectedNewOwner] = useState<UserResponse | null>(null)
+    // Owner search state removed in favor of UserSearchSelect
     const [formData, setFormData] = useState({
         organizer_id: '',
         title: '',
@@ -323,54 +322,24 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
 
                                     <div className="pt-6 border-t border-gray-100">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Event Organizer (Transfer Ownership)</label>
-                                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                            <div className="flex items-center gap-3 mb-4">
-                                                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-sm">
-                                                    {(selectedNewOwner?.full_name || 'C').charAt(0).toUpperCase()}
-                                                </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <div className="text-sm font-bold text-gray-900 truncate">
-                                                        {selectedNewOwner ? (selectedNewOwner.full_name || selectedNewOwner.email) : 'Current Organizer (No Change)'}
-                                                        {selectedNewOwner && <span className="ml-2 text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">New</span>}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500 truncate">
-                                                        {selectedNewOwner ? selectedNewOwner.email : `ID: ${event.organizer_id}`}
-                                                    </div>
-                                                </div>
+                                        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                                            <div className="mb-4">
+                                                <p className="text-sm font-medium text-gray-900">Current Organizer ID: <span className="font-mono text-gray-500">{event.organizer_id}</span></p>
+                                                {event.organizer_name && <p className="text-sm text-gray-600">Name: {event.organizer_name}</p>}
                                             </div>
 
-                                            <div className="relative">
-                                                <input
-                                                    value={ownerSearch}
-                                                    onChange={e => setOwnerSearch(e.target.value)}
-                                                    className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                                    placeholder="Search user by name or email..."
-                                                />
-                                                {ownerSearchResults.length > 0 && (
-                                                    <div className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
-                                                        {ownerSearchResults.map(user => (
-                                                            <div
-                                                                key={user.id}
-                                                                className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0"
-                                                                onClick={() => {
-                                                                    setSelectedNewOwner(user)
-                                                                    setFormData(prev => ({ ...prev, organizer_id: user.id }))
-                                                                    setOwnerSearch('')
-                                                                    setOwnerSearchResults([])
-                                                                }}
-                                                            >
-                                                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold">
-                                                                    {(user.full_name || user.email).charAt(0).toUpperCase()}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-gray-900">{user.full_name || 'No Name'}</div>
-                                                                    <div className="text-xs text-gray-500">{user.email}</div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <UserSearchSelect
+                                                label="New Organizer"
+                                                placeholder="Search user to transfer ownership..."
+                                                onSelect={(user) => {
+                                                    if (user) {
+                                                        setFormData(prev => ({ ...prev, organizer_id: user.id }))
+                                                    } else {
+                                                        // Revert to original
+                                                        setFormData(prev => ({ ...prev, organizer_id: event.organizer_id }))
+                                                    }
+                                                }}
+                                            />
                                             <p className="text-xs text-gray-400 mt-2">
                                                 Warning: Transferring ownership will remove the current organizer's control over the event.
                                             </p>

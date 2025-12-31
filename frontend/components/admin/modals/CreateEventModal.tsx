@@ -5,7 +5,10 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
-import { updateEventCover, updateEventLogo } from '@/services/api' // Using direct API for now as per EditModal pattern
+import { updateEventCover, updateEventLogo } from '@/services/api'
+import { EventRegistrationType } from '@/services/api.types'
+import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
+import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
 
 interface CreateEventModalProps {
     isOpen: boolean
@@ -20,11 +23,16 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
         description: '',
         start_datetime: '',
         end_datetime: '',
-        venue_name: '',
+        venue_place_id: '',
+        venue_remark: '',
         max_participant: 100, // Default to 100
-        type: 'offline', // Default
-        format: 'conference', // Default
-        visibility: 'public' // Default
+        type: 'physical', // Default
+        format: 'seminar', // Default (valid: panel_discussion, workshop, webinar, seminar, club_event, other)
+        visibility: 'public', // Default
+        registration_type: 'free' as EventRegistrationType,
+        price: 0,
+        owner_id: '', // For transferring ownership
+        auto_publish: false
     })
 
     const [files, setFiles] = useState<{ cover: File | null; logo: File | null }>({ cover: null, logo: null })
@@ -56,15 +64,33 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 return
             }
 
-            // Create Event
+            // 1. Create Event (as Admin)
             const createdEvent = await adminService.createEvent({
-                ...formData,
+                title: formData.title,
+                description: formData.description,
                 start_datetime: start.toISOString(),
                 end_datetime: end.toISOString(),
-                registration_type: 'paid', // Defaulting for now, or maybe 'free'? Let's assume free or user can edit later
+                venue_place_id: formData.venue_place_id || undefined,
+                venue_remark: formData.venue_remark || undefined,
+                max_participant: formData.max_participant,
+                type: formData.type as any,
+                format: formData.format as any,
+                visibility: formData.visibility as any,
+                registration_type: formData.registration_type,
+                price: formData.price
             })
 
-            // Upload Files if any
+            // 2. Transfer Ownership if owner_id provided
+            if (formData.owner_id) {
+                try {
+                    await adminService.updateEvent(createdEvent.id, { organizer_id: formData.owner_id })
+                } catch (e) {
+                    console.error('Failed to transfer ownership', e)
+                    toast.error('Failed to transfer ownership (Event created under your name)')
+                }
+            }
+
+            // 3. Upload Files if any
             const uploadPromises = []
             if (files.cover) {
                 uploadPromises.push(updateEventCover(createdEvent.id, files.cover)
@@ -73,6 +99,12 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
             if (files.logo) {
                 uploadPromises.push(updateEventLogo(createdEvent.id, files.logo)
                     .catch((e: any) => { console.error('Logo upload failed', e); toast.error('Logo upload failed'); }))
+            }
+
+            // 4. Auto Publish
+            if (formData.auto_publish) {
+                uploadPromises.push(adminService.publishEvent(createdEvent.id)
+                    .catch((e: any) => { console.error('Publish failed', e); toast.error('Publish failed'); }))
             }
 
             await Promise.all(uploadPromises)
@@ -86,11 +118,16 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 description: '',
                 start_datetime: '',
                 end_datetime: '',
-                venue_name: '',
+                venue_place_id: '',
+                venue_remark: '',
                 max_participant: 100,
                 type: 'physical',
-                format: 'conference',
-                visibility: 'public'
+                format: 'seminar',
+                visibility: 'public',
+                registration_type: 'free',
+                price: 0,
+                owner_id: '',
+                auto_publish: false
             })
             setFiles({ cover: null, logo: null })
         } catch (error) {
@@ -130,7 +167,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                             <textarea
                                 value={formData.description}
                                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-32 resize-none"
+                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-24 resize-none"
                                 placeholder="Describe the event..."
                             />
                         </div>
@@ -158,96 +195,119 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
-                            <input
-                                value={formData.venue_name}
-                                onChange={e => setFormData({ ...formData, venue_name: e.target.value })}
-                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                placeholder="e.g. Grand Hall"
-                            />
-                        </div>
-
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
-                                <input
-                                    type="number"
-                                    value={formData.max_participant}
-                                    onChange={e => setFormData({ ...formData, max_participant: parseInt(e.target.value) })}
-                                    className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                    min="1"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
                                 <select
-                                    value={formData.visibility}
-                                    onChange={e => setFormData({ ...formData, visibility: e.target.value })}
+                                    value={formData.format}
+                                    onChange={e => setFormData({ ...formData, format: e.target.value })}
                                     className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                                 >
-                                    <option value="public">Public</option>
-                                    <option value="private">Private</option>
-                                    <option value="unlisted">Unlisted</option>
+                                    <option value="panel_discussion">Panel Discussion</option>
+                                    <option value="workshop">Workshop</option>
+                                    <option value="webinar">Webinar</option>
+                                    <option value="seminar">Seminar</option>
+                                    <option value="club_event">Club Event</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <select
+                                    value={formData.type}
+                                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                    className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                >
+                                    <option value="physical">Physical</option>
+                                    <option value="online">Online</option>
+                                    <option value="hybrid">Hybrid</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        ref={coverRef}
-                                        onChange={e => handleFileChange(e, 'cover')}
-                                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                    />
-                                    {files.cover && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleClearFile('cover')}
-                                            className="text-red-500 hover:text-red-700"
-                                            title="Remove file"
-                                        >
-                                            <Cross2Icon className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        ref={logoRef}
-                                        onChange={e => handleFileChange(e, 'logo')}
-                                        className="block w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                    />
-                                    {files.logo && (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleClearFile('logo')}
-                                            className="text-red-500 hover:text-red-700"
-                                            title="Remove file"
-                                        >
-                                            <Cross2Icon className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        <div>
 
-                        <div className="flex justify-end pt-4">
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
-                            >
-                                {isLoading ? 'Creating...' : 'Create Event'}
-                            </button>
+                            {formData.type !== 'online' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                                    <PlacesAutocomplete
+                                        onPlaceSelect={(place) => {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                venue_place_id: place.value.place_id,
+                                                venue_remark: place.label
+                                            }))
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Registration</label>
+                                    <select
+                                        value={formData.registration_type}
+                                        onChange={e => setFormData({ ...formData, registration_type: e.target.value as any })}
+                                        className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    >
+                                        <option value="free">Free</option>
+                                        <option value="paid">Paid</option>
+                                    </select>
+                                </div>
+                                {formData.registration_type === 'paid' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Price (MYR)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.price}
+                                            onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                                            className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                            min="0"
+                                            step="0.01"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <UserSearchSelect
+                                    label="Organizer (Transfer Ownership) - Optional"
+                                    placeholder="Search user to assign as organizer..."
+                                    onSelect={(user) => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            owner_id: user ? user.id : ''
+                                        }))
+                                    }}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Leave empty to organize yourself.</p>
+                            </div>
+
+                            <div className="flex items-center pt-2 gap-6">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.auto_publish}
+                                            onChange={e => setFormData({ ...formData, auto_publish: e.target.checked })}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700">Auto-Publish</span>
+                                </label>
+
+                                <div className="flex-1"></div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm flex items-center gap-2"
+                                >
+                                    {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                    {isLoading ? 'Creating...' : 'Create Event'}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </Dialog.Content>

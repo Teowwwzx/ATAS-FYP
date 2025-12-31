@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { EventsTable } from '@/components/admin/EventsTable'
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
+import { MagnifyingGlassIcon, PlusIcon } from '@radix-ui/react-icons'
 import { Pagination } from '@/components/ui/Pagination'
+import { CreateEventModal } from '@/components/admin/modals/CreateEventModal'
 
 const DEFAULT_PAGE_SIZE = 10
 
@@ -17,6 +18,7 @@ export default function AdminEventsPage() {
     const [statusFilter, setStatusFilter] = useState('')
     const [typeFilter, setTypeFilter] = useState('')
     const [organizerFilter, setOrganizerFilter] = useState('')
+    const [isCreateOpen, setIsCreateOpen] = useState(false)
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
@@ -58,6 +60,13 @@ export default function AdminEventsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Events</h1>
                     <p className="text-gray-500 mt-1">Manage all events on the platform</p>
                 </div>
+                <button
+                    onClick={() => setIsCreateOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+                >
+                    <PlusIcon className="w-4 h-4" />
+                    Create Event
+                </button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -120,6 +129,12 @@ export default function AdminEventsPage() {
                     pageSize={pageSize}
                 />
             </div>
+
+            <CreateEventModal
+                isOpen={isCreateOpen}
+                onClose={() => setIsCreateOpen(false)}
+                onSuccess={mutate}
+            />
         </div>
     )
 }
