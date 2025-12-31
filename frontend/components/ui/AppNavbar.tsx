@@ -15,7 +15,7 @@ import { Avatar } from './Avatar'
 export function AppNavbar() {
     const router = useRouter()
     const pathname = usePathname()
-    
+
     const { user: profile, error } = useUser()
     const [isDashboardPro, setIsDashboardPro] = useState(false)
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -85,179 +85,93 @@ export function AppNavbar() {
                             </Link>
                         </div>
                     </div>
-                    <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                        <div className="ml-3 relative">
-                            <div className="flex items-center gap-4">
-                                { /* Removed redundant search icon */}
+                    <div className="flex items-center gap-4">
+                        <div className="ml-3 relative flex items-center gap-4">
+                            { /* Removed redundant search icon */}
 
 
-                                {profile && (
-                                    <div className="hidden md:block">
-                                        <NotificationBell />
-                                    </div>
-                                )}
+                            {profile && (
+                                <div className="hidden md:block">
+                                    <NotificationBell />
+                                </div>
+                            )}
 
-                                <Link href="/events/create">
-                                    <Button
-                                        variant="primary"
-                                        className="rounded-full"
+                            <Link href="/events/create" className="hidden sm:block">
+                                <Button
+                                    variant="primary"
+                                    className="rounded-full"
+                                >
+                                    Create Event
+                                </Button>
+                            </Link>
+
+                            {profile ? (
+                                <div className="relative hidden sm:block">
+                                    <button
+                                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                        className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 items-center gap-3 pl-2 pr-1 py-1 border border-gray-100 hover:shadow-md transition-all"
                                     >
-                                        Create Event
-                                    </Button>
-                                </Link>
+                                        <span className="sr-only">Open user menu</span>
+                                        <span className="text-zinc-700 font-bold hidden md:block pl-2">
+                                            {profile?.full_name || 'User'}
+                                        </span>
+                                        <Avatar
+                                            src={profile?.avatar_url}
+                                            alt={profile?.full_name || 'User'}
+                                            fallback={profile?.full_name?.charAt(0)}
+                                            size="md"
+                                        />
+                                    </button>
 
-                                {profile ? (
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                            className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 items-center gap-3 pl-2 pr-1 py-1 border border-gray-100 hover:shadow-md transition-all"
-                                        >
-                                            <span className="sr-only">Open user menu</span>
-                                            <span className="text-zinc-700 font-bold hidden md:block pl-2">
-                                                {profile?.full_name || 'User'}
-                                            </span>
-                                            <Avatar
-                                                src={profile?.avatar_url}
-                                                alt={profile?.full_name || 'User'}
-                                                fallback={profile?.full_name?.charAt(0)}
-                                                size="md"
-                                            />
-                                        </button>
-
-                                        {isMenuOpen && (
-                                            <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-2xl shadow-xl py-2 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none animate-fadeIn border border-gray-100">
-                                                <div className="px-4 py-3 border-b border-gray-100 mb-1">
-                                                    <p className="text-sm text-zinc-500">Signed in as</p>
-                                                    <p className="text-sm font-bold text-zinc-900 truncate">{profile?.full_name}</p>
-                                                </div>
-                                                <Link
-                                                    href="/profile"
-                                                    className="block px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-yellow-50 hover:text-zinc-900 mx-2 rounded-xl transition-colors"
-                                                    onClick={() => setIsMenuOpen(false)}
-                                                >
-                                                    Your Profile
-                                                </Link>
-                                                <button
-                                                    onClick={handleLogout}
-                                                    className="block w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 mx-2 rounded-xl transition-colors mt-1"
-                                                >
-                                                    Sign out
-                                                </button>
+                                    {isMenuOpen && (
+                                        <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-2xl shadow-xl py-2 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none animate-fadeIn border border-gray-100">
+                                            <div className="px-4 py-3 border-b border-gray-100 mb-1">
+                                                <p className="text-sm text-zinc-500">Signed in as</p>
+                                                <p className="text-sm font-bold text-zinc-900 truncate">{profile?.full_name}</p>
                                             </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-3 ml-2">
-                                        <Link href="/login" className="text-sm font-bold text-zinc-600 hover:text-zinc-900 transition-colors">
-                                            Login
-                                        </Link>
-                                        <Link href="/register" className="text-sm font-bold px-5 py-2.5 bg-zinc-900 text-yellow-400 rounded-full hover:bg-zinc-800 hover:scale-105 transition-all duration-200 shadow-md">
-                                            Get Started
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                                            <Link
+                                                href="/profile"
+                                                className="block px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-yellow-50 hover:text-zinc-900 mx-2 rounded-xl transition-colors"
+                                                onClick={() => setIsMenuOpen(false)}
+                                            >
+                                                Your Profile
+                                            </Link>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="block w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 mx-2 rounded-xl transition-colors mt-1"
+                                            >
+                                                Sign out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 ml-2">
+                                    <Link href="/login" className="text-sm font-bold text-zinc-600 hover:text-zinc-900 transition-colors">
+                                        Login
+                                    </Link>
+                                    <Link href="/register" className="text-sm font-bold px-5 py-2.5 bg-zinc-900 text-yellow-400 rounded-full hover:bg-zinc-800 hover:scale-105 transition-all duration-200 shadow-md">
+                                        Get Started
+                                    </Link>
+                                </div>
+                            )}
 
-                    {/* Mobile menu button */}
-                    <div className="-mr-2 flex items-center sm:hidden">
-                        <button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="inline-flex items-center justify-center p-2 rounded-xl text-zinc-400 hover:text-zinc-500 hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-yellow-400"
-                        >
-                            <span className="sr-only">Open main menu</span>
-                            <svg
-                                className={`${isMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                            <svg
-                                className={`${isMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                            {/* Profile Avatar for Mobile (Top Right) - Replaces Hamburger */}
+                            {profile && (
+                                <Link href="/profile" className="sm:hidden block">
+                                    <Avatar
+                                        src={profile?.avatar_url}
+                                        alt={profile?.full_name || 'User'}
+                                        fallback={profile?.full_name?.charAt(0)}
+                                        size="md"
+                                    />
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile menu */}
-            {isMenuOpen && (
-                <div className="sm:hidden bg-white border-t border-gray-100">
-                    <div className="pt-2 pb-3 space-y-1 px-2">
-                        {profile && (
-                            <Link
-                                href="/dashboard"
-                                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-base font-bold ${isActive('/dashboard')
-                                    ? 'bg-yellow-50 text-zinc-900'
-                                    : 'text-zinc-500 hover:bg-gray-50 hover:text-zinc-900'
-                                    }`}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Dashboard
-                                {isDashboardPro && (
-                                    <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                )}
-                            </Link>
-                        )}
-                        <Link
-                            href="/discover"
-                            className={`block px-3 py-2 rounded-xl text-base font-bold ${isActive('/discover') || isActive('/events')
-                                ? 'bg-yellow-50 text-zinc-900'
-                                : 'text-zinc-500 hover:bg-gray-50 hover:text-zinc-900'
-                                }`}
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            Discover
-                        </Link>
-                        <button
-                            onClick={() => {
-                                setIsMenuOpen(false)
-                                setSearchOpen(true)
-                            }}
-                            className="block w-full text-left px-3 py-2 rounded-xl text-base font-bold text-zinc-500 hover:bg-gray-50 hover:text-zinc-900"
-                        >
-                            Search
-                        </button>
-                        {profile ? (
-                            <button
-                                onClick={handleLogout}
-                                className="block w-full text-left px-3 py-2 rounded-xl text-base font-bold text-red-600 hover:bg-red-50"
-                            >
-                                Sign out
-                            </button>
-                        ) : (
-                            <>
-                                <Link
-                                    href="/login"
-                                    className="block px-3 py-2 rounded-xl text-base font-bold text-zinc-600 hover:bg-gray-50 hover:text-zinc-900"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    Login
-                                </Link>
-                                <Link
-                                    href="/register"
-                                    className="block px-3 py-2 rounded-xl text-base font-bold text-zinc-600 hover:bg-gray-50 hover:text-zinc-900"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    Get Started
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
             <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
         </nav>
     )

@@ -19,7 +19,7 @@ import {
 import { format } from 'date-fns'
 import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
-import { getMe } from '@/services/api'
+import { getMe, openRegistration, closeRegistration } from '@/services/api'
 
 interface EventsTableProps {
     events: EventDetails[]
@@ -257,12 +257,37 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                     </div>
                                                     <div className="space-y-4">
                                                         <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Location</h4>
-                                                            <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">Status & Registration</h4>
+                                                            <div className="space-y-2">
+                                                                <p className="text-gray-600 capitalize">
+                                                                    Visibility: {event.visibility}
+                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-gray-600">Registration:</span>
+                                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${event.registration_status === 'opened' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                        {event.registration_status === 'opened' ? 'Open' : 'Closed'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Visibility</h4>
-                                                            <p className="text-gray-600 capitalize">{event.visibility}</p>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">Metrics</h4>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Participants</p>
+                                                                    <p className="font-mono text-gray-700">{event.participant_count || 0}</p>
+                                                                </div>
+                                                                {event.registration_type === 'paid' && (
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Price</p>
+                                                                        <p className="font-mono text-gray-700">RM {event.price?.toFixed(2) || '0.00'}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">Location</h4>
+                                                            <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -342,9 +367,9 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                     <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-2xl z-50 w-full max-w-lg outline-none">
                         <Dialog.Title className="text-lg font-bold text-gray-900 mb-2">Unpublish Event</Dialog.Title>
                         <p className="text-sm text-gray-700 mb-4">Provide a reason for unpublishing. The organizer will be notified.</p>
-                        <textarea value={moderationReason} onChange={(e) => setModerationReason(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg h-28 text-sm" placeholder="Reason (required)" />
+                        <textarea value={moderationReason} onChange={(e) => setModerationReason(e.target.value)} className="text-gray-600 w-full px-3 py-2 border border-gray-300 rounded-lg h-28 text-sm" placeholder="Reason (required)" />
                         <div className="mt-4 flex items-center justify-end gap-2">
-                            <button className="px-3 py-2 border border-gray-300 rounded-lg" onClick={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Cancel</button>
+                            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600" onClick={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Cancel</button>
                             <button className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-lg font-bold hover:bg-yellow-300" disabled={!moderationReason.trim()} onClick={() => { if (moderationTargetId) handleUnpublish(moderationTargetId, moderationReason.trim()); setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Unpublish</button>
                         </div>
                     </Dialog.Content>

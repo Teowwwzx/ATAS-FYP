@@ -51,6 +51,7 @@ export default function DiscoverPage() {
     const [fintechEvents, setFintechEvents] = useState<EventDetails[]>([])
     const [aiEvents, setAiEvents] = useState<EventDetails[]>([])
     const [careerEvents, setCareerEvents] = useState<EventDetails[]>([])
+    const [blockchainEvents, setBlockchainEvents] = useState<EventDetails[]>([])
 
     // Event Filters State
     const [eventFiltersOpen, setEventFiltersOpen] = useState(false)
@@ -137,17 +138,19 @@ export default function DiscoverPage() {
     const loadAllEventSections = async () => {
         try {
             setEventsLoading(true)
-            const [incoming, fintech, ai, career, myData] = await Promise.all([
+            const [incoming, fintech, ai, career, blockchain, myData] = await Promise.all([
                 getPublicEvents({ upcoming: true }),
                 getPublicEvents({ category_name: 'Fintech' }),
                 getPublicEvents({ category_name: 'AI' }),
                 getPublicEvents({ category_name: 'Future Career' }),
+                getPublicEvents({ category_name: 'Blockchain' }),
                 getMyEvents().catch(() => []) // Silently fail if not logged in
             ])
             setIncomingEvents(incoming)
             setFintechEvents(fintech)
             setAiEvents(ai)
             setCareerEvents(career)
+            setBlockchainEvents(blockchain)
 
             // Filter for events joined (not organized)
             const joinedEvents = myData.filter(e => e.my_role !== 'organizer')
@@ -268,8 +271,8 @@ export default function DiscoverPage() {
                         </button>
                     </div>
 
-                    {/* Controls (Right) */}
-                    <div className="flex items-center gap-3 flex-1 md:flex-none md:min-w-[400px]">
+                    {/* Controls (Right) - RELATIVE for Absolute Filter Button */}
+                    <div className="flex items-center gap-3 flex-1 md:flex-none md:min-w-[400px] relative">
                         {/* Search Input */}
                         <div className="relative flex-1 group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -279,7 +282,7 @@ export default function DiscoverPage() {
                             </div>
                             <input
                                 type="text"
-                                className="block w-full pl-10 pr-4 py-2.5 bg-zinc-50 border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all duration-200 text-sm font-medium"
+                                className="block w-full pl-10 pr-14 py-2.5 bg-zinc-50 border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all duration-200 text-sm font-medium"
                                 placeholder={
                                     activeTab === 'events' ? "Search events..." :
                                         activeTab === 'organizations' ? "Search organizations..." :
@@ -298,17 +301,17 @@ export default function DiscoverPage() {
                             />
                         </div>
 
-                        {/* Filters Button & Dropdown */}
-                        <div className="relative z-50">
+                        {/* Filters Button & Dropdown - ABSOLUTE POSITIONED */}
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-50">
                             <button
                                 onClick={() => {
                                     if (activeTab === 'events') setEventFiltersOpen(!eventFiltersOpen)
                                     else if (activeTab === 'organizations') setOrgFiltersOpen(!orgFiltersOpen)
                                     else setPeopleFiltersOpen(!peopleFiltersOpen)
                                 }}
-                                className={`p-2.5 rounded-xl font-bold border transition-all duration-200 flex items-center gap-2 text-sm ${(activeTab === 'events' && eventFiltersOpen) || (activeTab === 'organizations' && orgFiltersOpen) || (activeTab === 'people' && peopleFiltersOpen)
-                                    ? 'bg-yellow-400 border-yellow-400 text-zinc-900 shadow-sm'
-                                    : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                                className={`p-2 rounded-lg font-bold transition-all duration-200 flex items-center gap-2 text-sm mr-1.5 ${(activeTab === 'events' && eventFiltersOpen) || (activeTab === 'organizations' && orgFiltersOpen) || (activeTab === 'people' && peopleFiltersOpen)
+                                    ? 'text-yellow-600 bg-yellow-50'
+                                    : 'text-zinc-400 hover:text-zinc-600'
                                     }`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
@@ -328,7 +331,7 @@ export default function DiscoverPage() {
                                     />
 
                                     {/* Dropdown Content */}
-                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-zinc-100 p-5 z-50 animate-fadeIn origin-top-right">
+                                    <div className="absolute right-0 top-full mt-4 w-72 bg-white rounded-2xl shadow-xl border border-zinc-100 p-5 z-50 animate-fadeIn origin-top-right">
                                         {activeTab === 'events' ? (
                                             <div className="space-y-4">
                                                 <div>
@@ -436,21 +439,7 @@ export default function DiscoverPage() {
                             )}
                         </div>
 
-                        {/* AI Match Toggle */}
-                        {(activeTab === 'events' || activeTab === 'people') && (
-                            <button
-                                onClick={() => activeTab === 'events' ? setUseAiEvents(!useAiEvents) : setUseAiPeople(!useAiPeople)}
-                                className={`p-2.5 rounded-xl border transition-all ${(activeTab === 'events' ? useAiEvents : useAiPeople)
-                                    ? 'bg-green-500 border-green-500 text-white shadow-sm'
-                                    : 'bg-white border-zinc-200 text-zinc-400 hover:border-yellow-400 hover:text-yellow-500'
-                                    }`}
-                                title="AI Smart Match"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </button>
-                        )}
+                        {/* AI Match Toggle - REMOVED */}
                     </div>
                 </div>
             </div>
@@ -468,6 +457,16 @@ export default function DiscoverPage() {
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-2xl font-black text-zinc-900">Incoming Events</h2>
                                         <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setEventSearch('upcoming')
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                                                }}
+                                                className="text-sm font-bold text-yellow-600 hover:text-yellow-700 mr-4"
+                                            >
+                                                See More
+                                            </button>
+
                                             <button
                                                 onClick={() => {
                                                     incomingRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
@@ -495,7 +494,7 @@ export default function DiscoverPage() {
                                         className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth"
                                     >
                                         {incomingEvents.map((event) => (
-                                            <div key={event.id} className="snap-center shrink-0 w-[85vw] sm:w-[320px]">
+                                            <div key={event.id} className="snap-center shrink-0 w-[65vw] sm:w-[320px]">
                                                 <EventCard event={event} />
                                             </div>
                                         ))}
@@ -507,7 +506,8 @@ export default function DiscoverPage() {
                             {[
                                 { title: 'IT in Fintech', data: fintechEvents },
                                 { title: 'AI', data: aiEvents },
-                                { title: 'Future Career', data: careerEvents }
+                                { title: 'Future Career', data: careerEvents },
+                                { title: 'Blockchain', data: blockchainEvents }
                             ].map((cat) => cat.data.length > 0 && (
                                 <div key={cat.title}>
                                     <div className="flex items-center justify-between mb-6">
@@ -522,8 +522,8 @@ export default function DiscoverPage() {
                                             See More
                                         </button>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                        {cat.data.slice(0, 3).map((event) => (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                                        {cat.data.slice(0, 4).map((event) => (
                                             <EventCard key={event.id} event={event} />
                                         ))}
                                     </div>
@@ -557,7 +557,7 @@ export default function DiscoverPage() {
                                 <p className="text-zinc-900 text-xl font-bold">No events found matching your search.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
                                 {events.map((event) => (
                                     <EventCard key={event.id} event={event} />
                                 ))}
@@ -587,27 +587,27 @@ export default function DiscoverPage() {
                             <p className="text-zinc-900 text-xl font-bold">No organizations found.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {filteredOrgs.map((org) => (
                                 <Link key={org.id} href={`/organizations/${org.id}`} className="block group">
-                                    <div className="bg-white overflow-hidden shadow-sm rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
-                                        <div className="h-3 bg-yellow-400"></div>
-                                        <div className="px-6 py-6">
-                                            <div className="flex items-center gap-3 mb-4">
+                                    <div className="bg-white overflow-hidden shadow-sm rounded-2xl md:rounded-[2rem] hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1">
+                                        <div className="h-2 md:h-3 bg-yellow-400"></div>
+                                        <div className="px-4 py-4 md:px-6 md:py-6">
+                                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 mb-2 md:mb-4 text-center md:text-left">
                                                 {org.logo_url ? (
-                                                    <img src={org.logo_url} alt="logo" className="h-10 w-10 rounded-lg object-cover" />
+                                                    <img src={org.logo_url} alt="logo" className="h-10 w-10 md:h-10 md:w-10 rounded-lg object-cover" />
                                                 ) : (
-                                                    <div className="h-10 w-10 rounded-lg bg-zinc-100 flex items-center justify-center font-bold text-zinc-400">
+                                                    <div className="h-10 w-10 md:h-10 md:w-10 rounded-lg bg-zinc-100 flex items-center justify-center font-bold text-zinc-400 shrink-0">
                                                         {org.name.charAt(0)}
                                                     </div>
                                                 )}
                                                 <div className="min-w-0">
-                                                    <h3 className="text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{org.name}</h3>
-                                                    {org.type && <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{org.type}</span>}
+                                                    <h3 className="text-sm md:text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors line-clamp-1">{org.name}</h3>
+                                                    {org.type && <span className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider">{org.type}</span>}
                                                 </div>
                                             </div>
                                             {org.description && (
-                                                <p className="text-sm text-zinc-700 line-clamp-3">{org.description}</p>
+                                                <p className="hidden md:block text-sm text-zinc-700 line-clamp-3">{org.description}</p>
                                             )}
                                         </div>
                                     </div>
@@ -640,41 +640,41 @@ export default function DiscoverPage() {
                             <p className="text-zinc-900 text-xl font-bold">No people found.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {people.map((profile) => (
                                 <Link key={profile.id} href={`/profile/${profile.user_id}`} className="block group">
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 h-full flex flex-col">
-                                        <div className="flex items-center gap-4 mb-4">
+                                    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 h-full flex flex-col">
+                                        <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 mb-2 md:mb-4 text-center md:text-left">
                                             {profile.avatar_url ? (
-                                                <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
+                                                <img src={profile.avatar_url} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover ring-2 md:ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
                                             ) : (
-                                                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-xl ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all">
+                                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-lg md:text-xl ring-2 md:ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all shrink-0">
                                                     {profile.full_name?.charAt(0) || 'U'}
                                                 </div>
                                             )}
-                                            <div className="min-w-0 flex-1">
-                                                <h3 className="text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
+                                            <div className="min-w-0 flex-1 w-full">
+                                                <h3 className="text-sm md:text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
                                                 {profile.title && (
-                                                    <p className="text-sm font-bold text-zinc-500 truncate">{profile.title}</p>
+                                                    <p className="text-xs md:text-sm font-bold text-zinc-500 truncate">{profile.title}</p>
                                                 )}
                                                 {/* Rating */}
                                                 {(profile.average_rating !== undefined && profile.average_rating > 0) && (
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                    </svg>
-                                                    <span className="text-xs font-bold text-zinc-900">{profile.average_rating.toFixed(1)}</span>
-                                                    {profile.reviews_count ? (
-                                                        <span className="text-xs text-zinc-400">({profile.reviews_count})</span>
-                                                    ) : null}
-                                                </div>
+                                                    <div className="flex items-center justify-center md:justify-start gap-1 mt-1">
+                                                        <svg className="w-3 h-3 md:w-4 md:h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                        </svg>
+                                                        <span className="text-[10px] md:text-xs font-bold text-zinc-900">{profile.average_rating.toFixed(1)}</span>
+                                                        {profile.reviews_count ? (
+                                                            <span className="text-[10px] md:text-xs text-zinc-400">({profile.reviews_count})</span>
+                                                        ) : null}
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* Tags */}
+                                        {/* Tags - Hidden on small mobile to save space, visible on MD */}
                                         {profile.tags && profile.tags.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 mb-4">
+                                            <div className="hidden md:flex flex-wrap gap-2 mb-4">
                                                 {profile.tags.slice(0, 3).map(tag => (
                                                     <span key={tag.id} className="px-2.5 py-1 bg-yellow-50 text-yellow-700 text-xs rounded-full font-bold border border-yellow-100">
                                                         {tag.name}
@@ -688,26 +688,26 @@ export default function DiscoverPage() {
 
                                         {/* Availability / Intents */}
                                         {(profile.availability || (profile.intents && profile.intents.length > 0)) && (
-                                            <div className="mb-3 pt-3 border-t border-zinc-100">
+                                            <div className="mb-0 md:mb-3 pt-2 md:pt-3 border-t border-zinc-100 mt-2 md:mt-auto">
                                                 {profile.availability && (
-                                                    <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1">
-                                                        <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-500 mb-1 justify-center md:justify-start">
+                                                        <svg className="w-3 h-3 md:w-4 md:h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                         </svg>
-                                                        <span>{profile.availability}</span>
+                                                        <span className="truncate">{profile.availability}</span>
                                                     </div>
                                                 )}
                                                 {profile.intents && profile.intents.length > 0 && (
-                                                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                                        <span className="truncate">{profile.intents.join(', ')}</span>
+                                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-500 justify-center md:justify-start">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
+                                                        <span className="truncate max-w-full">{profile.intents[0]}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
 
                                         {profile.bio && (
-                                            <p className="text-sm text-zinc-400 line-clamp-2">{profile.bio}</p>
+                                            <p className="hidden md:block text-sm text-zinc-400 line-clamp-2">{profile.bio}</p>
                                         )}
                                     </div>
                                 </Link>

@@ -20,7 +20,7 @@ export function FloatingChatWrapper() {
 
     // Initialize Stream Chat (shared client)
     const { client } = useStreamChat(me?.id);
-    
+
     // Listen for new messages to update unread count
     useEffect(() => {
         if (!client) return;
@@ -41,7 +41,7 @@ export function FloatingChatWrapper() {
         };
 
         const handleNotification = () => {
-             updateCount();
+            updateCount();
         };
 
         // Initial check
@@ -50,13 +50,13 @@ export function FloatingChatWrapper() {
         client.on('notification.message_new', handleNewMessage);
         client.on('notification.mark_read', handleNotification);
         // Also listen to general changes if needed
-        
+
         return () => {
             client.off('notification.message_new', handleNewMessage);
             client.off('notification.mark_read', handleNotification);
         };
     }, [client]); // Removed isOpen dependency so we track background unread properly
-    
+
     const router = useRouter()
     const pathname = usePathname()
     const wrapperRef = useRef<HTMLDivElement>(null)
@@ -91,11 +91,11 @@ export function FloatingChatWrapper() {
             ])
             setMe(meData)
             setConversations(convsData)
-            
+
             // Check unread (Initial fallback from API)
             const totalUnread = convsData.reduce((acc, c) => acc + c.unread_count, 0)
             if (totalUnread > 0 && unreadCount === 0) {
-                 setUnreadCount(totalUnread)
+                setUnreadCount(totalUnread)
             }
         } catch (error) {
             console.error('Failed to load chat data', error)
@@ -112,7 +112,7 @@ export function FloatingChatWrapper() {
             const totalUnread = data.reduce((acc, c) => acc + c.unread_count, 0)
             const user = client?.user as any;
             if (user?.total_unread_count === undefined) {
-                 setUnreadCount(totalUnread)
+                setUnreadCount(totalUnread)
             }
         } catch (error) {
             console.error(error)
@@ -130,7 +130,7 @@ export function FloatingChatWrapper() {
     if (pathname === '/messages') return null
 
     return (
-        <div className="fixed bottom-28 right-8 z-50 flex flex-col items-end" ref={wrapperRef}>
+        <div className="fixed bottom-40 right-4 md:bottom-28 md:right-8 z-50 flex flex-col items-end" ref={wrapperRef}>
             {/* Chat Modal */}
             <Transition
                 show={isOpen}
@@ -148,14 +148,14 @@ export function FloatingChatWrapper() {
                             {selectedId ? 'Chat' : 'Messages'}
                         </h3>
                         <div className="flex items-center gap-2">
-                            <button 
+                            <button
                                 onClick={handleExpand}
                                 className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
                                 title="Open full screen"
                             >
                                 <SizeIcon className="w-4 h-4" />
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setIsOpen(false)}
                                 className="p-1.5 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
                             >
@@ -202,9 +202,8 @@ export function FloatingChatWrapper() {
             {/* Floating Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-200 ${
-                    isOpen ? 'bg-zinc-900 text-white rotate-90' : 'bg-white text-zinc-900 hover:bg-zinc-50'
-                }`}
+                className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 focus:outline-none focus:ring-4 focus:ring-yellow-200 ${isOpen ? 'bg-zinc-900 text-white rotate-90' : 'bg-white text-zinc-900 hover:bg-zinc-50'
+                    }`}
             >
                 {isOpen ? (
                     <Cross2Icon className="w-6 h-6" />

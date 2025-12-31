@@ -16,8 +16,19 @@ export default function VerifyEmailPage() {
 
         const verify = async () => {
             try {
-                await verifyEmail(token)
+                const data = await verifyEmail(token)
                 setStatus('success')
+
+                // Auto-login if token is returned
+                if (data.access_token) {
+                    localStorage.setItem('atas_token', data.access_token)
+                    localStorage.removeItem('pending_login_email')
+
+                    // Delay redirect to show success message
+                    setTimeout(() => {
+                        window.location.href = '/dashboard'
+                    }, 2000)
+                }
             } catch (err: any) {
                 console.error(err)
                 setStatus('error')
@@ -59,7 +70,7 @@ export default function VerifyEmailPage() {
                             </div>
                             <h3 className="text-2xl font-black text-zinc-900 mb-2">Email Verified!</h3>
                             <p className="text-zinc-500 font-medium mb-8">
-                                Your account has been successfully verified.
+                                Your account has been successfully verified. Redirecting you to dashboard...
                             </p>
                             <div>
                                 <Link

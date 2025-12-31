@@ -23,7 +23,7 @@ interface EventCardProps {
 
 export const EventCard: React.FC<EventCardProps> = ({ event, className = '', compact = false, reviewsSummary }) => {
     const startDate = new Date(event.start_datetime)
-    const heightClass = compact ? 'h-56' : 'h-[400px]'
+    const heightClass = compact ? 'h-56' : 'h-[280px] md:h-[400px]'
     const avg = reviewsSummary?.averageRating || 0
     const count = reviewsSummary?.reviewsCount || 0
     const latest = reviewsSummary?.latestComment || ''
@@ -64,7 +64,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '', com
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-95" />
 
                 {/* Badges - Top Right */}
-                <div className="absolute top-6 right-6 flex gap-2 z-10 w-full justify-end px-6">
+                <div className="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2 z-10 w-full justify-end px-4 md:px-6">
                     {event.format && (
                         <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-[10px] font-bold uppercase tracking-wider shadow-sm">
                             {event.format.replace('_', ' ')}
@@ -81,11 +81,11 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '', com
                 </div>
 
                 {/* Content Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col justify-end h-full z-10">
+                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 flex flex-col justify-end h-full z-10">
 
-                    <div className="space-y-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                    <div className="space-y-2 md:space-y-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                         {/* Title */}
-                        <h3 className="text-2xl font-black text-white leading-tight truncate group-hover:text-yellow-400 transition-colors">
+                        <h3 className="text-lg md:text-2xl font-black text-white leading-tight truncate group-hover:text-yellow-400 transition-colors">
                             {event.title}
                         </h3>
 

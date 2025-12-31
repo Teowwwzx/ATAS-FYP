@@ -35,6 +35,7 @@ app.add_middleware(
         "https://thedzx.site",
         "https://www.thedzx.site",
         "https://atas-fyp-git-master-teowzxs-projects.vercel.app",
+        settings.FRONTEND_BASE_URL,
     ],
     allow_credentials=True,
     allow_methods=["*"],
