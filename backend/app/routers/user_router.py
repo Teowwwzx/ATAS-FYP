@@ -105,6 +105,7 @@ def list_users(
     status: UserStatus | None = None,
     is_verified: bool | None = None,
     name: str | None = None,
+    role: str | None = None,
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
@@ -120,6 +121,10 @@ def list_users(
     
     if name:
         q = q.join(Profile, Profile.user_id == User.id).filter(func.lower(Profile.full_name).like(f"%{name.lower()}%"))
+    
+    # Role filtering
+    if role:
+        q = q.join(User.roles).filter(Role.name == role)
     
     if page < 1:
         page = 1
@@ -151,6 +156,7 @@ def count_users(
     status: UserStatus | None = None,
     is_verified: bool | None = None,
     name: str | None = None,
+    role: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin", "customer_support"]))
 ):
@@ -163,6 +169,11 @@ def count_users(
         q = q.filter(User.is_verified == is_verified)
     if name:
         q = q.join(Profile, Profile.user_id == User.id).filter(func.lower(Profile.full_name).like(f"%{name.lower()}%"))
+    
+    # Role filtering
+    if role:
+        q = q.join(User.roles).filter(Role.name == role)
+    
     total = q.with_entities(User.id).distinct().count()
     return {"total_count": total}
 

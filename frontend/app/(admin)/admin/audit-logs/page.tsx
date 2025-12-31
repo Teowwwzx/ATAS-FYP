@@ -4,6 +4,8 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { adminService } from '@/services/admin.service'
 import { AuditLogsTable } from '@/components/admin/AuditLogsTable'
+import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
+import { UserResponse } from '@/services/api.types'
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons'
 import { Pagination } from '@/components/ui/Pagination'
 
@@ -13,9 +15,7 @@ export default function AuditLogsPage() {
     const [page, setPage] = useState(1)
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
     const [actionFilter, setActionFilter] = useState('')
-    const [actorFilter, setActorFilter] = useState('')
-    const [targetTypeFilter, setTargetTypeFilter] = useState('')
-    const [targetIdFilter, setTargetIdFilter] = useState('')
+    const [selectedActor, setSelectedActor] = useState<UserResponse | null>(null)
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
 
@@ -25,9 +25,7 @@ export default function AuditLogsPage() {
         action: actionFilter || undefined,
         start_after: startDate || undefined,
         end_before: endDate || undefined,
-        actor_user_id: actorFilter || undefined,
-        target_type: targetTypeFilter || undefined,
-        target_id: targetIdFilter || undefined,
+        actor_user_id: selectedActor?.id || undefined,
     }
 
     const { data: logs, mutate } = useSWR(
@@ -39,16 +37,12 @@ export default function AuditLogsPage() {
         ['/admin/audit-logs/count', {
             action: queryParams.action,
             actor_user_id: queryParams.actor_user_id,
-            target_type: queryParams.target_type,
-            target_id: queryParams.target_id,
             start_after: queryParams.start_after,
             end_before: queryParams.end_before,
         }],
         () => adminService.getAuditLogsCount({
             action: queryParams.action,
             actor_user_id: queryParams.actor_user_id,
-            target_type: queryParams.target_type,
-            target_id: queryParams.target_id,
             start_after: queryParams.start_after,
             end_before: queryParams.end_before,
         })
@@ -70,49 +64,36 @@ export default function AuditLogsPage() {
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Filter by action..."
+                        placeholder="Filter by action (e.g., user.login, event.create)..."
                         value={actionFilter}
                         onChange={(e) => { setActionFilter(e.target.value); setPage(1) }}
                         className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     />
                 </div>
-                <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
-                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                <UserSearchSelect
+                    onSelect={(user) => {
+                        setSelectedActor(user)
+                        setPage(1)
+                    }}
+                    placeholder="Filter by user..."
                 />
-                <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
-                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                />
-                <input
-                    type="text"
-                    placeholder="Actor user id..."
-                    value={actorFilter}
-                    onChange={(e) => { setActorFilter(e.target.value); setPage(1) }}
-                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                />
-                <select
-                    value={targetTypeFilter}
-                    onChange={(e) => { setTargetTypeFilter(e.target.value); setPage(1) }}
-                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                >
-                    <option value="">All Target Types</option>
-                    <option value="user">user</option>
-                    <option value="event">event</option>
-                    <option value="organization">organization</option>
-                    <option value="notification">notification</option>
-                </select>
-                <input
-                    type="text"
-                    placeholder="Target id..."
-                    value={targetIdFilter}
-                    onChange={(e) => { setTargetIdFilter(e.target.value); setPage(1) }}
-                    className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                />
+                <div className="flex items-center gap-2">
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                        placeholder="Start date"
+                    />
+                    <span className="text-gray-400">→</span>
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
+                        className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                        placeholder="End date"
+                    />
+                </div>
                 <select
                     value={pageSize}
                     onChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(1) }}

@@ -676,6 +676,15 @@ export const createCategory = async (body: CategoryCreate) => {
   return response.data
 }
 
+export const updateCategory = async (categoryId: string, body: { name: string }) => {
+  const response = await api.put<CategoryResponse>(`/categories/${categoryId}`, body)
+  return response.data
+}
+
+export const deleteCategory = async (categoryId: string) => {
+  await api.delete(`/categories/${categoryId}`)
+}
+
 export const deleteEventReminder = async (eventId: string) => {
   await api.delete(`/events/${eventId}/reminders`)
 }
@@ -752,7 +761,7 @@ api.interceptors.response.use(
     const isTransient = error?.response?.status === 0 || msg.includes('SSL connection has been closed')
     const cfg = error?.config || {}
     if (isTransient && !cfg._retryOnce) {
-      ;(cfg as any)._retryOnce = true
+      ; (cfg as any)._retryOnce = true
       return api.request(cfg)
     }
     if (error?.response?.status === 401) {
