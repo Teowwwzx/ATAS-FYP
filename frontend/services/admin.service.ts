@@ -252,6 +252,16 @@ export const adminService = {
         return response.data
     },
 
+    openRegistration: async (eventId: string) => {
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/registration/open`)
+        return response.data
+    },
+
+    closeRegistration: async (eventId: string) => {
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/registration/close`)
+        return response.data
+    },
+
     updateEventLogo: async (eventId: string, file: File) => {
         const fd = new FormData()
         fd.append('file', file)

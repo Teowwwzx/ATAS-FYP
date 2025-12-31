@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast'
 import { format } from 'date-fns'
 import PlacesAutocomplete, { geocodeByAddress } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
-import api, { openRegistration, closeRegistration } from '@/services/api'
+import api from '@/services/api'
 import { UserResponse } from '@/services/api.types'
 import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
 
@@ -319,6 +319,91 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                     </div>
 
                                     <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">Event Status</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {(['published', 'draft', 'cancelled'] as const).map(status => (
+                                                <button
+                                                    key={status}
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        try {
+                                                            if (status === 'published') {
+                                                                await adminService.publishEvent(event.id)
+                                                                toast.success('Event Published')
+                                                            } else if (status === 'draft') {
+                                                                await adminService.unpublishEvent(event.id)
+                                                                toast.success('Event Unpublished')
+                                                            } else {
+                                                                // For cancelled, we'll use the update API
+                                                                await adminService.updateEvent(event.id, { status: 'cancelled' })
+                                                                toast.success('Event Cancelled')
+                                                            }
+                                                            onSuccess()
+                                                        } catch (error) {
+                                                            toast.error(`Failed to update status`)
+                                                        }
+                                                    }}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-lg border-2 transition-all capitalize ${event.status === status
+                                                            ? status === 'published' ? 'border-green-500 bg-green-50 text-green-700' :
+                                                                status === 'draft' ? 'border-gray-500 bg-gray-50 text-gray-700' :
+                                                                    'border-red-500 bg-red-50 text-red-700'
+                                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                        }`}
+                                                >
+                                                    {status === 'published' && '✓ '}
+                                                    {status === 'draft' && '○ '}
+                                                    {status === 'cancelled' && '✕ '}
+                                                    {status}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-gray-500">Published events are visible to all users. Draft events are hidden.</p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">Registration Type</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        await adminService.updateEvent(event.id, { registration_type: 'free' })
+                                                        toast.success('Event is now Free')
+                                                        onSuccess()
+                                                    } catch (error) {
+                                                        toast.error('Failed to update')
+                                                    }
+                                                }}
+                                                className={`px-4 py-3 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${event.registration_type === 'free'
+                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                🆓 Free Event
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        await adminService.updateEvent(event.id, { registration_type: 'paid' })
+                                                        toast.success('Event is now Paid')
+                                                        onSuccess()
+                                                    } catch (error) {
+                                                        toast.error('Failed to update')
+                                                    }
+                                                }}
+                                                className={`px-4 py-3 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${event.registration_type === 'paid'
+                                                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                💰 Paid Event
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-500">Free events have no entry fee. Paid events require payment verification.</p>
+                                    </div>
+
+                                    <div className="space-y-2">
                                         <label className="block text-sm font-medium text-gray-700">Registration Status</label>
                                         <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
                                             <div className="flex items-center gap-2">
@@ -330,11 +415,11 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                 onClick={async () => {
                                                     try {
                                                         if (regStatus === 'opened') {
-                                                            await closeRegistration(event.id)
+                                                            await adminService.closeRegistration(event.id)
                                                             setRegStatus('closed')
                                                             toast.success('Registration Closed')
                                                         } else {
-                                                            await openRegistration(event.id)
+                                                            await adminService.openRegistration(event.id)
                                                             setRegStatus('opened')
                                                             toast.success('Registration Opened')
                                                         }

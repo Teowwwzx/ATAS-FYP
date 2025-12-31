@@ -46,6 +46,7 @@ export interface UserResponse {
     id: string
     email: string
     full_name?: string
+    avatar_url?: string
     is_verified: boolean
     status: 'active' | 'inactive' | 'frozen' | 'suspended'
     roles: RoleItem[]

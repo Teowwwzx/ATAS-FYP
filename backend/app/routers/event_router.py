@@ -1783,8 +1783,9 @@ def update_participant_payment_status(
     event = db.query(Event).filter(Event.id == event_id).first()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only organizer can verify payments")
+    is_admin = any(role.name == "admin" for role in current_user.roles)
+    if event.organizer_id != current_user.id and not is_admin:
+        raise HTTPException(status_code=403, detail="Only organizer or admin can verify payments")
         
     participant = (
         db.query(EventParticipant)
