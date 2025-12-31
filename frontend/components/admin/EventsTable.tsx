@@ -19,7 +19,7 @@ import {
 import { format } from 'date-fns'
 import Image from 'next/image'
 import * as Dialog from '@radix-ui/react-dialog'
-import { getMe } from '@/services/api'
+import { getMe, openRegistration, closeRegistration } from '@/services/api'
 
 interface EventsTableProps {
     events: EventDetails[]
@@ -257,12 +257,37 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                     </div>
                                                     <div className="space-y-4">
                                                         <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Location</h4>
-                                                            <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">Status & Registration</h4>
+                                                            <div className="space-y-2">
+                                                                <p className="text-gray-600 capitalize">
+                                                                    Visibility: {event.visibility}
+                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-gray-600">Registration:</span>
+                                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${event.registration_status === 'opened' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                        {event.registration_status === 'opened' ? 'Open' : 'Closed'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-semibold text-gray-900 mb-1">Visibility</h4>
-                                                            <p className="text-gray-600 capitalize">{event.visibility}</p>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">Metrics</h4>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500 uppercase tracking-wide">Participants</p>
+                                                                    <p className="font-mono text-gray-700">{event.participant_count || 0}</p>
+                                                                </div>
+                                                                {event.registration_type === 'paid' && (
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500 uppercase tracking-wide">Price</p>
+                                                                        <p className="font-mono text-gray-700">RM {event.price?.toFixed(2) || '0.00'}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-900 mb-1">Location</h4>
+                                                            <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
                                                         </div>
                                                     </div>
                                                 </div>

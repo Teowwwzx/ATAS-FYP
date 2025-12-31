@@ -228,6 +228,7 @@ export interface EventCreate {
     // ... (skipping unchanged parts)
     venue_name?: string | null
     remark?: string | null
+    price?: number // Default 0.0
 }
 
 export interface EventDetails extends EventCreate {
