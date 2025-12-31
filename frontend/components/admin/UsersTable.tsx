@@ -101,8 +101,7 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verified</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status & Verification</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -147,19 +146,27 @@ export function UsersTable({ users, onSuspend, onActivate, onVerifyExpert: _onVe
                                         ? Array.from(new Set(user.roles.map((r) => typeof r === 'string' ? r : r.name))).filter(Boolean).join(', ') || '-'
                                         : '-'}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' :
-                                        user.status === 'suspended' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                        {user.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {user.is_verified ? (
-                                        <CheckIcon className="w-5 h-5 text-green-500" />
-                                    ) : (
-                                        <Cross2Icon className="w-5 h-5 text-gray-400" />
-                                    )}
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col gap-1">
+                                        {/* Status Pill */}
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-800' :
+                                            user.status === 'suspended' ? 'bg-red-100 text-red-800' :
+                                                user.status === 'frozen' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-gray-100 text-gray-800'
+                                            }`}>
+                                            {user.status === 'active' && '● '}
+                                            {user.status === 'suspended' && '✕ '}
+                                            {user.status === 'frozen' && '❄ '}
+                                            {user.status === 'inactive' && '○ '}
+                                            <span className="capitalize">{user.status}</span>
+                                        </span>
+
+                                        {/* Verified Pill */}
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.is_verified ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                                            }`}>
+                                            {user.is_verified ? '✓ Verified' : '○ Unverified'}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex justify-end flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
