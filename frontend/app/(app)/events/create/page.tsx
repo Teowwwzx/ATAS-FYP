@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createEvent, pingApi, getMyOrganizations } from '@/services/api'
+import { createEvent, pingApi, getMyOrganizations, listCategories, attachEventCategories } from '@/services/api'
 import { FormInput } from '@/components/auth/FormInput'
-import { EventCreate, EventType, OrganizationResponse } from '@/services/api.types'
+import { EventCreate, EventType, OrganizationResponse, CategoryResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
@@ -48,6 +48,9 @@ export default function CreateEventPage() {
 
     const [organizations, setOrganizations] = useState<OrganizationResponse[]>([])
     const [showOrgModal, setShowOrgModal] = useState(false)
+    const [allCategories, setAllCategories] = useState<CategoryResponse[]>([])
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+    const [categorySearch, setCategorySearch] = useState('')
 
     // Load draft on mount
     useEffect(() => {
@@ -61,10 +64,14 @@ export default function CreateEventPage() {
         }
     }, [])
 
-    // Fetch organizations on mount
+    // Fetch organizations and categories on mount
     useEffect(() => {
         getMyOrganizations()
             .then(setOrganizations)
+            .catch(console.error)
+        
+        listCategories()
+            .then(setAllCategories)
             .catch(console.error)
     }, [])
 
@@ -146,6 +153,12 @@ export default function CreateEventPage() {
 
             await pingApi()
             const newEvent = await createEvent(payload)
+
+            // Attach categories
+            if (selectedCategories.length > 0) {
+                await attachEventCategories(newEvent.id, { category_ids: selectedCategories })
+            }
+
             localStorage.removeItem('event_create_draft')
             toast.success('Event created successfully')
             router.push(`/events/${newEvent.id}`)
@@ -228,6 +241,40 @@ export default function CreateEventPage() {
                     value={formData.title}
                     onChange={handleChange}
                 />
+
+                <div>
+                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
+                        Categories
+                    </label>
+                    <input 
+                        type="text" 
+                        placeholder="Search categories..." 
+                        value={categorySearch} 
+                        onChange={(e) => setCategorySearch(e.target.value)} 
+                        className="block w-full mb-3 rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-3 px-5 transition-all duration-200" 
+                    />
+                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
+                        {allCategories.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase())).map(cat => {
+                            const isSelected = selectedCategories.includes(cat.id)
+                            return (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => setSelectedCategories(prev => 
+                                        isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
+                                    )}
+                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+                                        isSelected 
+                                            ? 'bg-yellow-400 border-yellow-400 text-zinc-900 shadow-sm' 
+                                            : 'bg-white border-zinc-200 text-zinc-600 hover:border-yellow-400 hover:text-zinc-900'
+                                    }`}
+                                >
+                                    {cat.name}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
 
                 <div>
                     <label htmlFor="description" className="block text-sm font-bold text-zinc-900 mb-2 ml-1">

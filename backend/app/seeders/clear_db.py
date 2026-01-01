@@ -4,7 +4,8 @@ from app.models.user_model import User, Role
 from app.models.organization_model import Organization, organization_members
 from app.models.event_model import (
     Event, EventCategory, EventPicture, EventParticipant, EventProposal, 
-    EventProposalComment, EventChecklistItem, EventChecklistAssignment, EventReminder
+    EventProposalComment, EventChecklistItem, EventChecklistAssignment, EventReminder,
+    EventWalkInToken
 )
 from app.models.profile_model import Profile, Education, JobExperience
 from app.models.review_model import Review
@@ -58,6 +59,9 @@ def clear_db(db: Session):
         
         # EventProposal references Conversation
         db.query(EventProposal).delete()
+
+        # Delete EventWalkInToken (references Event)
+        db.query(EventWalkInToken).delete()
         
         # Now safe to delete Events
         db.query(Event).delete()

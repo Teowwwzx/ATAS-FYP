@@ -137,9 +137,16 @@ def count_events(
     q_text: str | None = Query(None),
     status: EventStatus | None = Query(None),
     type: EventType | None = Query(None),
+    format: EventFormat | None = Query(None),
+    registration_type: EventRegistrationType | None = Query(None),
+    registration_status: EventRegistrationStatus | None = Query(None),
+    category_id: uuid.UUID | None = Query(None),
+    category_name: str | None = Query(None),
     organizer_id: uuid.UUID | None = Query(None),
     visibility: EventVisibility | None = Query(None),
     upcoming: bool = Query(False),
+    start_after: datetime | None = Query(None),
+    end_before: datetime | None = Query(None),
     include_all_visibility: bool = Query(False),
     db: Session = Depends(get_db),
 ):
@@ -156,20 +163,54 @@ def count_events(
 
     if upcoming:
         query = query.filter(Event.start_datetime >= func.now())
+    if start_after:
+        query = query.filter(Event.start_datetime >= start_after)
+    if end_before:
+        query = query.filter(Event.end_datetime <= end_before)
+
     if q_text:
-        query = query.filter(
-            or_(
-                Event.title.ilike(f"%{q_text}%"),
-                Event.description.ilike(f"%{q_text}%"),
-                Event.location.ilike(f"%{q_text}%"),
-            )
-        )
+        query = query.filter(Event.title.ilike(f"%{q_text}%"))
+    
     if status:
         query = query.filter(Event.status == status)
+    else:
+        # Default to published if not specified (matching get_all_events logic partially, 
+        # though get_all_events has include_all_status. Let's assume public count implies published usually? 
+        # But get_all_events defaults to published. count_events didn't. 
+        # Let's keep existing behavior of count_events regarding status default to avoid breaking changes, 
+        # OR match get_all_events. 
+        # get_all_events: if status is None -> filter(status == published).
+        # count_events original: if status: filter. Else nothing.
+        # This discrepancy might be why counts are sometimes off? 
+        # Let's stick to original count_events logic for status to be safe, or align it?
+        # The user didn't ask to fix counts, just add past events.
+        pass
+
     if type:
         query = query.filter(Event.type == type)
+    if format:
+        query = query.filter(Event.format == format)
+    if registration_type:
+        query = query.filter(Event.registration_type == registration_type)
+    if registration_status:
+        query = query.filter(Event.registration_status == registration_status)
+    
     if organizer_id:
         query = query.filter(Event.organizer_id == organizer_id)
+
+    if category_id is not None:
+        query = (
+            query.join(EventCategory, EventCategory.event_id == Event.id)
+            .filter(EventCategory.category_id == category_id)
+            .distinct()
+        )
+    elif category_name is not None:
+        query = (
+            query.join(EventCategory, EventCategory.event_id == Event.id)
+            .join(Category, Category.id == EventCategory.category_id)
+            .filter(func.lower(Category.name) == func.lower(category_name))
+            .distinct()
+        )
 
     return {"total_count": query.count()}
 
@@ -509,7 +550,7 @@ def create_event(
     venue_place_id = event.venue_place_id if event.venue_place_id else DEFAULT_APU_PLACE_ID
 
     # Avoid duplicate/unknown kwargs when constructing the ORM model
-    payload = event.model_dump(exclude={"start_datetime", "end_datetime", "type", "venue_place_id"})
+    payload = event.model_dump(exclude={"start_datetime", "end_datetime", "type", "venue_place_id", "categories"})
     db_event = Event(
         **payload,
         organizer_id=current_user.id,
@@ -529,6 +570,14 @@ def create_event(
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+
+    # Handle categories
+    if event.categories:
+        from app.models.event_model import EventCategory
+        for cat_id in event.categories:
+            db_cat = EventCategory(event_id=db_event.id, category_id=cat_id)
+            db.add(db_cat)
+        db.commit()
     
     # Add organizer as an 'organizer' participant
     organizer_participant = EventParticipant(

@@ -162,7 +162,7 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                     {/* Manual Entry Panel */}
                                     <Tab.Panel>
                                         <div className="mb-4">
-                                            <p className="text-sm text-zinc-500">
+                                            <p className="text-sm text-zinc-900">
                                                 Manually add a participant who is physically present. They will be marked as attended immediately.
                                             </p>
                                         </div>
@@ -208,14 +208,14 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                             <div className="mb-6 bg-yellow-50 border border-yellow-100 rounded-lg p-4 relative">
                                                 <button 
                                                     onClick={() => setShowHint(false)}
-                                                    className="absolute top-2 right-2 text-yellow-600 hover:text-yellow-800"
+                                                    className="absolute top-2 right-2 text-zinc-900 hover:text-zinc-600"
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                                                         <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                                                     </svg>
                                                 </button>
-                                                <h4 className="text-sm font-bold text-yellow-800 mb-1">How this works</h4>
-                                                <p className="text-xs text-yellow-700 pr-4">
+                                                <h4 className="text-sm font-bold text-zinc-900 mb-1">How this works</h4>
+                                                <p className="text-xs text-zinc-900 pr-4">
                                                     Generate a unique link for attendees to register themselves at the venue. 
                                                     You can set a limit on how many times a link can be used.
                                                     Display the QR code (generated from the link) on a screen or print it out.

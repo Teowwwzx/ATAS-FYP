@@ -423,31 +423,7 @@ export default function EventDetailsPage() {
                                     </h1>
 
                                     {/* Partner/Sponsor Validations */}
-                                    {user && !isOrganizer && !isJoinedAccepted && (
-                                        <div className="flex gap-2">
-                                            {/* Expert CTA */}
-                                            {user.roles.includes('expert') && (
-                                                <button
-                                                    onClick={() => handleContactOrganizer('expert')}
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors border border-indigo-200"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                                                    Speak at this Event
-                                                </button>
-                                            )}
 
-                                            {/* Sponsor CTA */}
-                                            {user.roles.includes('sponsor') && (
-                                                <button
-                                                    onClick={() => handleContactOrganizer('sponsor')}
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold hover:bg-amber-100 transition-colors border border-amber-200"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    Sponsor this Event
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* Host Info Row */}
@@ -771,6 +747,28 @@ export default function EventDetailsPage() {
                                                 >
                                                     {registering ? 'Registering...' : isRegistrationOpen ? 'Join' : 'Registration Closed'}
                                                 </button>
+                                            )}
+
+                                            {/* Expert / Sponsor Buttons */}
+                                            {user && !isRegistered && !isOrganizer && user.roles.some(r => ['expert', 'sponsor'].includes(r as string)) && (
+                                                <div className="flex gap-2 pt-2">
+                                                    {user.roles.includes('expert') && (
+                                                        <button
+                                                            onClick={() => window.location.href = `mailto:?subject=Apply as Expert for ${event.title}`}
+                                                            className="flex-1 py-3 bg-white border border-zinc-200 text-zinc-700 rounded-xl font-bold text-center text-sm hover:bg-zinc-50 transition-colors shadow-sm"
+                                                        >
+                                                            Apply as Speaker
+                                                        </button>
+                                                    )}
+                                                    {user.roles.includes('sponsor') && (
+                                                        <button
+                                                            onClick={() => window.location.href = `mailto:?subject=Sponsorship for ${event.title}`}
+                                                            className="flex-1 py-3 bg-white border border-zinc-200 text-zinc-700 rounded-xl font-bold text-center text-sm hover:bg-zinc-50 transition-colors shadow-sm"
+                                                        >
+                                                            Sponsor Event
+                                                        </button>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     )}

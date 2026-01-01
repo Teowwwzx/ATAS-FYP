@@ -199,6 +199,10 @@ export const getPublicEvents = async (params?: {
   registration_type?: EventRegistrationType
   registration_status?: EventRegistrationStatus
   category_name?: string
+  start_after?: string
+  end_before?: string
+  page?: number
+  page_size?: number
 }) => {
   const response = await api.get<EventDetails[]>('/events', { params })
   return response.data
@@ -212,6 +216,8 @@ export const getEventsCount = async (params?: {
   registration_type?: EventRegistrationType
   registration_status?: EventRegistrationStatus
   category_name?: string
+  start_after?: string
+  end_before?: string
 }) => {
   const response = await api.get<{ total_count: number }>('/events/count', { params })
   return response.data

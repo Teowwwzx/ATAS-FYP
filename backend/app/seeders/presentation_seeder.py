@@ -159,7 +159,7 @@ def seed_presentation_data(db: Session):
     # 4. Seed Events for APU (linked via owner)
     print("Seeding events for APU...")
     
-    # 4.1 Hackathon
+    # 4.1 Physical Event: APU Hackathon 2024
     hackathon = db.query(Event).filter(Event.title == "APU Hackathon 2024", Event.organizer_id == owner.id).first()
     if not hackathon:
         hackathon = Event(
@@ -167,8 +167,8 @@ def seed_presentation_data(db: Session):
             organizer_id=owner.id,
             title="APU Hackathon 2024",
             description="Join the biggest hackathon in APU! 24 hours of coding, networking and fun. Open to all students and experts.",
-            format=EventFormat.workshop, # Using workshop as closest match or 'other'
-            type=EventType.offline,
+            format=EventFormat.workshop,
+            type=EventType.physical,
             start_datetime=datetime.now() + timedelta(days=7),
             end_datetime=datetime.now() + timedelta(days=8),
             registration_type=EventRegistrationType.free,
@@ -177,34 +177,38 @@ def seed_presentation_data(db: Session):
             venue_place_id="APU Campus",
             venue_remark="Auditorium 1",
             max_participant=100,
-            cover_url="https://placehold.co/1200x600/png?text=APU+Hackathon+2024"
+            cover_url="https://images.unsplash.com/photo-1504384308090-c54be3855833?q=80&w=2662&auto=format&fit=crop",
+            auto_accept_registration=True,
+            is_attendance_enabled=True
         )
         db.add(hackathon)
         db.flush()
-        print("Created Event: APU Hackathon 2024")
+        print("Created Physical Event: APU Hackathon 2024")
     
-    # 4.2 Club Event
-    club_event = db.query(Event).filter(Event.title == "Coding Club Weekly Meetup", Event.organizer_id == owner.id).first()
-    if not club_event:
-        club_event = Event(
+    # 4.2 Online Event: Future of AI Webinar
+    webinar = db.query(Event).filter(Event.title == "Future of AI Webinar", Event.organizer_id == owner.id).first()
+    if not webinar:
+        webinar = Event(
             id=uuid.uuid4(),
             organizer_id=owner.id,
-            title="Coding Club Weekly Meetup",
-            description="Weekly meetup for the APU Coding Club. Let's discuss algorithms and data structures.",
-            format=EventFormat.club_event,
-            type=EventType.physical,
-            start_datetime=datetime.now() + timedelta(days=2),
-            end_datetime=datetime.now() + timedelta(days=2, hours=2),
+            title="Future of AI Webinar",
+            description="Explore the latest trends in Artificial Intelligence with industry experts. Join us online!",
+            format=EventFormat.webinar,
+            type=EventType.online,
+            start_datetime=datetime.now() + timedelta(days=10),
+            end_datetime=datetime.now() + timedelta(days=10, hours=2),
             registration_type=EventRegistrationType.free,
             status=EventStatus.published,
             visibility=EventVisibility.public,
-            venue_place_id="APU Campus",
-            venue_remark="Lab 4",
-            cover_url="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2670&auto=format&fit=crop"
+            meeting_url="https://meet.google.com/abc-defg-hij",
+            max_participant=500,
+            cover_url="https://images.unsplash.com/photo-1614064641938-3bcee52636cd?q=80&w=2670&auto=format&fit=crop",
+            auto_accept_registration=True,
+            is_attendance_enabled=True
         )
-        db.add(club_event)
+        db.add(webinar)
         db.flush()
-        print("Created Event: Coding Club Weekly Meetup")
+        print("Created Online Event: Future of AI Webinar")
 
     # 5. Add Participants (Walk-in)
     if hackathon:
@@ -222,20 +226,131 @@ def seed_presentation_data(db: Session):
             db.add(p1)
             print("Added Walk-in Participant 1 to Hackathon")
 
-    if club_event:
-        p2 = db.query(EventParticipant).filter(EventParticipant.event_id == club_event.id, EventParticipant.email == "walkin2@example.com").first()
+    if webinar:
+        p2 = db.query(EventParticipant).filter(EventParticipant.event_id == webinar.id, EventParticipant.email == "onlineuser@example.com").first()
         if not p2:
             p2 = EventParticipant(
-                event_id=club_event.id,
+                event_id=webinar.id,
                 user_id=None, # Walk-in
-                name="Walkin User Two",
-                email="walkin2@example.com",
-                role=EventParticipantRole.student,
+                name="Online User One",
+                email="onlineuser@example.com",
+                role=EventParticipantRole.audience,
                 status=EventParticipantStatus.accepted,
                 join_method="walk_in"
             )
             db.add(p2)
-            print("Added Walk-in Participant 2 to Club Event")
+            print("Added Participant to Webinar")
+
+    # 6. Seed Past Events (Sponsored)
+    print("Seeding past sponsored events...")
+    sponsor_user = created_users.get("sponsor")
+    if sponsor_user:
+        # 6.1 Past Tech Summit
+        tech_summit = db.query(Event).filter(Event.title == "Tech Summit 2023", Event.organizer_id == owner.id).first()
+        if not tech_summit:
+            tech_summit = Event(
+                id=uuid.uuid4(),
+                organizer_id=owner.id,
+                title="Tech Summit 2023",
+                description="The biggest tech summit of last year. Featuring top industry leaders.",
+                format=EventFormat.seminar,
+                type=EventType.physical,
+                start_datetime=datetime.now() - timedelta(days=365),
+                end_datetime=datetime.now() - timedelta(days=364),
+                registration_type=EventRegistrationType.free,
+                status=EventStatus.completed,
+                visibility=EventVisibility.public,
+                venue_place_id="KLCC Convention Centre",
+                venue_remark="Hall 1",
+                max_participant=1000,
+                cover_url="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2670&auto=format&fit=crop"
+            )
+            db.add(tech_summit)
+            db.flush()
+            
+            # Add Sponsor Participant
+            sponsor_p1 = EventParticipant(
+                event_id=tech_summit.id,
+                user_id=sponsor_user.id,
+                role=EventParticipantRole.sponsor,
+                status=EventParticipantStatus.accepted,
+                join_method="invite",
+                promo_link="https://www.google.com",
+                promo_image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png"
+            )
+            db.add(sponsor_p1)
+            print("Created Past Event: Tech Summit 2023 (Sponsored)")
+
+        # 6.2 Past AI Workshop
+        ai_workshop = db.query(Event).filter(Event.title == "AI Workshop 2023", Event.organizer_id == owner.id).first()
+        if not ai_workshop:
+            ai_workshop = Event(
+                id=uuid.uuid4(),
+                organizer_id=owner.id,
+                title="AI Workshop 2023",
+                description="Hands-on AI workshop from last year.",
+                format=EventFormat.workshop,
+                type=EventType.online,
+                start_datetime=datetime.now() - timedelta(days=200),
+                end_datetime=datetime.now() - timedelta(days=200, hours=4),
+                registration_type=EventRegistrationType.free,
+                status=EventStatus.completed,
+                visibility=EventVisibility.public,
+                meeting_url="https://zoom.us/j/123456789",
+                max_participant=50,
+                cover_url="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=2670&auto=format&fit=crop"
+            )
+            db.add(ai_workshop)
+            db.flush()
+
+            # Add Sponsor Participant
+            sponsor_p2 = EventParticipant(
+                event_id=ai_workshop.id,
+                user_id=sponsor_user.id,
+                role=EventParticipantRole.sponsor,
+                status=EventParticipantStatus.accepted,
+                join_method="invite",
+                promo_link="https://www.microsoft.com",
+                promo_image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Microsoft_logo_%282012%29.svg/2560px-Microsoft_logo_%282012%29.svg.png"
+            )
+            db.add(sponsor_p2)
+            print("Created Past Event: AI Workshop 2023 (Sponsored)")
+
+        # 6.3 Past Cloud Computing Conference
+        cloud_conf = db.query(Event).filter(Event.title == "Cloud Computing Conference 2023", Event.organizer_id == owner.id).first()
+        if not cloud_conf:
+            cloud_conf = Event(
+                id=uuid.uuid4(),
+                organizer_id=owner.id,
+                title="Cloud Computing Conference 2023",
+                description="Everything about Cloud Computing trends and technologies.",
+                format=EventFormat.seminar,
+                type=EventType.physical,
+                start_datetime=datetime.now() - timedelta(days=150),
+                end_datetime=datetime.now() - timedelta(days=149),
+                registration_type=EventRegistrationType.paid,
+                status=EventStatus.completed,
+                visibility=EventVisibility.public,
+                venue_place_id="APU Main Hall",
+                venue_remark="Level 3",
+                max_participant=300,
+                cover_url="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2672&auto=format&fit=crop"
+            )
+            db.add(cloud_conf)
+            db.flush()
+
+            # Add Sponsor Participant
+            sponsor_p3 = EventParticipant(
+                event_id=cloud_conf.id,
+                user_id=sponsor_user.id,
+                role=EventParticipantRole.sponsor,
+                status=EventParticipantStatus.accepted,
+                join_method="invite",
+                promo_link="https://aws.amazon.com",
+                promo_image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Amazon_Web_Services_Logo.svg/2560px-Amazon_Web_Services_Logo.svg.png"
+            )
+            db.add(sponsor_p3)
+            print("Created Past Event: Cloud Computing Conference 2023 (Sponsored)")
 
     db.commit()
     print("Presentation data seeded successfully!")

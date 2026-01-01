@@ -58,6 +58,7 @@ export default function DiscoverPage() {
     const [filterRegType, setFilterRegType] = useState<EventRegistrationType | ''>('')
     const [filterRegStatus, setFilterRegStatus] = useState<EventRegistrationStatus | ''>('')
     const [filterEventType, setFilterEventType] = useState<EventType | ''>('')
+    const [filterTimeframe, setFilterTimeframe] = useState<'upcoming' | 'past' | 'all'>('upcoming')
     const [eventPage, setEventPage] = useState(1)
     const [eventTotal, setEventTotal] = useState(0)
 
@@ -111,7 +112,7 @@ export default function DiscoverPage() {
 
 
     // Reset pages when filters change
-    useEffect(() => { setEventPage(1) }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType])
+    useEffect(() => { setEventPage(1) }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType, filterTimeframe])
     useEffect(() => { setOrgPage(1) }, [orgSearch, filterOrgType])
     useEffect(() => { setPeoplePage(1) }, [debouncedPeopleSearch, peopleRole, peopleSkill])
 
@@ -120,7 +121,7 @@ export default function DiscoverPage() {
         if (activeTab === 'events') {
             loadFilteredEvents()
         }
-    }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType, activeTab, eventPage])
+    }, [debouncedEventSearch, filterRegType, filterRegStatus, filterEventType, filterTimeframe, activeTab, eventPage])
 
     useEffect(() => {
         if (activeTab === 'people') {
@@ -175,6 +176,8 @@ export default function DiscoverPage() {
                 registration_type: filterRegType || undefined,
                 registration_status: filterRegStatus || undefined,
                 type: filterEventType || undefined,
+                upcoming: filterTimeframe === 'upcoming' ? true : undefined,
+                end_before: filterTimeframe === 'past' ? new Date().toISOString() : undefined,
             }
 
             if (useAiEvents) {
@@ -334,6 +337,18 @@ export default function DiscoverPage() {
                                     <div className="absolute right-0 top-full mt-4 w-72 bg-white rounded-2xl shadow-xl border border-zinc-100 p-5 z-50 animate-fadeIn origin-top-right">
                                         {activeTab === 'events' ? (
                                             <div className="space-y-4">
+                                                <div>
+                                                    <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Timeframe</label>
+                                                    <select
+                                                        value={filterTimeframe}
+                                                        onChange={(e) => setFilterTimeframe(e.target.value as any)}
+                                                        className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                    >
+                                                        <option value="upcoming">Upcoming Events</option>
+                                                        <option value="past">Past Events</option>
+                                                        <option value="all">All Events</option>
+                                                    </select>
+                                                </div>
                                                 <div>
                                                     <label className="text-xs font-bold text-zinc-400 uppercase mb-1.5 block">Status</label>
                                                     <select

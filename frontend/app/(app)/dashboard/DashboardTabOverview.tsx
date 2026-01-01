@@ -284,9 +284,9 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                     min="0"
                                     value={form.max_participant}
                                     onChange={(e) => setForm({ ...form, max_participant: parseInt(e.target.value) || 0 })}
-                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-grey-700"
+                                    className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4"
                                 />
-                                <p className="text-[10px] text-zinc-400 mt-2 font-medium">Set to 0 for unlimited.</p>
+                                <p className="text-[10px] text-gray-700 mt-2 font-medium">Set to 0 for unlimited.</p>
                             </div>
 
                             <div className="w-full h-px bg-zinc-100 my-4"></div>
@@ -297,7 +297,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                     type="text"
                                     value={form.title}
                                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 font-bold text-zinc-900"
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-gray-700"
                                 />
                             </div>
 
