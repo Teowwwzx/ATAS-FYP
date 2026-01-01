@@ -5,9 +5,10 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Cross2Icon, ImageIcon } from '@radix-ui/react-icons'
 import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
-import { updateEventCover, updateEventLogo } from '@/services/api'
 import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
+import { CategorySearchSelect } from '@/components/admin/CategorySearchSelect'
+import { OrganizationSearchSelect } from '@/components/admin/OrganizationSearchSelect'
 
 interface CreateEventModalProps {
     isOpen: boolean
@@ -17,6 +18,8 @@ interface CreateEventModalProps {
 
 export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModalProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [createdEventId, setCreatedEventId] = useState<string | null>(null)
+
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -26,27 +29,24 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
         venue_remark: '',
         max_participant: 100,
         type: 'physical',
-        format: 'seminar', // Default to seminar
+        format: 'seminar',
         visibility: 'public',
         owner_id: '',
         registration_type: 'free',
-        status: 'draft'
+        status: 'draft',
+        organization_id: '',
+        category_ids: [] as string[]
     })
 
-    const [files, setFiles] = useState<{ cover: File | null; logo: File | null }>({ cover: null, logo: null })
+    const [files, setFiles] = useState<{ cover: File | null; logo: File | null; paymentQR: File | null }>({ cover: null, logo: null, paymentQR: null })
     const coverRef = useRef<HTMLInputElement>(null)
     const logoRef = useRef<HTMLInputElement>(null)
+    const paymentQRRef = useRef<HTMLInputElement>(null)
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'logo') => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'logo' | 'paymentQR') => {
         if (e.target.files && e.target.files[0]) {
             setFiles(prev => ({ ...prev, [type]: e.target.files![0] }))
         }
-    }
-
-    const handleClearFile = (type: 'cover' | 'logo') => {
-        setFiles(prev => ({ ...prev, [type]: null }))
-        if (type === 'cover' && coverRef.current) coverRef.current.value = ''
-        if (type === 'logo' && logoRef.current) logoRef.current.value = ''
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -62,25 +62,35 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 return
             }
 
-            // Create Event (as current admin)
-            const createdEvent = await adminService.createEvent({
-                title: formData.title,
-                description: formData.description,
-                start_datetime: start.toISOString(),
-                end_datetime: end.toISOString(),
-                venue_place_id: formData.venue_place_id,
-                venue_remark: formData.venue_remark,
-                max_participant: formData.max_participant,
-                type: formData.type,
-                format: formData.format,
-                visibility: formData.visibility,
-                registration_type: formData.registration_type,
-                status: formData.status
-            })
+            let eventId = createdEventId
+
+            // Create Event (if not already created)
+            if (!eventId) {
+                const createdEvent = await adminService.createEvent({
+                    title: formData.title,
+                    description: formData.description,
+                    start_datetime: start.toISOString(),
+                    end_datetime: end.toISOString(),
+                    venue_place_id: formData.venue_place_id,
+                    venue_remark: formData.venue_remark,
+                    max_participant: formData.max_participant,
+                    type: formData.type,
+                    format: formData.format,
+                    visibility: formData.visibility,
+                    registration_type: formData.registration_type,
+                    organization_id: formData.organization_id || undefined,
+                    categories: formData.category_ids || [],
+                    status: formData.status
+                })
+                eventId = createdEvent.id
+                setCreatedEventId(eventId)
+            }
+
+            if (!eventId) throw new Error('Failed to start event creation')
 
             // If owner_id specified, transfer ownership immediately
             if (formData.owner_id) {
-                await adminService.updateEvent(createdEvent.id, {
+                await adminService.updateEvent(eventId, {
                     organizer_id: formData.owner_id
                 })
             }
@@ -88,10 +98,22 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
             // Upload Files if any
             const uploadPromises = []
             if (files.cover) {
-                uploadPromises.push(updateEventCover(createdEvent.id, files.cover))
+                uploadPromises.push(adminService.updateEventCover(eventId, files.cover))
             }
             if (files.logo) {
-                uploadPromises.push(updateEventLogo(createdEvent.id, files.logo))
+                uploadPromises.push(adminService.updateEventLogo(eventId, files.logo))
+            }
+            if (files.paymentQR) {
+                // Upload payment QR using FormData
+                const fd = new FormData()
+                fd.append('file', files.paymentQR)
+                uploadPromises.push(
+                    adminService.updateEvent(eventId, { payment_qr_url: files.paymentQR })
+                        .catch(() => {
+                            // If direct update doesn't work, we'll handle it separately
+                            toast.error('Payment QR upload is not yet supported in backend')
+                        })
+                )
             }
 
             if (uploadPromises.length > 0) {
@@ -118,11 +140,14 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 visibility: 'public',
                 owner_id: '',
                 registration_type: 'free',
-                status: 'draft'
+                status: 'draft',
+                organization_id: '',
+                category_ids: []
             })
-            setFiles({ cover: null, logo: null })
+            setFiles({ cover: null, logo: null, paymentQR: null })
+            setCreatedEventId(null)
         } catch (error) {
-            toast.error('Failed to create event')
+            toast.error('Failed to complete event creation process')
             console.error(error)
         } finally {
             setIsLoading(false)
@@ -166,13 +191,20 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                             </div>
                         </div>
 
-                        {/* Section: Organizer & Settings */}
+                        {/* Section: Organizer & Organization */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2">
+                            <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Event Organizer (Owner)</label>
                                 <UserSearchSelect
                                     onSelect={(u) => setFormData({ ...formData, owner_id: u?.id || '' })}
-                                    placeholder="Search user to assign as organizer..."
+                                    placeholder="Search user..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Organization (Optional)</label>
+                                <OrganizationSearchSelect
+                                    onSelect={(org) => setFormData({ ...formData, organization_id: org?.id || '' })}
+                                    placeholder="Search organization..."
                                 />
                             </div>
                         </div>
@@ -224,10 +256,10 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                                     className="w-full text-gray-900 bg-gray-50 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                 >
                                     <option value="seminar">Seminar</option>
-                                    <option value="conference">Conference</option>
+                                    <option value="panel_discussion">Panel Discussion</option>
                                     <option value="workshop">Workshop</option>
                                     <option value="webinar">Webinar</option>
-                                    <option value="networking">Networking</option>
+                                    <option value="club_event">Club Event</option>
                                     <option value="other">Other</option>
                                 </select>
                             </div>
@@ -245,17 +277,17 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                             </div>
                         </div>
 
-                        {/* Section: Status & Registration Type */}
+                        {/* Section: Visibility & Registration */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Initial Status</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Visibility</label>
                                 <select
-                                    value={formData.status}
-                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    value={formData.visibility}
+                                    onChange={e => setFormData({ ...formData, visibility: e.target.value })}
                                     className="w-full text-gray-900 bg-gray-50 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                 >
-                                    <option value="draft">Draft</option>
-                                    <option value="published">Published</option>
+                                    <option value="public">🌐 Public</option>
+                                    <option value="private">🔒 Private</option>
                                 </select>
                             </div>
                             <div>
@@ -265,11 +297,34 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                                     onChange={e => setFormData({ ...formData, registration_type: e.target.value })}
                                     className="w-full text-gray-900 bg-gray-50 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                 >
-                                    <option value="free">Free</option>
-                                    <option value="paid">Paid</option>
+                                    <option value="free">🆓 Free</option>
+                                    <option value="paid">💰 Paid</option>
                                 </select>
                             </div>
                         </div>
+
+                        {/* Section: Event Categories */}
+                        <CategorySearchSelect
+                            label="Event Categories"
+                            selectedCategoryIds={formData.category_ids}
+                            onChange={(ids) => setFormData({ ...formData, category_ids: ids })}
+                            placeholder="Search and select categories..."
+                        />
+
+                        {/* Section: Payment QR (Conditional) */}
+                        {formData.registration_type === 'paid' && (
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Payment QR Code</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    ref={paymentQRRef}
+                                    onChange={e => handleFileChange(e, 'paymentQR')}
+                                    className="block w-full text-xs text-gray-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 border border-gray-200 rounded-lg"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Upload QR code for participants to make payment</p>
+                            </div>
+                        )}
 
                         {/* Section: Images */}
                         <div className="grid grid-cols-2 gap-4">
@@ -299,7 +354,22 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-6">
+                        <div className="flex items-center pt-2 gap-6">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.status === 'published'}
+                                        onChange={e => setFormData({ ...formData, status: e.target.checked ? 'published' : 'draft' })}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Publish Event Immediately</span>
+                            </label>
+
+                            <div className="flex-1"></div>
+
                             <button
                                 type="submit"
                                 disabled={isLoading}

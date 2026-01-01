@@ -28,7 +28,9 @@ from app.models.event_model import (
     EventFormat,
     EventVisibility,
     EventStatus,
-    EventRegistrationStatus
+    EventRegistrationStatus,
+    EventCategory,
+    Category
 )
 from app.schemas.event_schema import EventUpdate, EventDetails
 from app.services.cloudinary_service import upload_file
@@ -117,6 +119,17 @@ def admin_update_event(
         event.price = body.price
     if body.currency is not None:
         event.currency = body.currency
+
+    if body.categories is not None:
+        # Clear existing categories
+        db.query(EventCategory).filter(EventCategory.event_id == event.id).delete()
+        
+        # Add new categories
+        for category_id in body.categories:
+            # Verify category exists
+            cat_exists = db.query(Category).filter(Category.id == category_id).first()
+            if cat_exists:
+                db.add(EventCategory(event_id=event.id, category_id=category_id))
 
     # Validate dates
     if event.end_datetime <= event.start_datetime:

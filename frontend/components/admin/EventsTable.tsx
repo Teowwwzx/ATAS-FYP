@@ -214,7 +214,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
     const [previewImage, setPreviewImage] = useState<string | null>(null)
     const [deleteEventId, setDeleteEventId] = useState<string | null>(null)
     const [moderationTargetId, setModerationTargetId] = useState<string | null>(null)
-    const [moderationType, setModerationType] = useState<'unpublish' | 'delete' | null>(null)
+    const [moderationType, setModerationType] = useState<'unpublish' | 'delete' | 'publish' | null>(null)
     const [moderationReason, setModerationReason] = useState<string>('')
     const { data: me } = useSWR('/users/me', () => getMe(), { revalidateOnFocus: false, dedupingInterval: 60000 })
     const roles = useMemo(() => (me?.roles || []), [me])
@@ -414,7 +414,7 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
 
                                                 {event.status === 'draft' ? (
                                                     <button
-                                                        onClick={() => handlePublish(event.id)}
+                                                        onClick={() => { setModerationTargetId(event.id); setModerationType('publish'); }}
                                                         disabled={isLoading === event.id}
                                                         className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                                                         title="Publish"
@@ -549,6 +549,21 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                         <div className="mt-4 flex items-center justify-end gap-2">
                             <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600" onClick={() => { setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Cancel</button>
                             <button className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-lg font-bold hover:bg-yellow-300" disabled={!moderationReason.trim()} onClick={() => { if (moderationTargetId) handleUnpublish(moderationTargetId, moderationReason.trim()); setModerationTargetId(null); setModerationType(null); setModerationReason('') }}>Unpublish</button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
+
+            {/* Publish modal */}
+            <Dialog.Root open={!!moderationTargetId && moderationType === 'publish'} onOpenChange={() => { setModerationTargetId(null); setModerationType(null); }}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-2xl z-50 w-full max-w-sm outline-none">
+                        <Dialog.Title className="text-lg font-bold text-gray-900 mb-2">Publish Event?</Dialog.Title>
+                        <p className="text-sm text-gray-600 mb-6">This event will become visible to users based on its visibility settings.</p>
+                        <div className="flex items-center justify-end gap-2">
+                            <button className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium" onClick={() => { setModerationTargetId(null); setModerationType(null); }}>Cancel</button>
+                            <button className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 text-sm" onClick={() => { if (moderationTargetId) handlePublish(moderationTargetId); setModerationTargetId(null); setModerationType(null); }}>Confirm Publish</button>
                         </div>
                     </Dialog.Content>
                 </Dialog.Portal>

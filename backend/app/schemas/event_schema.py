@@ -114,6 +114,7 @@ class EventUpdate(BaseModel):
     remark: str | None = None
     price: float | None = None
     currency: str | None = None
+    categories: List[uuid.UUID] | None = None
 
 class EventDetails(BaseModel):
     id: uuid.UUID

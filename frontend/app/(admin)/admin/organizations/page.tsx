@@ -47,10 +47,29 @@ export default function OrganizationsPage() {
 
     const totalPages = totalCount ? Math.ceil(totalCount / PAGE_SIZE) : 0
 
-    const handleDelete = async (orgId: string) => {
+    const handleDelete = async (orgId: string, reason?: string) => {
         try {
+            const org = organizations?.find(o => o.id === orgId)
             await adminService.deleteOrganization(orgId)
             toast.success('Organization deleted')
+
+            // Notify owner if reason provided
+            if (org && org.owner_id) {
+                const title = 'Organization Removed'
+                const base = `Your organization "${org.name}" has been removed by an administrator.`
+                const content = reason ? `${base}\n\nReason: ${reason}` : base
+
+                try {
+                    await adminService.broadcastNotification({
+                        title,
+                        content,
+                        target_user_id: org.owner_id
+                    })
+                } catch (err) {
+                    console.error('Failed to notify owner:', err)
+                }
+            }
+
             mutate()
         } catch (e) {
             toastError(e, undefined, 'Failed to delete organization')

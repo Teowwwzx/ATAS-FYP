@@ -550,6 +550,7 @@ def create_event(
     venue_place_id = event.venue_place_id if event.venue_place_id else DEFAULT_APU_PLACE_ID
 
     # Avoid duplicate/unknown kwargs when constructing the ORM model
+    # Exclude 'categories' as it's a relationship, not a direct field
     payload = event.model_dump(exclude={"start_datetime", "end_datetime", "type", "venue_place_id", "categories"})
     db_event = Event(
         **payload,
@@ -590,6 +591,24 @@ def create_event(
     
     db.commit()
     db.refresh(db_event)
+    
+    # Attach categories if provided
+    if hasattr(event, 'categories') and event.categories:
+        from app.models.event_model import Category, EventCategory
+        for category_id in event.categories:
+            # Verify category exists
+            category = db.query(Category).filter(Category.id == category_id).first()
+            if category:
+                # Check if already attached
+                exists = db.query(EventCategory).filter(
+                    EventCategory.event_id == db_event.id,
+                    EventCategory.category_id == category_id
+                ).first()
+                if not exists:
+                    new_assoc = EventCategory(event_id=db_event.id, category_id=category_id)
+                    db.add(new_assoc)
+        db.commit()
+        db.refresh(db_event)
 
     try:
         from app.services.ai_service import upsert_event_embedding
