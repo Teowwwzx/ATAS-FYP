@@ -170,6 +170,7 @@ export interface ProfileResponse {
     skills?: { id: string; name: string }[]
     followers_count?: number
     following_count?: number
+    sponsor_tier?: string | null
 }
 
 export interface ProfileUpdate {
@@ -227,7 +228,6 @@ export interface EventCreate {
     max_participant?: number | null
     venue_place_id?: string | null
     venue_remark?: string | null
-    // ... (skipping unchanged parts)
     venue_name?: string | null
     remark?: string | null
     price?: number | null
@@ -294,6 +294,8 @@ export interface EventParticipantDetails {
     proposal_id?: string
     payment_proof_url?: string | null
     payment_status?: string | null
+    promo_link?: string | null
+    promo_image_url?: string | null
 }
 
 export interface EventParticipationSummary {
@@ -319,6 +321,8 @@ export interface EventParticipantCreate {
     role: EventParticipantRole
     description?: string | null
     proposal_id?: string
+    promo_link?: string | null
+    promo_image_url?: string | null
 }
 
 export interface EventParticipantBulkCreate {
@@ -513,7 +517,7 @@ export interface EventChecklistItemResponse {
     created_by_user_id: string
     created_at: string
     updated_at?: string | null
-    visibility: 'internal' | 'external'
+    visibility: string
     audience_role?: EventParticipantRole | null
     link_url?: string | null
 }

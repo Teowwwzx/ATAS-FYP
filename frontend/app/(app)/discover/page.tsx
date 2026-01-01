@@ -653,7 +653,14 @@ export default function DiscoverPage() {
                                                 </div>
                                             )}
                                             <div className="min-w-0 flex-1 w-full">
-                                                <h3 className="text-sm md:text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
+                                                <div className="flex items-center gap-1.5 justify-center md:justify-start">
+                                                    <h3 className="text-sm md:text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
+                                                    {profile.sponsor_tier && (
+                                                        <span className="shrink-0 text-sm md:text-base cursor-help" title={`${profile.sponsor_tier} Sponsor`}>
+                                                            🏆
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {profile.title && (
                                                     <p className="text-xs md:text-sm font-bold text-zinc-500 truncate">{profile.title}</p>
                                                 )}

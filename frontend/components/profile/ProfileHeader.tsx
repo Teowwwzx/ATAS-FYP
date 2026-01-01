@@ -122,9 +122,17 @@ export function ProfileHeader({
                 <div className="pt-2 md:pt-4 flex-1 flex flex-col md:flex-row justify-between items-center md:items-start text-center md:text-left">
                     <div>
                         {/* Name */}
-                        <h1 className="text-3xl sm:text-4xl font-black text-zinc-900 tracking-tight leading-none mb-2">
-                            {profile.full_name}
-                        </h1>
+                        {/* Name */}
+                        <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                            <h1 className="text-3xl sm:text-4xl font-black text-zinc-900 tracking-tight leading-none">
+                                {profile.full_name}
+                            </h1>
+                            {profile.sponsor_tier && (
+                                <span className="text-2xl sm:text-3xl cursor-help animate-pulse" title={`${profile.sponsor_tier} Sponsor`}>
+                                    🏆
+                                </span>
+                            )}
+                        </div>
 
                         {/* Title & Location */}
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-zinc-600 font-medium text-sm sm:text-base mb-4">

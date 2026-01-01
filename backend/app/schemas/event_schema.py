@@ -85,6 +85,11 @@ class EventCreate(BaseModel):
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
+    remark: str | None = None
+    price: float | None = 0.0
+    currency: str | None = "MYR"
+    payment_qr_url: str | None = None
+    organization_id: uuid.UUID | None = None
     categories: List[uuid.UUID] = []
 
 class EventUpdate(BaseModel):
@@ -151,6 +156,105 @@ class EventDetails(BaseModel):
     participant_count: int = 0
     
     model_config = {"from_attributes": True}
+
+
+class EventParticipationSummary(BaseModel):
+    is_participant: bool
+    my_role: EventParticipantRole | None = None
+    my_status: EventParticipantStatus | None = None
+
+
+class EventParticipantDetails(BaseModel):
+    id: uuid.UUID
+    event_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    name: str | None = None
+    email: str | None = None
+    role: EventParticipantRole
+    description: str | None = None
+    join_method: str | None = None
+    status: EventParticipantStatus
+    created_at: datetime
+    updated_at: datetime | None = None
+    conversation_id: uuid.UUID | None = None
+    proposal_id: uuid.UUID | None = None
+    
+    payment_proof_url: str | None = None
+    payment_status: str | None = None
+    
+    # Sponsor specific fields
+    promo_link: str | None = None
+    promo_image_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class EventParticipantCreate(BaseModel):
+    user_id: uuid.UUID | None = None
+    name: str | None = None
+    email: str | None = None
+    role: str = "audience"
+    description: str | None = None
+    proposal_id: uuid.UUID | None = None
+    
+    # Sponsor specific fields
+    promo_link: str | None = None
+    promo_image_url: str | None = None
+
+
+class EventParticipantResponseUpdate(BaseModel):
+    status: EventParticipantStatus
+
+
+class EventParticipantBulkCreate(BaseModel):
+    items: list[EventParticipantCreate]
+
+
+class EventParticipantRoleUpdate(BaseModel):
+    role: EventParticipantRole
+
+
+# --- Category Schemas ---
+
+class CategoryBase(BaseModel):
+    name: str
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryResponse(CategoryBase):
+    id: uuid.UUID
+
+
+class EventCategoryAttach(BaseModel):
+    category_ids: list[uuid.UUID]
+
+
+# --- Attendance Schemas ---
+
+class AttendanceQRResponse(BaseModel):
+    token: str
+    expires_at: datetime
+
+
+class AttendanceScanRequest(BaseModel):
+    token: str
+    email: str | None = None
+    walk_in: bool = False
+
+
+class AttendanceUserScanRequest(BaseModel):
+    token: str
+
+
+class WalkInAttendanceRequest(BaseModel):
+    name: str
+    email: str
+
+
+# --- Reminder Schemas ---
 
 class EventReminderCreate(BaseModel):
     option: str

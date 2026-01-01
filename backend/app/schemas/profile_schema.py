@@ -90,6 +90,8 @@ class ProfileResponse(ProfileBase):
     
     followers_count: int = 0
     following_count: int = 0
+    
+    sponsor_tier: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

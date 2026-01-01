@@ -24,7 +24,8 @@ export function StreamChatWindow({
     onBack,
     forceBackVisible = false,
     client, // Accept client prop
-}: StreamChatWindowProps & { client?: any }) {
+    initialText, // New prop
+}: StreamChatWindowProps & { client?: any, initialText?: string }) {
     // Debug logging for profile issue
     useEffect(() => {
         console.log('[StreamChatWindow] Debug:', {
@@ -46,7 +47,7 @@ export function StreamChatWindow({
 
     // Get other participant info
     const otherParticipant = conversation.participants.find((p) => p.user_id !== currentUserId);
-    
+
     // Fallback logic: 
     // 1. If we found a specific "other" person, use them.
     // 2. If not, and there are participants, try to find one that isn't me (redundant check but safe).
@@ -66,7 +67,7 @@ export function StreamChatWindow({
         // If it's the current user, maybe it's a self-chat?
         if (first.user_id === currentUserId) {
             // Only mark as "Note to Self" if there really are no other participants
-            if (conversation.participants.length === 1 || 
+            if (conversation.participants.length === 1 ||
                 (conversation.participants.length === 2 && conversation.participants[1].user_id === currentUserId)) {
                 participantName = `${participantName} (You)`;
             }
@@ -139,13 +140,45 @@ export function StreamChatWindow({
             if (channel) {
                 // Ignore errors if client is already disconnected
                 try {
-                    channel.stopWatching().catch(() => {});
+                    channel.stopWatching().catch(() => { });
                 } catch (e) {
                     // Ignore synchronous errors
                 }
             }
         };
     }, [finalClient, conversation.id, onMessageSent]);
+
+    // Handle initial text pre-fill
+    useEffect(() => {
+        if (channel && initialText) {
+            // Locate the textarea and set value (Hack via DOM as Stream doesn't easily expose initialValue on standard component)
+            const fillText = () => {
+                const textarea = document.querySelector('.str-chat__textarea textarea') as HTMLTextAreaElement;
+                if (textarea) {
+                    // Only set if empty to avoid overwriting user typing if they navigated away and back? 
+                    // Actually, if we just landed here, it should be empty.
+                    if (!textarea.value) {
+                        // Set value using native property setter to ensure React picks it up if it's controlled
+                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+                        if (nativeInputValueSetter) {
+                            nativeInputValueSetter.call(textarea, initialText);
+                        } else {
+                            textarea.value = initialText;
+                        }
+
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        textarea.focus();
+                    }
+                } else {
+                    // Retry briefly if not rendered yet
+                    setTimeout(fillText, 100);
+                }
+            };
+
+            // Start trying to fill
+            setTimeout(fillText, 100);
+        }
+    }, [channel, initialText]);
 
     // Loading state
     if (loading || channelLoading) {

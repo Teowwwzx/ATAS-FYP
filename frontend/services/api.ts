@@ -1004,8 +1004,13 @@ export const unfollowUser = async (followeeId: string) => {
 
 // --- Chat ---
 
-export const getConversations = async () => {
-  const response = await api.get<import('./api.types').ChatConversation[]>('/chat/conversations')
+export const createOrGetConversation = async (participantIds: string[]) => {
+  const response = await api.post<import('./api.types').ChatConversation>('/chat/conversations', { participant_ids: participantIds })
+  return response.data
+}
+
+export const getConversations = async (skip = 0, limit = 50) => {
+  const response = await api.get<import('./api.types').ChatConversation[]>('/chat/conversations', { params: { skip, limit } })
   return response.data
 }
 
