@@ -8,6 +8,7 @@ import { adminService } from '@/services/admin.service'
 import { toast } from 'react-hot-toast'
 import { OrganizationType, OrganizationVisibility } from '@/services/api.types'
 import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
+import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 
 interface CreateOrganizationModalProps {
     isOpen: boolean
@@ -180,11 +181,9 @@ export function CreateOrganizationModal({ isOpen, onClose, onSuccess }: CreateOr
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                            <input
-                                value={formData.location}
-                                onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                className="w-full text-gray-900 bg-white px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                placeholder="e.g. Kuala Lumpur"
+                            <PlacesAutocomplete
+                                onPlaceSelect={(place: any) => setFormData({ ...formData, location: place.label })}
+                                defaultValue={formData.location}
                             />
                         </div>
 

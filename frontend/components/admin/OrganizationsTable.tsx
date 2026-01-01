@@ -24,7 +24,7 @@ import { StatusPill } from '@/components/ui/StatusPill'
 
 interface OrganizationsTableProps {
     organizations: OrganizationResponse[]
-    onDelete: (orgId: string) => void
+    onDelete: (orgId: string, reason?: string) => void
     onApprove: (orgId: string) => void
     onReject: (orgId: string) => void
     onUpdate: () => void
@@ -34,6 +34,7 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
     const [expandedOrgId, setExpandedOrgId] = useState<string | null>(null)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
     const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
+    const [deleteReason, setDeleteReason] = useState<string>('')
     const [editingOrg, setEditingOrg] = useState<OrganizationResponse | null>(null)
 
     const toggleExpand = (orgId: string) => {
@@ -261,16 +262,37 @@ export function OrganizationsTable({ organizations, onDelete, onApprove, onRejec
                     </Dialog.Content>
                 </Dialog.Portal>
             </Dialog.Root>
-            <ConfirmationModal
-                isOpen={!!deleteOrgId}
-                onClose={() => setDeleteOrgId(null)}
-                onConfirm={() => { if (deleteOrgId) onDelete(deleteOrgId); setDeleteOrgId(null) }}
-                title="Delete Organization"
-                message="Delete this organization?"
-                confirmText="Delete"
-                cancelText="Cancel"
-                variant="danger"
-            />
+
+            {/* Custom Delete Modal with Reason */}
+            <Dialog.Root open={!!deleteOrgId} onOpenChange={() => { setDeleteOrgId(null); setDeleteReason('') }}>
+                <Dialog.Portal>
+                    <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+                    <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-2xl shadow-2xl z-50 w-full max-w-lg outline-none">
+                        <Dialog.Title className="text-lg font-bold text-gray-900 mb-2">Delete Organization</Dialog.Title>
+                        <p className="text-sm text-gray-700 mb-4">Are you sure you want to delete this organization? This action cannot be undone. Please provide a reason.</p>
+                        <textarea
+                            value={deleteReason}
+                            onChange={(e) => setDeleteReason(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg h-28 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                            placeholder="Reason for deletion (optional)..."
+                        />
+                        <div className="mt-4 flex items-center justify-end gap-2">
+                            <button
+                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                                onClick={() => { setDeleteOrgId(null); setDeleteReason('') }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 text-sm transition-colors shadow-sm"
+                                onClick={() => { if (deleteOrgId) onDelete(deleteOrgId, deleteReason); setDeleteOrgId(null); setDeleteReason('') }}
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog.Root>
         </>
     )
 }

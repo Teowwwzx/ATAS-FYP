@@ -241,6 +241,7 @@ export interface EventDetails extends EventCreate {
     status: EventStatus
     registration_status?: EventRegistrationStatus
     category?: { id: string; name: string }
+    categories?: any[]
     created_at: string
     updated_at?: string | null
     // View-specific fields (often joined)

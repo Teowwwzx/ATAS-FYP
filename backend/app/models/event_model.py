@@ -34,6 +34,7 @@ class EventStatus(enum.Enum):
     declined = "declined"
     completed = "completed"
     ended = "ended"
+    cancelled = "cancelled"
 
 class EventRegistrationStatus(enum.Enum):
     opened = "opened"

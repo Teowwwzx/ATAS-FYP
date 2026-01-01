@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import useSWR from 'swr'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Cross2Icon } from '@radix-ui/react-icons'
 import { EventDetails } from '@/services/api.types'
@@ -12,6 +13,7 @@ import { useLoadScript } from '@react-google-maps/api'
 import api from '@/services/api'
 import { UserResponse } from '@/services/api.types'
 import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
+import { CategorySearchSelect } from '@/components/admin/CategorySearchSelect'
 
 const libraries: ("places")[] = ["places"]
 
@@ -31,15 +33,17 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
     const [venueSearch, setVenueSearch] = useState('')
     const [regStatus, setRegStatus] = useState<'opened' | 'closed'>(event.registration_status || 'closed')
 
-    const [files, setFiles] = useState<{ cover: File | null; logo: File | null }>({ cover: null, logo: null })
+    // Track category selections
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'logo') => {
+    const [files, setFiles] = useState<{ cover: File | null; logo: File | null; paymentQR: File | null }>({ cover: null, logo: null, paymentQR: null })
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'logo' | 'paymentQR') => {
         if (e.target.files && e.target.files[0]) {
             setFiles(prev => ({ ...prev, [type]: e.target.files![0] }))
         }
     }
 
-    // Owner search state removed in favor of UserSearchSelect
     const [formData, setFormData] = useState({
         organizer_id: '',
         title: '',
@@ -67,11 +71,16 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                 meeting_url: event.meeting_url || '',
                 price: event.price || 0
             })
-            // ... (rest of useEffect)
-        }
-    }, [isOpen, event, isLoaded])
 
-    // ... (rest of component)
+            // Initialize selected categories from event
+            if (event.categories && Array.isArray(event.categories)) {
+                const categoryIds = event.categories.map((c: any) =>
+                    typeof c === 'string' ? c : c.id
+                )
+                setSelectedCategoryIds(categoryIds)
+            }
+        }
+    }, [isOpen, event])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -110,7 +119,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
         }
     }
 
-    const [activeTab, setActiveTab] = useState<'details' | 'location' | 'settings' | 'media'>('details')
+    const [activeTab, setActiveTab] = useState<'details' | 'location' | 'settings' | 'payment' | 'media'>('details')
 
     return (
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
@@ -149,6 +158,12 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'settings' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         >
                             Settings & Owner
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('payment')}
+                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'payment' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Payment & Organization
                         </button>
                         <button
                             onClick={() => setActiveTab('media')}
@@ -334,7 +349,6 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                                 await adminService.unpublishEvent(event.id)
                                                                 toast.success('Event Unpublished')
                                                             } else {
-                                                                // For cancelled, we'll use the update API
                                                                 await adminService.updateEvent(event.id, { status: 'cancelled' })
                                                                 toast.success('Event Cancelled')
                                                             }
@@ -344,10 +358,10 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                         }
                                                     }}
                                                     className={`px-4 py-2 text-sm font-medium rounded-lg border-2 transition-all capitalize ${event.status === status
-                                                            ? status === 'published' ? 'border-green-500 bg-green-50 text-green-700' :
-                                                                status === 'draft' ? 'border-gray-500 bg-gray-50 text-gray-700' :
-                                                                    'border-red-500 bg-red-50 text-red-700'
-                                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                        ? status === 'published' ? 'border-green-500 bg-green-50 text-green-700' :
+                                                            status === 'draft' ? 'border-gray-500 bg-gray-50 text-gray-700' :
+                                                                'border-red-500 bg-red-50 text-red-700'
+                                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                                                         }`}
                                                 >
                                                     {status === 'published' && '✓ '}
@@ -375,8 +389,8 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                     }
                                                 }}
                                                 className={`px-4 py-3 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${event.registration_type === 'free'
-                                                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                                                     }`}
                                             >
                                                 🆓 Free Event
@@ -393,8 +407,8 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                     }
                                                 }}
                                                 className={`px-4 py-3 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${event.registration_type === 'paid'
-                                                        ? 'border-amber-500 bg-amber-50 text-amber-700'
-                                                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                                                     }`}
                                             >
                                                 💰 Paid Event
@@ -423,7 +437,7 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                             setRegStatus('opened')
                                                             toast.success('Registration Opened')
                                                         }
-                                                        onSuccess() // Refresh parent list
+                                                        onSuccess()
                                                     } catch (error) {
                                                         toast.error('Failed to update status')
                                                     }
@@ -471,7 +485,6 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                                     if (user) {
                                                         setFormData(prev => ({ ...prev, organizer_id: user.id }))
                                                     } else {
-                                                        // Revert to original
                                                         setFormData(prev => ({ ...prev, organizer_id: event.organizer_id }))
                                                     }
                                                 }}
@@ -481,6 +494,107 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                             </p>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'payment' && (
+                                <div className="space-y-6 animate-fadeIn">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                        <p className="text-sm font-bold text-amber-900">💰 Payment & Organization Settings</p>
+                                        <p className="text-xs text-amber-700 mt-1">Manage payment QR, organization assignment, categories, and visibility.</p>
+                                    </div>
+
+                                    {/* Payment QR Upload */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Payment QR Code</label>
+                                        <div className="flex items-start gap-4 p-4 border-2 border-dashed border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                                            {event.payment_qr_url && !files.paymentQR && (
+                                                <img src={event.payment_qr_url} className="w-24 h-24 object-cover rounded-lg bg-gray-100" alt="Payment QR" />
+                                            )}
+                                            <div className="flex-1">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={e => handleFileChange(e, 'paymentQR')}
+                                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-2">Upload QR code for payment. Participants will see this when registering.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Visibility Toggle */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Event Visibility</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        await adminService.updateEvent(event.id, { visibility: 'public' })
+                                                        toast.success('Event is now Public')
+                                                        onSuccess()
+                                                    } catch (error) {
+                                                        toast.error('Failed to update visibility')
+                                                    }
+                                                }}
+                                                className={`px-4 py-3 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${event.visibility === 'public'
+                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                🌐 Public Event
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        await adminService.updateEvent(event.id, { visibility: 'private' })
+                                                        toast.success('Event is now Private')
+                                                        onSuccess()
+                                                    } catch (error) {
+                                                        toast.error('Failed to update visibility')
+                                                    }
+                                                }}
+                                                className={`px-4 py-3 text-sm font-bold rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${event.visibility === 'private'
+                                                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                🔒 Private Event
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-2">
+                                            {event.visibility === 'public' ? 'Anyone can discover and view this event' : 'Only invited participants can see this event'}
+                                        </p>
+                                    </div>
+
+                                    {/* Organization Selector */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Organization Assignment</label>
+                                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                            <p className="text-sm text-gray-600 mb-3">Current: <span className="font-mono text-xs bg-white px-2 py-1 rounded">{event.organization_id || 'None'}</span></p>
+                                            <p className="text-xs text-gray-400">Organization selector coming soon - requires API integration</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Categories Search Select */}
+                                    <CategorySearchSelect
+                                        label="Event Categories"
+                                        selectedCategoryIds={selectedCategoryIds}
+                                        onChange={async (newIds) => {
+                                            setSelectedCategoryIds(newIds)
+                                            try {
+                                                await adminService.updateEvent(event.id, { categories: newIds })
+                                                toast.success('Categories updated')
+                                                onSuccess()
+                                            } catch (error) {
+                                                toast.error('Failed to update categories')
+                                                setSelectedCategoryIds(selectedCategoryIds)
+                                            }
+                                        }}
+                                        placeholder="Search and select categories..."
+                                    />
                                 </div>
                             )}
 
@@ -516,7 +630,6 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                     </div>
                                 </div>
                             )}
-
                         </form>
                     </div>
 
@@ -543,9 +656,8 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                             </button>
                         </div>
                     </div>
-
                 </Dialog.Content>
             </Dialog.Portal>
-        </Dialog.Root >
+        </Dialog.Root>
     )
 }

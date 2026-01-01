@@ -344,7 +344,7 @@ export const registerWalkIn = async (token: string, data: WalkInRegistrationRequ
   if (file) {
     formData.append('file', file)
   }
-  
+
   const response = await api.post<EventParticipantDetails>(`/events/walk-in/register/${token}`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -419,6 +419,13 @@ export const uploadEventPaymentQR = async (eventId: string, file: File) => {
 
 export const getEventAttendanceStats = async (eventId: string) => {
   const response = await api.get<EventAttendanceStats>(`/events/${eventId}/attendance/stats`)
+  return response.data
+}
+
+// --- Category Service ---
+
+export const getCategories = async () => {
+  const response = await api.get<CategoryResponse[]>('/categories')
   return response.data
 }
 

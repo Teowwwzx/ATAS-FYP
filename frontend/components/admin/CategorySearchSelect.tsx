@@ -1,0 +1,135 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { getCategories } from '@/services/api'
+import { CategoryResponse } from '@/services/api.types'
+import { MagnifyingGlassIcon, CheckCircledIcon, Cross2Icon } from '@radix-ui/react-icons'
+import useSWR from 'swr'
+
+interface CategorySearchSelectProps {
+    label?: string
+    selectedCategoryIds: string[]
+    onChange: (ids: string[]) => void
+    placeholder?: string
+}
+
+export function CategorySearchSelect({
+    label,
+    selectedCategoryIds,
+    onChange,
+    placeholder = "Search categories..."
+}: CategorySearchSelectProps) {
+    const [query, setQuery] = useState('')
+    const [isOpen, setIsOpen] = useState(false)
+    const wrapperRef = useRef<HTMLDivElement>(null)
+
+    const { data: categories, isLoading } = useSWR('/categories', getCategories, {
+        revalidateOnFocus: false
+    })
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setIsOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const filteredCategories = categories?.filter(cat =>
+        cat.name.toLowerCase().includes(query.toLowerCase())
+    ) || []
+
+    const toggleCategory = (categoryId: string) => {
+        if (selectedCategoryIds.includes(categoryId)) {
+            onChange(selectedCategoryIds.filter(id => id !== categoryId))
+        } else {
+            onChange([...selectedCategoryIds, categoryId])
+        }
+    }
+
+    const removeCategory = (categoryId: string) => {
+        onChange(selectedCategoryIds.filter(id => id !== categoryId))
+    }
+
+    const selectedCategories = categories?.filter(cat =>
+        selectedCategoryIds.includes(cat.id)
+    ) || []
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+
+            {/* Selected Categories Tags */}
+            <div className="flex flex-wrap gap-2 mb-2">
+                {selectedCategories.map(cat => (
+                    <div
+                        key={cat.id}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200 text-xs font-bold animate-fadeIn"
+                    >
+                        <span>{cat.name}</span>
+                        <button
+                            type="button"
+                            onClick={() => removeCategory(cat.id)}
+                            className="hover:text-red-500 transition-colors"
+                        >
+                            <Cross2Icon className="w-3 h-3" />
+                        </button>
+                    </div>
+                ))}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                    type="text"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    placeholder={placeholder}
+                    value={query}
+                    onChange={(e) => {
+                        setQuery(e.target.value)
+                        setIsOpen(true)
+                    }}
+                    onFocus={() => setIsOpen(true)}
+                />
+                {isLoading && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                )}
+            </div>
+
+            {/* Dropdown Results */}
+            {isOpen && (query.length > 0 || isOpen) && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {filteredCategories.length === 0 && !isLoading ? (
+                        <div className="p-3 text-sm text-gray-500 text-center">No categories found</div>
+                    ) : (
+                        filteredCategories.map((cat) => {
+                            const isSelected = selectedCategoryIds.includes(cat.id)
+                            return (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => toggleCategory(cat.id)}
+                                    className={`w-full flex items-center justify-between p-2 hover:bg-gray-50 transition-colors text-left border-b last:border-b-0 border-gray-50 ${isSelected ? 'bg-blue-50/50' : ''
+                                        }`}
+                                >
+                                    <span className={`text-sm ${isSelected ? 'font-bold text-blue-700' : 'text-gray-900'}`}>
+                                        {cat.name}
+                                    </span>
+                                    {isSelected && <CheckCircledIcon className="w-4 h-4 text-blue-500" />}
+                                </button>
+                            )
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
