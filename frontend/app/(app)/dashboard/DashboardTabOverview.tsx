@@ -10,7 +10,7 @@ import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 import { CategoryResponse } from '@/services/api.types'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
-import { EventCheckInQRModal } from './EventCheckInQRModal'
+ 
 
 const libraries: ("places")[] = ["places"]
 
@@ -26,7 +26,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [showCheckInQR, setShowCheckInQR] = useState(false)
+    
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -170,35 +170,35 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             {/* Logistics Row */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Start Date</label>
+                                    <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Start Date</label>
                                     <input
                                         type="datetime-local"
                                         disabled={isConfigLocked}
                                         value={form.start_datetime}
                                         onChange={(e) => setForm({ ...form, start_datetime: e.target.value })}
-                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">End Date</label>
+                                    <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">End Date</label>
                                     <input
                                         type="datetime-local"
                                         disabled={isConfigLocked}
                                         value={form.end_datetime}
                                         onChange={(e) => setForm({ ...form, end_datetime: e.target.value })}
-                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-900 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed"
                                     />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Event Format</label>
+                                    <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Event Format</label>
                                     <select
                                         disabled={isConfigLocked}
                                         value={form.format}
                                         onChange={(e) => setForm({ ...form, format: e.target.value as any })}
-                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-900 font-bold capitalize disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-700 capitalize disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <option value="workshop">Workshop</option>
                                         <option value="seminar">Seminar</option>
@@ -210,12 +210,12 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Event Type</label>
+                                    <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Event Type</label>
                                     <select
                                         disabled={isConfigLocked}
                                         value={form.type}
                                         onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-900 font-bold capitalize disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:border-yellow-400 py-3 px-4 text-zinc-700 capitalize disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         <option value="physical">Physical</option>
                                         <option value="online">Online</option>
@@ -227,7 +227,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             {/* Venue / Location */}
                             {!isConfigLocked && (
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Venue</label>
+                                    <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Venue</label>
                                     {isLoaded ? (
                                         <PlacesAutocomplete
                                             value={form.venue_remark}
@@ -248,12 +248,12 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                                     <input
                                                         {...getInputProps({
                                                             placeholder: 'Search for a location...',
-                                                            className: "block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 font-bold text-zinc-900"
+                                                            className: "block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-zinc-700"
                                                         })}
                                                     />
                                                     {suggestions.length > 0 && (
                                                         <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-xl border border-zinc-100 overflow-hidden">
-                                                            {loading && <div className="p-3 text-sm text-zinc-500">Loading...</div>}
+                                                            {loading && <div className="p-3 text-sm text-black">Loading...</div>}
                                                             {suggestions.map((suggestion) => {
                                                                 const className = suggestion.active
                                                                     ? 'px-4 py-3 bg-yellow-50 cursor-pointer'
@@ -278,13 +278,13 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             )}
 
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Max Participants</label>
+                                <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Max Participants</label>
                                 <input
                                     type="number"
                                     min="0"
                                     value={form.max_participant}
                                     onChange={(e) => setForm({ ...form, max_participant: parseInt(e.target.value) || 0 })}
-                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 font-bold text-zinc-900"
+                                    className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-grey-700"
                                 />
                                 <p className="text-[10px] text-zinc-400 mt-2 font-medium">Set to 0 for unlimited.</p>
                             </div>
@@ -292,7 +292,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             <div className="w-full h-px bg-zinc-100 my-4"></div>
 
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Title</label>
+                                <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Title</label>
                                 <input
                                     type="text"
                                     value={form.title}
@@ -302,7 +302,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Description</label>
+                                <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Description</label>
                                 <textarea
                                     rows={5}
                                     value={form.description}
@@ -312,7 +312,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Remarks / Notes</label>
+                                <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Remarks / Notes</label>
                                 <textarea
                                     rows={3}
                                     value={form.remark}
@@ -324,19 +324,19 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
 
                             {event.type === 'online' && (
                                 <div>
-                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Meeting URL</label>
+                                    <label className="block text-xs font-bold text-black uppercase tracking-wider mb-2">Meeting URL</label>
                                     <input
                                         type="url"
                                         value={form.meeting_url}
                                         onChange={(e) => setForm({ ...form, meeting_url: e.target.value })}
                                         placeholder="https://zoom.us/..."
-                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 font-bold text-zinc-900"
+                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-grey-700"
                                     />
                                 </div>
                             )}
 
                             <div>
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Categories</label>
+                                <label className="block text-xs font-bold text-black uppercase tracking-wider mb-3">Categories</label>
                                 <div className="flex flex-wrap gap-2">
                                     {allCategories.map(cat => {
                                         const isSelected = selectedCategories.includes(cat.id)
@@ -454,21 +454,14 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                         <div className="bg-white rounded-[2.5rem] border border-zinc-100 overflow-hidden shadow-sm p-8 md:p-10 relative">
                             <div className="flex items-center justify-between mb-8">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-400">
+                                    {/* <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-400">
                                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                    </div>
+                                    </div> */}
                                     <div className="flex flex-col gap-1">
-                                        <h3 className="text-xl font-black text-zinc-900">About Event</h3>
-                                        {!event.is_attendance_enabled && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider border border-zinc-200">
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Attendance disabled
-                                            </span>
-                                        )}
+                                        <h3 className="text-xl font-black text-zinc-900">Event Details</h3>
+                                        
                                         {/* Categories Display */}
                                         <div className="flex flex-wrap gap-2">
                                             {selectedCategories.length > 0 ? (
@@ -489,15 +482,6 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                 </div>
 
                                 <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => window.open(`/events/${event.id}`, '_blank')}
-                                        className="h-10 px-4 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-600 font-bold text-xs hover:bg-zinc-100 transition-colors flex items-center gap-2"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                        </svg>
-                                        Public Page
-                                    </button>
                                     {canEdit && canEditCoreDetails(phase) && (
                                         <button
                                             onClick={() => setIsEditing(true)}
@@ -509,18 +493,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                             Edit Details
                                         </button>
                                     )}
-                                    {(canEdit || role === 'speaker') && event.is_attendance_enabled && event.registration_status === 'opened' && (
-                                        <button
-                                            onClick={() => setShowCheckInQR(true)}
-                                            className="h-10 px-4 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold text-xs hover:bg-indigo-100 transition-colors flex items-center gap-2"
-                                            title="Show Check-in QR"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                                            </svg>
-                                            Check-in QR
-                                        </button>
-                                    )}
+                                    
                                 </div>
                             </div>
 
@@ -579,12 +552,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                 )}
             </div>
 
-            <EventCheckInQRModal
-                isOpen={showCheckInQR}
-                onClose={() => setShowCheckInQR(false)}
-                eventTitle={event.title}
-                checkInUrl={typeof window !== 'undefined' ? `${window.location.origin}/checkin/${event.id}` : ''}
-            />
+            
         </div >
     )
 }

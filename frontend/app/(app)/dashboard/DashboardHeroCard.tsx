@@ -145,18 +145,17 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
                 </div>
             </div>
 
-            {/* Bottom Content Area */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 z-20">
+            {/* Bottom Content Area - Removed as per request */}
+            {/* <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 z-20">
                 <div className="max-w-5xl space-y-4">
-
-                    {/* Title with improved typography */}
+                     Title with improved typography 
                     <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight leading-[1.1] drop-shadow-lg line-clamp-2 md:line-clamp-2">
                         {event.title}
                     </h2>
 
-                    {/* Meta Info Bar */}
+                     Meta Info Bar 
                     <div className="flex flex-wrap items-center gap-6 md:gap-8 pt-4">
-                        {/* Date */}
+                         Date 
                         <div className="flex items-center gap-3 group/meta">
                             <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 group-hover/meta:bg-yellow-400 group-hover/meta:text-black transition-colors">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,10 +182,10 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
                             </div>
                         </div>
 
-                        {/* Divider */}
+                         Divider 
                         <div className="hidden md:block w-px h-8 bg-white/10"></div>
 
-                        {/* Venue */}
+                         Venue 
                         {event.venue_remark && (
                             <div className="flex items-center gap-3 group/meta">
                                 <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-yellow-400 group-hover/meta:bg-yellow-400 group-hover/meta:text-black transition-colors">
@@ -207,7 +206,7 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
                         )}
                     </div>
                 </div>
-            </div>
+            </div> */}
         </div>
     )
 }

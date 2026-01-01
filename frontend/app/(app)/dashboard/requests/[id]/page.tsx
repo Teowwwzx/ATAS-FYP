@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { format, intervalToDuration, formatDuration } from 'date-fns'
+import { format, intervalToDuration, formatDuration, isValid, parseISO } from 'date-fns'
 import { getRequestDetails, respondInvitationMe, getProfileByUserId, getEventById, getMe, getEventProposals } from '@/services/api'
 import { EventInvitationResponse, ProfileResponse, EventDetails, UserMeResponse, EventProposalResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
@@ -248,8 +248,18 @@ export default function RequestDetailsPage() {
                             </div>
                         </div>
 
+                        {/* Event Description (Comprehensive Info) */}
+                        {request.event.description && (
+                            <div className="mt-8 pt-8 border-t border-zinc-100">
+                                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">About the Event</h4>
+                                <p className="text-zinc-700 leading-relaxed whitespace-pre-wrap text-sm">
+                                    {request.event.description}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Invitation Message Section */}
-                        <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100">
+                        <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100 mt-8">
                             <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Invitation Message</h4>
 
                             {request.description ? (
@@ -257,52 +267,46 @@ export default function RequestDetailsPage() {
                                     {request.description}
                                 </p>
                             ) : (
-                                <p className="text-zinc-400 italic">No specific message included.</p>
-                            )}
-
-                            {/* Fallback to Event Description if needed (User asked to remove generic description but keeping as backup logic internally is safe, but based on image, just showing the message is key) */}
-
-                            {/* Linked Proposal */}
-                            {(proposal || request.proposal) && (
-                                <div className="mt-8 p-4 bg-white rounded-xl border border-zinc-200 shadow-sm hover:border-yellow-300 transition-colors group space-y-3">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-lg bg-yellow-100 text-yellow-600 flex items-center justify-center">
-                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l4 4a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attached Proposal</div>
-                                            <div className="font-bold text-zinc-900 group-hover:text-yellow-600 transition-colors">
-                                                {(proposal || request.proposal)?.title || 'Untitled Proposal'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {(proposal || request.proposal)?.description && (
-                                        <div className="text-zinc-700 whitespace-pre-wrap">
-                                            {(proposal || request.proposal)?.description}
-                                        </div>
-                                    )}
-                                    {(proposal || request.proposal)?.file_url ? (
-                                        <div className="flex justify-end">
-                                            <button
-                                                onClick={() => setPreviewFile({
-                                                    url: (proposal || request.proposal)?.file_url as string,
-                                                    name: (proposal || request.proposal)?.title || 'Proposal'
-                                                })}
-                                                className="px-4 py-2 bg-zinc-900 text-white font-bold text-sm rounded-lg hover:bg-zinc-800 transition-colors shadow-lg flex items-center gap-2"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                Preview Proposal
-                                            </button>
-                                        </div>
-                                    ) : null}
-                                </div>
+                                <p className="text-zinc-400 italic">No message provided.</p>
                             )}
                         </div>
+
+                        {/* Proposal Section */}
+                        {request.proposal && (
+                            <div className="bg-white rounded-2xl p-6 border border-zinc-200 shadow-sm mt-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
+                                        <span className="text-lg">📄</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-zinc-900 text-lg">Attached Proposal</h4>
+                                        <p className="text-xs text-zinc-500 uppercase tracking-wider">Formal Document</p>
+                                    </div>
+                                </div>
+                                
+                                {request.proposal.title && (
+                                    <h5 className="font-bold text-zinc-900 mb-2">{request.proposal.title}</h5>
+                                )}
+                                
+                                {request.proposal.description && (
+                                    <p className="text-zinc-600 mb-4 whitespace-pre-wrap text-sm border-l-4 border-indigo-100 pl-4 py-1">
+                                        {request.proposal.description}
+                                    </p>
+                                )}
+
+                                {request.proposal.file_url && (
+                                    <a 
+                                        href={request.proposal.file_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors text-sm font-medium"
+                                    >
+                                        <span>Download Attachment</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    </a>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

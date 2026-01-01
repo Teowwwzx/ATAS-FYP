@@ -19,7 +19,7 @@ interface DashboardEventListProps {
 export function DashboardEventList({ events, user, me, onSelect, onCreate, onProUpgrade, mode = 'all' }: DashboardEventListProps) {
     const [showProModal, setShowProModal] = useState(false)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
-    const organizedEvents = events.filter(e => e.my_role && ['organizer', 'committee'].includes(e.my_role))
+    const organizedEvents = events.filter(e => e.my_role && ['organizer', 'committee'].includes(e.my_role) && e.my_status === 'accepted')
     const joinedEvents = events.filter(e => e.my_role && !['organizer', 'committee'].includes(e.my_role))
 
     const handleCreateClick = () => {

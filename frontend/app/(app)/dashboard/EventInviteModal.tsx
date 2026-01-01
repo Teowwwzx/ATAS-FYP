@@ -23,6 +23,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
     const [selectedUsers, setSelectedUsers] = useState<string[]>([])
     const [selectedProposalId, setSelectedProposalId] = useState<string>('')
     const [joinedUserIds, setJoinedUserIds] = useState<Set<string>>(new Set())
+    const [estAudience, setEstAudience] = useState<string>('')
 
     const getRoleFilter = () => {
         if (inviteRole === 'speaker') return 'expert'
@@ -203,17 +204,30 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
 
                                     {/* Proposal Selector (Conditional) */}
                                     {inviteRole === 'speaker' && (
-                                        <div className="space-y-2 animate-fadeIn">
-                                            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Attach Proposal (Optional)</label>
-                                            <select
-                                                value={selectedProposalId}
-                                                onChange={(e) => setSelectedProposalId(e.target.value)}
-                                                className="block w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all font-medium appearance-none"
-                                            >
-                                                <option value="">No proposal attached (General Invite)</option>
-                                                <option value="p1">Sponsorship Proposal v1.pdf</option>
-                                                <option value="p2">Speaker Brief.pdf</option>
-                                            </select>
+                                        <div className="space-y-4 animate-fadeIn">
+                                            <div>
+                                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1 block">Est. Audience (Optional)</label>
+                                                <input
+                                                    type="number"
+                                                    value={estAudience}
+                                                    onChange={(e) => setEstAudience(e.target.value)}
+                                                    placeholder="e.g. 50"
+                                                    className="block w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all font-medium"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1 block">Attach Proposal (Optional)</label>
+                                                <select
+                                                    value={selectedProposalId}
+                                                    onChange={(e) => setSelectedProposalId(e.target.value)}
+                                                    className="block w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all font-medium appearance-none"
+                                                >
+                                                    <option value="">No proposal attached (General Invite)</option>
+                                                    <option value="p1">Sponsorship Proposal v1.pdf</option>
+                                                    <option value="p2">Speaker Brief.pdf</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     )}
 

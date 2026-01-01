@@ -671,7 +671,7 @@ export default function EventDetailsPage() {
                                                 </div>
                                             ) : isRegistered && participantStatus === 'rejected' ? (
                                                 <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700">
-                                                    <p className="text-sm font-bold">Please contact organizer</p>
+                                                    <p className="text-sm font-bold">Your registration has been rejected. Please contact organizer.</p>
                                                 </div>
                                             ) : isFull ? (
                                                 <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-2xl font-bold text-center text-lg cursor-not-allowed border border-zinc-200">

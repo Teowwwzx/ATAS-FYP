@@ -28,6 +28,11 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
     const [verifyModalOpen, setVerifyModalOpen] = useState(false)
     const [verifyAction, setVerifyAction] = useState<{id: string, status: 'accepted' | 'rejected'} | null>(null)
 
+    // Modal state for remove
+    const [removeModalOpen, setRemoveModalOpen] = useState(false)
+    const [participantToRemove, setParticipantToRemove] = useState<string | null>(null)
+    const [isRemoving, setIsRemoving] = useState(false)
+
     const fetchParticipants = async () => {
         try {
             const data = await getEventParticipants(event.id)
@@ -87,15 +92,26 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
         }
     }
 
-    const handleRemove = async (participantId: string) => {
-        if (!confirm('Remove this person from the event?')) return
+    const handleRemove = (participantId: string) => {
+        setParticipantToRemove(participantId)
+        setRemoveModalOpen(true)
+    }
+
+    const confirmRemove = async () => {
+        if (!participantToRemove) return
+        
+        setIsRemoving(true)
         try {
-            await removeEventParticipant(event.id, participantId)
-            setParticipants(prev => prev.filter(p => p.id !== participantId))
+            await removeEventParticipant(event.id, participantToRemove)
+            setParticipants(prev => prev.filter(p => p.id !== participantToRemove))
             toast.success('Removed successfully')
+            setRemoveModalOpen(false)
+            setParticipantToRemove(null)
         } catch (error) {
             console.error(error)
             toast.error('Failed to remove participant')
+        } finally {
+            setIsRemoving(false)
         }
     }
 
@@ -328,13 +344,13 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                                             onClick={() => confirmVerify(receiptParticipant?.id!, 'rejected')}
                                             className="flex-1 py-3 text-red-600 font-bold bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
                                         >
-                                            Reject
+                                            Reject Payment
                                         </button>
                                         <button
                                             onClick={() => confirmVerify(receiptParticipant?.id!, 'accepted')}
-                                            className="flex-1 py-3 text-white font-bold bg-green-600 hover:bg-green-700 rounded-xl transition-colors shadow-lg shadow-green-200"
+                                            className="flex-1 py-3 text-green-600 font-bold bg-green-50 hover:bg-green-100 rounded-xl transition-colors"
                                         >
-                                            Approve & Accept
+                                            Verify Payment
                                         </button>
                                     </div>
                                 </div>
@@ -343,6 +359,17 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                     </div>
                 </Dialog>
             </Transition>
+
+            <ConfirmationModal
+                isOpen={removeModalOpen}
+                onClose={() => setRemoveModalOpen(false)}
+                onConfirm={confirmRemove}
+                title="Remove Participant"
+                message="Are you sure you want to remove this participant from the event? This action cannot be undone."
+                confirmText="Remove"
+                variant="danger"
+                isLoading={isRemoving}
+            />
 
             {/* Chat Modal */}
             <Transition appear show={!!chatParticipant} as={Fragment}>

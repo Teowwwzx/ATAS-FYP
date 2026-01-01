@@ -13,6 +13,7 @@ import { EventPreviewModal } from '../../dashboard/EventPreviewModal'
 import { EventReviewModal } from '@/components/event/EventReviewModal'
 import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
+import { EventCheckInQRModal } from '../../dashboard/EventCheckInQRModal'
 
 export default function ManageEventPage() {
     const params = useParams()
@@ -30,6 +31,7 @@ export default function ManageEventPage() {
     const [showPublishModal, setShowPublishModal] = useState(false)
     const [showUnpublishModal, setShowUnpublishModal] = useState(false)
     const [publishing, setPublishing] = useState(false)
+    const [showCheckInQR, setShowCheckInQR] = useState(false)
 
     // Review State (Post-Event Only)
     const [isReviewOpen, setIsReviewOpen] = useState(false)
@@ -152,7 +154,32 @@ export default function ManageEventPage() {
                                     </div>
                                 </div>
                             )}
-                            <Link
+                            {event.type === 'online' ? (
+                                <button
+                                    className={`px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl transition-all shadow-lg flex items-center gap-2 ${(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) && event.is_attendance_enabled
+                                            ? 'hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl'
+                                            : 'opacity-50 cursor-not-allowed grayscale'
+                                        }`}
+                                    onClick={(e) => {
+                                        if (currentPhase !== EventPhase.EVENT_DAY && currentPhase !== EventPhase.ONGOING) {
+                                            e.preventDefault()
+                                            toast.error('Attendance is only available 24 hours before and during the event.')
+                                        } else if (!event.is_attendance_enabled) {
+                                            e.preventDefault()
+                                            toast.error('Attendance is currently disabled for this event.')
+                                        } else {
+                                            setShowCheckInQR(true)
+                                        }
+                                    }}
+                                    title="Show attendance"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                    </svg>
+                                    Show attendance
+                                </button>
+                            ) : (
+                                <Link
                                     href={`/attendance/scan?eventId=${event.id}`}
                                     className={`px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold rounded-xl transition-all shadow-lg flex items-center gap-2 ${(currentPhase === EventPhase.EVENT_DAY || currentPhase === EventPhase.ONGOING) && event.is_attendance_enabled
                                             ? 'hover:from-blue-700 hover:to-cyan-700 hover:shadow-xl'
@@ -168,11 +195,12 @@ export default function ManageEventPage() {
                                         }
                                     }}
                                 >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                                </svg>
-                                Scan Attendance
-                            </Link>
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                    </svg>
+                                    Scan Attendance
+                                </Link>
+                            )}
                         </>
                     ) : currentPhase === EventPhase.POST_EVENT ? (
                         <div className="px-6 py-2.5 bg-zinc-100 border-2 border-zinc-300 rounded-xl">
@@ -273,6 +301,12 @@ export default function ManageEventPage() {
                     }
                 }}
                 loading={publishing}
+            />
+            <EventCheckInQRModal
+                isOpen={showCheckInQR}
+                onClose={() => setShowCheckInQR(false)}
+                eventTitle={event.title}
+                checkInUrl={typeof window !== 'undefined' ? `${window.location.origin}/checkin/${event.id}` : ''}
             />
         </div>
     )

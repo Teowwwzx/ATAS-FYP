@@ -356,6 +356,30 @@ export interface WalkInAttendanceRequest {
     email: string
 }
 
+// --- Walk-in Types ---
+
+export interface EventWalkInTokenCreate {
+    label?: string
+    max_uses?: number | null
+}
+
+export interface EventWalkInTokenResponse {
+    id: string
+    event_id: string
+    token: string
+    label?: string | null
+    max_uses?: number | null
+    current_uses: number
+    is_active: boolean
+    created_at: string
+}
+
+export interface WalkInRegistrationRequest {
+    name: string
+    email: string
+    payment_proof_url?: string | null
+}
+
 export interface AttendanceQRResponse {
     token: string
     expires_at: string // ISO string

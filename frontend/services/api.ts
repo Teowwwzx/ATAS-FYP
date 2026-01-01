@@ -40,6 +40,9 @@ import {
   FollowDetails,
   FollowerSummary,
   WalkInAttendanceRequest,
+  EventWalkInTokenCreate,
+  EventWalkInTokenResponse,
+  WalkInRegistrationRequest,
 } from './api.types'
 
 // 1. Create an Axios instance
@@ -316,6 +319,37 @@ export const walkInAttendance = async (eventId: string, data: FormData | import(
 
 export const organizerWalkInAttendance = async (eventId: string, data: import('./api.types').WalkInAttendanceRequest) => {
   const response = await api.post<EventParticipantDetails>(`/events/${eventId}/attendance/walk_in`, data)
+  return response.data
+}
+
+export const createWalkInToken = async (eventId: string, data: EventWalkInTokenCreate) => {
+  const response = await api.post<EventWalkInTokenResponse>(`/events/${eventId}/walk-in/tokens`, data)
+  return response.data
+}
+
+export const getWalkInTokens = async (eventId: string) => {
+  const response = await api.get<EventWalkInTokenResponse[]>(`/events/walk-in/tokens/${eventId}`)
+  return response.data
+}
+
+export const validateWalkInToken = async (token: string) => {
+  const response = await api.get<EventDetails>(`/events/walk-in/validate/${token}`)
+  return response.data
+}
+
+export const registerWalkIn = async (token: string, data: WalkInRegistrationRequest, file?: File) => {
+  const formData = new FormData()
+  formData.append('name', data.name)
+  formData.append('email', data.email)
+  if (file) {
+    formData.append('file', file)
+  }
+  
+  const response = await api.post<EventParticipantDetails>(`/events/walk-in/register/${token}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
   return response.data
 }
 

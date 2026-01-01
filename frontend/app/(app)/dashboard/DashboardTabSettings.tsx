@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { EventDetails } from '@/services/api.types'
 import { updateEvent, openRegistration, closeRegistration, deleteEvent, uploadEventPaymentQR } from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -18,6 +18,30 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
     const [isDeleting, setIsDeleting] = useState(false)
     const [qrFile, setQrFile] = useState<File | null>(null)
     const [isUploadingQR, setIsUploadingQR] = useState(false)
+    const [localPrice, setLocalPrice] = useState<string>(event.price?.toString() || '')
+
+    useEffect(() => {
+        setLocalPrice(event.price?.toString() || '')
+    }, [event.price])
+
+    const handlePriceBlur = async () => {
+        const val = parseFloat(localPrice)
+        if (isNaN(val)) return
+        if (val === event.price) return
+
+        setLoading(true)
+        try {
+            await updateEvent(event.id, { price: val, currency: 'MYR' })
+            toast.success('Price updated')
+            onUpdate()
+        } catch (error) {
+            console.error(error)
+            toast.error('Failed to update price')
+            setLocalPrice(event.price?.toString() || '')
+        } finally {
+            setLoading(false)
+        }
+    }
 
     // Derived states
     const isOngoing = new Date(event.start_datetime) <= new Date() && new Date(event.end_datetime) >= new Date()
@@ -270,36 +294,77 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
             </section>
 
             {event.registration_type === 'paid' && (
-                <section>
-                    <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm">
-                        <div className="flex items-start justify-between gap-6">
+                <>
+                    <section>
+                        <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm flex items-center justify-between">
                             <div>
-                                <h4 className="text-lg font-bold text-zinc-900 mb-1">Payment QR</h4>
-                                <p className="text-zinc-500 text-sm font-medium">Upload a bank transfer/DuitNow QR for paid events. Visible only to joined participants.</p>
-                                {event.payment_qr_url && (
-                                    <div className="mt-4">
-                                        <img src={event.payment_qr_url} alt="Payment QR" className="w-48 h-48 object-contain rounded-xl border border-zinc-200" />
-                                    </div>
-                                )}
+                                <h4 className="text-lg font-bold text-zinc-900 mb-1">
+                                    Ticket Price
+                                </h4>
+                                <p className="text-zinc-500 text-sm font-medium">
+                                    Set the price per participant.
+                                </p>
                             </div>
-                            <div className="w-full max-w-sm">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => setQrFile(e.target.files?.[0] || null)}
-                                    className="block w-full text-sm text-zinc-900 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-yellow-400 file:text-zinc-900 hover:file:bg-yellow-300"
-                                />
-                                <button
-                                    onClick={handleUploadQR}
-                                    disabled={!qrFile || isUploadingQR}
-                                    className="mt-3 px-6 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 disabled:opacity-50"
+                            <div className="flex items-center gap-3">
+                                <select
+                                    value={event.currency || 'MYR'}
+                                    onChange={(e) => handleCurrencyChange(e.target.value)}
+                                    disabled={loading || isConfigLocked}
+                                    className="bg-zinc-100 border-none rounded-xl px-4 py-2 text-sm font-bold text-zinc-900 focus:ring-2 focus:ring-yellow-400 disabled:opacity-50 cursor-pointer"
                                 >
-                                    {isUploadingQR ? 'Uploading...' : 'Upload QR'}
-                                </button>
+                                    <option value="MYR">MYR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="SGD">SGD</option>
+                                    <option value="EUR">EUR</option>
+                                </select>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={localPrice}
+                                        onChange={(e) => setLocalPrice(e.target.value)}
+                                        onBlur={handlePriceBlur}
+                                        disabled={loading || isConfigLocked}
+                                        className="bg-zinc-100 border-none rounded-xl w-32 px-4 py-2 text-sm font-bold text-zinc-900 focus:ring-2 focus:ring-yellow-400 disabled:opacity-50"
+                                    />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+
+                    <section>
+                        <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm">
+                            <div className="flex items-start justify-between gap-6">
+                                <div>
+                                    <h4 className="text-lg font-bold text-zinc-900 mb-1">Payment QR</h4>
+                                    <p className="text-zinc-500 text-sm font-medium">Upload a bank transfer/DuitNow QR for paid events. Visible only to joined participants.</p>
+                                    {event.payment_qr_url && (
+                                        <div className="mt-4">
+                                            <img src={event.payment_qr_url} alt="Payment QR" className="w-48 h-48 object-contain rounded-xl border border-zinc-200" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="w-full max-w-sm">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setQrFile(e.target.files?.[0] || null)}
+                                        className="block w-full text-sm text-zinc-900 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-yellow-400 file:text-zinc-900 hover:file:bg-yellow-300"
+                                    />
+                                    <button
+                                        onClick={handleUploadQR}
+                                        disabled={!qrFile || isUploadingQR}
+                                        className="mt-3 px-6 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 disabled:opacity-50"
+                                    >
+                                        {isUploadingQR ? 'Uploading...' : 'Upload QR'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </>
             )}
 
             {/* Danger Zone */}

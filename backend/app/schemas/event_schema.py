@@ -1,48 +1,90 @@
-from pydantic import BaseModel, field_validator
-from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
-import uuid
+from pydantic import BaseModel
+from typing import List
 from datetime import datetime
-from app.models.event_model import (
-    EventFormat,
-    EventType,
-    EventRegistrationType,
-    EventRegistrationStatus,
-    EventStatus,
-    EventVisibility,
-    EventParticipantRole,
-    EventParticipantStatus,
-    ChecklistVisibility,
-)
+import uuid
+from app.models.event_model import EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipantRole, EventParticipantStatus, EventPaymentStatus
+from app.schemas.user_schema import UserResponse
+
+# ... (existing content) ...
+
+class EventCategoryCreate(BaseModel):
+    category_id: uuid.UUID
+
+class EventCategoryResponse(BaseModel):
+    id: uuid.UUID
+    category_id: uuid.UUID
+    name: str | None = None # Joined
+    
+    model_config = {"from_attributes": True}
+
+class EventPictureCreate(BaseModel):
+    url: str
+    caption: str | None = None
+    sort_order: int = 0
+
+class EventPictureResponse(BaseModel):
+    id: uuid.UUID
+    url: str
+    caption: str | None = None
+    sort_order: int
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+class EventParticipantCreate(BaseModel):
+    user_id: uuid.UUID | None = None
+    email: str | None = None # For external invites
+    role: EventParticipantRole
+    description: str | None = None
+    proposal_id: uuid.UUID | None = None # If inviting based on a proposal
+
+class EventParticipantUpdate(BaseModel):
+    role: EventParticipantRole | None = None
+    status: EventParticipantStatus | None = None
+    payment_status: EventPaymentStatus | None = None
+
+class EventParticipantResponseUpdate(BaseModel):
+    status: EventParticipantStatus
+
+class EventParticipantDetails(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    event_id: uuid.UUID
+    name: str | None = None
+    email: str | None = None
+    role: EventParticipantRole
+    status: EventParticipantStatus
+    payment_status: EventPaymentStatus | None = None
+    payment_proof_url: str | None = None
+    join_method: str | None = None
+    created_at: datetime
+    
+    # User details (joined)
+    user_avatar: str | None = None
+    user_full_name: str | None = None
+    user_title: str | None = None # Profile title
+    
+    # Proposal details
+    proposal_id: uuid.UUID | None = None
+
+    model_config = {"from_attributes": True}
 
 class EventCreate(BaseModel):
-    model_config = ConfigDict(extra='forbid')
     title: str
-    description: str | None = None
-    logo_url: str | None = None
-    cover_url: str | None = None
-    meeting_url: str | None = None
     format: EventFormat
-    type: EventType | None = None
+    type: EventType
     start_datetime: datetime
     end_datetime: datetime
     registration_type: EventRegistrationType
-    visibility: EventVisibility = EventVisibility.public
-    auto_accept_registration: bool = True
-    is_attendance_enabled: bool = True
+    visibility: EventVisibility
+    # Optional initial fields
+    description: str | None = None
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
-    remark: str | None = None
-    price: float | None = 0.0
-    currency: str | None = "MYR"
-    organization_id: uuid.UUID | None = None
-
+    categories: List[uuid.UUID] = []
 
 class EventUpdate(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-
-    organizer_id: uuid.UUID | None = None
     title: str | None = None
     description: str | None = None
     logo_url: str | None = None
@@ -54,6 +96,7 @@ class EventUpdate(BaseModel):
     start_datetime: datetime | None = None
     end_datetime: datetime | None = None
     registration_type: EventRegistrationType | None = None
+    status: EventStatus | None = None
     visibility: EventVisibility | None = None
     auto_accept_registration: bool | None = None
     is_attendance_enabled: bool | None = None
@@ -63,11 +106,11 @@ class EventUpdate(BaseModel):
     remark: str | None = None
     price: float | None = None
     currency: str | None = None
-    organization_id: uuid.UUID | None = None
 
 class EventDetails(BaseModel):
     id: uuid.UUID
     organizer_id: uuid.UUID
+    organization_id: uuid.UUID | None = None
     title: str
     description: str | None = None
     logo_url: str | None = None
@@ -79,7 +122,7 @@ class EventDetails(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     registration_type: EventRegistrationType
-    registration_status: EventRegistrationStatus
+    registration_status: str # enum
     status: EventStatus
     visibility: EventVisibility
     auto_accept_registration: bool
@@ -87,114 +130,27 @@ class EventDetails(BaseModel):
     max_participant: int | None = None
     venue_place_id: str | None = None
     venue_remark: str | None = None
+    venue_name: str | None = None # Derived/Joined
+    venue_address: str | None = None # Derived/Joined
     remark: str | None = None
-    price: float | None = 0.0
-    currency: str | None = "MYR"
     created_at: datetime
     updated_at: datetime | None = None
+    price: float | None = None
+    currency: str | None = None
+    
     organizer_name: str | None = None
     organizer_avatar: str | None = None
-    participant_count: int = 0
-    meeting_url: str | None = None
-    organization_id: uuid.UUID | None = None
-    organization_name: str | None = None
-
-    model_config = {"from_attributes": True}
-
-
-class EventParticipationSummary(BaseModel):
-    is_participant: bool
-    my_role: EventParticipantRole | None = None
-    my_status: EventParticipantStatus | None = None
-
-
-class EventParticipantDetails(BaseModel):
-    id: uuid.UUID
-    event_id: uuid.UUID
-    user_id: uuid.UUID | None = None
-    name: str | None = None
-    email: str | None = None
-    role: EventParticipantRole
-    description: str | None = None
-    join_method: str | None = None
-    status: EventParticipantStatus
-    created_at: datetime
-    updated_at: datetime | None = None
-    conversation_id: uuid.UUID | None = None
-    proposal_id: uuid.UUID | None = None
     
-    payment_proof_url: str | None = None
-    payment_status: str | None = None
-
+    categories: List[EventCategoryResponse] = []
+    pictures: List[EventPictureResponse] = []
+    
+    # Computed
+    participant_count: int = 0
+    
     model_config = {"from_attributes": True}
-
-
-class EventParticipantCreate(BaseModel):
-    user_id: uuid.UUID | None = None
-    name: str | None = None
-    email: str | None = None
-    role: str = "audience"
-    description: str | None = None
-    proposal_id: uuid.UUID | None = None
-
-
-class EventParticipantResponseUpdate(BaseModel):
-    status: EventParticipantStatus
-
-
-class EventParticipantBulkCreate(BaseModel):
-    items: list[EventParticipantCreate]
-
-
-class EventParticipantRoleUpdate(BaseModel):
-    role: EventParticipantRole
-
-
-# --- Category Schemas ---
-
-class CategoryBase(BaseModel):
-    name: str
-
-
-class CategoryCreate(CategoryBase):
-    pass
-
-
-class CategoryResponse(CategoryBase):
-    id: uuid.UUID
-
-
-class EventCategoryAttach(BaseModel):
-    category_ids: list[uuid.UUID]
-
-
-# --- Attendance Schemas ---
-
-class AttendanceQRResponse(BaseModel):
-    token: str
-    expires_at: datetime
-
-
-class AttendanceScanRequest(BaseModel):
-    token: str
-    email: str | None = None
-    walk_in: bool = False
-
-
-class AttendanceUserScanRequest(BaseModel):
-    token: str
-
-
-class WalkInAttendanceRequest(BaseModel):
-    name: str
-    email: str
-
-
-# --- Reminder Schemas ---
 
 class EventReminderCreate(BaseModel):
-    option: str  # one_week | three_days | one_day
-
+    option: str
 
 class EventReminderResponse(BaseModel):
     id: uuid.UUID
@@ -203,96 +159,8 @@ class EventReminderResponse(BaseModel):
     option: str
     remind_at: datetime
     is_sent: bool
-    sent_at: datetime | None = None
-
-    model_config = {"from_attributes": True}
-
-
-# --- My Events Schema (for dashboard) ---
-
-class MyEventItem(BaseModel):
-    event_id: uuid.UUID
-    title: str
-    start_datetime: datetime
-    end_datetime: datetime
-    type: EventType
-    status: EventStatus
-    my_role: EventParticipantRole | None = None
-    my_status: EventParticipantStatus | None = None
-    cover_url: str | None = None
-    venue_remark: str | None = None
-    format: EventFormat | None = None
-    participant_count: int = 0
-
-
-# --- Organizer Dashboard Schemas ---
-
-class EventAttendanceStats(BaseModel):
-    event_id: uuid.UUID
-    total_audience: int
-    attended_audience: int
-    absent_audience: int
-    total_participants: int
-    attended_total: int
-
-
-class EventChecklistItemCreate(BaseModel):
-    title: str
-    description: str | None = None
-    assigned_user_id: uuid.UUID | None = None # Deprecated, use below
-    assigned_user_ids: list[uuid.UUID] = []
-    due_datetime: datetime | None = None
-    visibility: ChecklistVisibility | None = ChecklistVisibility.internal
-    audience_role: EventParticipantRole | None = None
-    link_url: str | None = None
-
-    @field_validator("assigned_user_id", "due_datetime", mode="before")
-    def _empty_string_to_none(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str) and v.strip() == "":
-            return None
-        return v
-
-
-class EventChecklistItemUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
-    is_completed: bool | None = None
-    assigned_user_id: uuid.UUID | None = None # Deprecated
-    assigned_user_ids: list[uuid.UUID] | None = None
-    sort_order: int | None = None
-    due_datetime: datetime | None = None
-    visibility: ChecklistVisibility | None = None
-    audience_role: EventParticipantRole | None = None
-    link_url: str | None = None
-
-    @field_validator("assigned_user_id", "due_datetime", mode="before")
-    def _empty_string_to_none_update(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str) and v.strip() == "":
-            return None
-        return v
-
-
-class EventChecklistItemResponse(BaseModel):
-    id: uuid.UUID
-    event_id: uuid.UUID
-    title: str
-    description: str | None = None
-    is_completed: bool
-    assigned_user_id: uuid.UUID | None = None
-    assigned_user_ids: list[uuid.UUID] = [] # Population handled in router or property
-    sort_order: int
-    due_datetime: datetime | None = None
-    created_by_user_id: uuid.UUID
     created_at: datetime
-    updated_at: datetime | None = None
-    visibility: ChecklistVisibility
-    audience_role: EventParticipantRole | None = None
-    link_url: str | None = None
-
+    
     model_config = {"from_attributes": True}
 
 # --- Proposal Schemas ---
@@ -356,3 +224,26 @@ class EventInvitationResponse(BaseModel):
     invitee_avatar: str | None = None
     
     model_config = {"from_attributes": True}
+
+# --- Walk-in Schemas ---
+
+class EventWalkInTokenCreate(BaseModel):
+    label: str | None = None
+    max_uses: int | None = None # None means unlimited
+
+class EventWalkInTokenResponse(BaseModel):
+    id: uuid.UUID
+    event_id: uuid.UUID
+    token: str
+    label: str | None = None
+    max_uses: int | None = None
+    current_uses: int
+    is_active: bool
+    created_at: datetime
+    
+    model_config = {"from_attributes": True}
+
+class WalkInRegistrationRequest(BaseModel):
+    name: str
+    email: str
+    payment_proof_url: str | None = None # Required if paid event

@@ -142,6 +142,28 @@ class EventPicture(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+class EventWalkInToken(Base):
+    __tablename__ = "event_walk_in_tokens"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
+    created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    
+    token = Column(String, unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    label = Column(String, nullable=True)
+    
+    max_uses = Column(Integer, nullable=True)
+    current_uses = Column(Integer, nullable=False, default=0)
+    
+    is_active = Column(Boolean, nullable=False, default=True)
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    event = relationship("Event")
+    created_by = relationship("User", foreign_keys=[created_by_user_id])
+
 class EventParticipant(Base):
     __tablename__ = "event_participants"
     
@@ -163,9 +185,11 @@ class EventParticipant(Base):
     
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=True)
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("event_proposals.id"), nullable=True)
+    walk_in_token_id = Column(UUID(as_uuid=True), ForeignKey("event_walk_in_tokens.id"), nullable=True)
     
     event = relationship("Event")
     proposal = relationship("EventProposal")
+    walk_in_token = relationship("EventWalkInToken")
 
 class EventMailTemplate(Base):
     __tablename__ = "event_mail_templates"

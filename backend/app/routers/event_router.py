@@ -24,7 +24,8 @@ from app.models.event_model import (
     EventType,
     EventProposal,
     EventProposalComment,
-
+    EventWalkInToken,
+    EventPaymentStatus,
 )
 from app.models.event_model import ChecklistVisibility
 from app.models.organization_model import Organization, organization_members
@@ -70,6 +71,9 @@ from app.schemas.event_schema import (
     EventProposalCommentUpdate,
     EventInvitationResponse,
     EventParticipationSummary,
+    EventWalkInTokenCreate,
+    EventWalkInTokenResponse,
+    WalkInRegistrationRequest,
 )
 from typing import List
 from sqlalchemy import text
@@ -2210,6 +2214,175 @@ def list_event_proposal_comments(
         .all()
     )
     return comments
+
+# --- Walk-in / On-site Registration Endpoints ---
+
+@router.post("/events/{event_id}/walk-in/tokens", response_model=EventWalkInTokenResponse)
+def create_walk_in_token(
+    event_id: uuid.UUID,
+    body: EventWalkInTokenCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate a secure token for walk-in registration links.
+    Only organizers or committee members can generate these.
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Auth check
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role not in (EventParticipantRole.committee, EventParticipantRole.organizer):
+            raise HTTPException(status_code=403, detail="Not authorized to generate walk-in tokens")
+
+    token = EventWalkInToken(
+        event_id=event_id,
+        created_by_user_id=current_user.id,
+        label=body.label,
+        max_uses=body.max_uses,
+    )
+    db.add(token)
+    db.commit()
+    db.refresh(token)
+    return token
+
+@router.get("/events/walk-in/tokens/{event_id}", response_model=List[EventWalkInTokenResponse])
+def get_walk_in_tokens(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List active tokens for an event."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    # Auth check
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role not in (EventParticipantRole.committee, EventParticipantRole.organizer):
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    tokens = db.query(EventWalkInToken).filter(EventWalkInToken.event_id == event_id).order_by(EventWalkInToken.created_at.desc()).all()
+    return tokens
+
+@router.get("/events/walk-in/validate/{token_str}", response_model=EventDetails)
+def validate_walk_in_token(
+    token_str: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Public endpoint to validate a token and get event details.
+    """
+    token_obj = db.query(EventWalkInToken).filter(EventWalkInToken.token == token_str).first()
+    if not token_obj or not token_obj.is_active:
+        raise HTTPException(status_code=404, detail="Invalid or expired token")
+        
+    if token_obj.max_uses is not None and token_obj.current_uses >= token_obj.max_uses:
+         raise HTTPException(status_code=400, detail="This link has reached its maximum usage limit")
+
+    event = db.query(Event).filter(Event.id == token_obj.event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    return event
+
+@router.post("/events/walk-in/register/{token_str}", response_model=EventParticipantDetails)
+def register_walk_in(
+    token_str: str,
+    name: str = Form(...),
+    email: str = Form(...),
+    file: UploadFile = File(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Public endpoint to submit walk-in registration.
+    """
+    token_obj = db.query(EventWalkInToken).filter(EventWalkInToken.token == token_str).first()
+    if not token_obj or not token_obj.is_active:
+        raise HTTPException(status_code=404, detail="Invalid or expired token")
+        
+    if token_obj.max_uses is not None and token_obj.current_uses >= token_obj.max_uses:
+         raise HTTPException(status_code=400, detail="This link has reached its maximum usage limit")
+
+    event = db.query(Event).filter(Event.id == token_obj.event_id).first()
+    
+    # Check if user already exists (by email)
+    user = db.query(User).filter(User.email == email).first()
+    user_id = user.id if user else None
+    
+    # Check duplicate participation
+    if user_id:
+        existing = db.query(EventParticipant).filter(EventParticipant.event_id == event.id, EventParticipant.user_id == user_id).first()
+        if existing:
+            if existing.status == EventParticipantStatus.pending and event.registration_type == EventRegistrationType.free:
+                 existing.status = EventParticipantStatus.attended
+                 db.add(existing)
+                 db.commit()
+                 db.refresh(existing)
+                 return existing
+            return existing 
+    
+    # Create Participant
+    status = EventParticipantStatus.accepted
+    payment_status = None
+    payment_proof_url = None
+    
+    if event.registration_type == EventRegistrationType.paid:
+        if not file:
+             raise HTTPException(status_code=400, detail="Payment proof is required for paid events")
+        
+        # Upload file
+        try:
+            payment_proof_url = upload_file(file, "payment_proofs")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+        status = EventParticipantStatus.pending 
+        payment_status = EventPaymentStatus.pending
+    else:
+        # Free event -> Auto attend
+        status = EventParticipantStatus.attended
+
+    participant = EventParticipant(
+        event_id=event.id,
+        user_id=user_id,
+        name=name,
+        email=email,
+        role=EventParticipantRole.audience,
+        status=status,
+        payment_status=payment_status,
+        payment_proof_url=payment_proof_url,
+        join_method="walk_in",
+        walk_in_token_id=token_obj.id,
+        description=f"Walk-in via {token_obj.label or 'link'}"
+    )
+    db.add(participant)
+    
+    # Increment token usage
+    token_obj.current_uses += 1
+    db.add(token_obj)
+    
+    db.commit()
+    db.refresh(participant)
+    return participant
 
 @router.post("/events/{event_id}/proposals/{proposal_id}/comments", response_model=EventProposalCommentResponse)
 def create_event_proposal_comment(
