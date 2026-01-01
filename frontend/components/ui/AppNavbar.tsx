@@ -76,7 +76,7 @@ export function AppNavbar() {
                             )}
                             <Link
                                 href="/discover"
-                                className={`inline-flex items-center px-1 pt-1 border-b-4 text-sm font-bold transition-all duration-200 ${isActive('/discover') || isActive('/events')
+                                className={`inline-flex items-center px-1 pt-1 border-b-4 text-sm font-bold transition-all duration-200 ${isActive('/discover')
                                     ? 'border-yellow-400 text-zinc-900'
                                     : 'border-transparent text-zinc-500 hover:text-zinc-900 hover:border-yellow-200'
                                     }`}

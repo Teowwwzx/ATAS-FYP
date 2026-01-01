@@ -38,8 +38,8 @@ export default function RegisterPage() {
 
         try {
             await register({ email, password })
-            toast.success('Account created! Please check your email to verify.')
-            router.push('/login')
+            toast.success('Account created! Please enter the code sent to your email.')
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`)
         } catch (error) {
             const err = error as AxiosError<ApiErrorResponse>
             const message = err.response?.data?.detail || 'Registration failed.'

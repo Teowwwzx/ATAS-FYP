@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents, semanticSearchEvents, semanticSearchProfiles, getMe, getEventsCount, getOrganizationsCount, discoverProfiles, discoverProfilesCount } from '@/services/api'
 import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
+import { SponsorBadge } from '@/components/ui/SponsorBadge'
 // @ts-ignore
 import { debounce } from 'lodash'
 import { EventCard } from '@/components/ui/EventCard'
@@ -658,12 +659,26 @@ export default function DiscoverPage() {
                         <div className="grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {people.map((profile) => (
                                 <Link key={profile.id} href={`/profile/${profile.user_id}`} className="block group">
-                                    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100 group-hover:-translate-y-1 h-full flex flex-col">
+                                    <div className={`bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border ${profile.sponsor_tier === 'Gold' ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-zinc-100'} group-hover:-translate-y-1 h-full flex flex-col`}>
                                         <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 mb-2 md:mb-4 text-center md:text-left">
                                             {profile.avatar_url ? (
-                                                <img src={profile.avatar_url} alt="" className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover ring-2 md:ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all" />
+                                                <img 
+                                                    src={profile.avatar_url} 
+                                                    alt="" 
+                                                    className={`w-12 h-12 md:w-16 md:h-16 rounded-full object-cover ring-2 md:ring-4 ${
+                                                        profile.sponsor_tier === 'Gold' ? 'ring-yellow-400' :
+                                                        profile.sponsor_tier === 'Silver' ? 'ring-slate-300' :
+                                                        profile.sponsor_tier === 'Bronze' ? 'ring-amber-700' :
+                                                        'ring-yellow-50 group-hover:ring-yellow-100'
+                                                    } transition-all`} 
+                                                />
                                             ) : (
-                                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-lg md:text-xl ring-2 md:ring-4 ring-yellow-50 group-hover:ring-yellow-100 transition-all shrink-0">
+                                                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-lg md:text-xl ring-2 md:ring-4 ${
+                                                        profile.sponsor_tier === 'Gold' ? 'ring-yellow-400' :
+                                                        profile.sponsor_tier === 'Silver' ? 'ring-slate-300' :
+                                                        profile.sponsor_tier === 'Bronze' ? 'ring-amber-700' :
+                                                        'ring-yellow-50 group-hover:ring-yellow-100'
+                                                    } transition-all shrink-0`}>
                                                     {profile.full_name?.charAt(0) || 'U'}
                                                 </div>
                                             )}
@@ -671,9 +686,9 @@ export default function DiscoverPage() {
                                                 <div className="flex items-center gap-1.5 justify-center md:justify-start">
                                                     <h3 className="text-sm md:text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
                                                     {profile.sponsor_tier && (
-                                                        <span className="shrink-0 text-sm md:text-base cursor-help" title={`${profile.sponsor_tier} Sponsor`}>
-                                                            🏆
-                                                        </span>
+                                                        <div className="shrink-0 transform hover:scale-110 transition-transform">
+                                                            <SponsorBadge tier={profile.sponsor_tier} size="sm" />
+                                                        </div>
                                                     )}
                                                 </div>
                                                 {profile.title && (

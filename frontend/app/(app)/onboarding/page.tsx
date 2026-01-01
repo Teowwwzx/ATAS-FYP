@@ -11,6 +11,8 @@ import { CheckIcon, ChevronDownIcon, MagnifyingGlassIcon, ClockIcon } from '@rad
 
 import { APU_DEGREES, COUNTRIES } from '@/lib/constants'
 
+import { OrganizationSearchCombobox } from '@/components/profile/OrganizationSearchCombobox'
+
 // --- Components ---
 
 function CountryCombobox({ value, onChange, disabled, placeholder }: { value: string, onChange: (val: string | null) => void, disabled?: boolean, placeholder?: string }) {
@@ -599,12 +601,11 @@ export default function OnboardingPage() {
                           <label className="block text-sm font-bold text-black">Company Name</label>
                           <span className="text-xs text-zinc-500">(Can be edited later)</span>
                         </div>
-                        <input
-                          type="text"
-                          placeholder="e.g. Coca-Cola"
+                        <OrganizationSearchCombobox 
                           value={form.specialist || ''}
-                          onChange={(e) => updateField('specialist', e.target.value)}
-                          className="block w-full px-4 py-3 rounded-xl border-zinc-200 bg-zinc-50 text-black focus:bg-white focus:ring-2 focus:ring-yellow-400/50 outline-none"
+                          onChange={(val) => updateField('specialist', val)}
+                          onSelect={(org) => updateField('specialist', org.name)} // Or store org_id if backend supports it
+                          placeholder="Search or create your company..."
                         />
                       </div>
 

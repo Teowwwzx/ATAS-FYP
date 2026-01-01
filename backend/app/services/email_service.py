@@ -87,25 +87,29 @@ def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
         db.close()
 
 def send_verification_email(email: str, token: str):
-    verification_link = f"{settings.FRONTEND_BASE_URL}/verify-email?token={token}"
+    # token is now a 6-digit code
     html = _wrap_html(
         "Verify your email",
         (
             f"<p style=\"margin:0 0 12px;\">Please verify your email address to activate your account.</p>"
-            f"<a href=\"{verification_link}\" style=\"display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">Verify Email</a>"
-            f"<p style=\"margin:12px 0 0;color:#6b7280;font-size:12px;\">If the button doesn’t work, copy and paste this link: <br/><span style=\"word-break:break-all;\">{verification_link}</span></p>"
+            f"<div style=\"background:#f3f4f6;padding:16px;text-align:center;border-radius:8px;margin:16px 0;\">"
+            f"<span style=\"font-size:24px;font-weight:bold;letter-spacing:4px;color:#111827;\">{token}</span>"
+            f"</div>"
+            f"<p style=\"margin:0;color:#6b7280;font-size:14px;text-align:center;\">Enter this code in the verification page.</p>"
         ),
     )
     _log_and_send(email, "Verify your email address", html, {"type": "verification"})
 
 def send_password_reset_email(email: str, token: str):
-    reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={token}"
+    # token is now a 6-digit code
     html = _wrap_html(
         "Reset your password",
         (
-            f"<p style=\"margin:0 0 12px;\">Click the button to reset your password.</p>"
-            f"<a href=\"{reset_link}\" style=\"display:inline-block;background:#ef4444;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">Reset Password</a>"
-            f"<p style=\"margin:12px 0 0;color:#6b7280;font-size:12px;\">If the button doesn’t work, copy and paste this link: <br/><span style=\"word-break:break-all;\">{reset_link}</span></p>"
+            f"<p style=\"margin:0 0 12px;\">Use the following code to reset your password.</p>"
+            f"<div style=\"background:#f3f4f6;padding:16px;text-align:center;border-radius:8px;margin:16px 0;\">"
+            f"<span style=\"font-size:24px;font-weight:bold;letter-spacing:4px;color:#111827;\">{token}</span>"
+            f"</div>"
+            f"<p style=\"margin:0;color:#6b7280;font-size:14px;text-align:center;\">Enter this code in the password reset page.</p>"
         ),
     )
     _log_and_send(email, "Reset your password", html, {"type": "password_reset"})

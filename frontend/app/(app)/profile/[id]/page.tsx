@@ -198,15 +198,52 @@ export default function PublicProfilePage() {
     const customActions = (
         <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
             {isStudent ? (
-                <button
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-400 text-zinc-900 rounded-xl font-bold hover:bg-yellow-500 transition-all shadow-md active:scale-95"
-                    onClick={() => toast.success('Friend request sent!')}
-                >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    Add Friend
-                </button>
+                <>
+                    <button
+                        className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 ${isFollowing
+                            ? 'bg-white text-zinc-900 border-2 border-zinc-200 hover:bg-zinc-50'
+                            : 'bg-yellow-400 text-zinc-900 hover:bg-yellow-500'
+                            }`}
+                        onClick={handleConnect}
+                        disabled={followLoading}
+                    >
+                        {isFollowing ? (
+                            <>
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Friend Added
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                                Add Friend
+                            </>
+                        )}
+                    </button>
+
+                    {isFollowing && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const conv = await createConversation([userId])
+                                    toast.success('Chat created')
+                                    router.push(`/messages?conversation_id=${conv.id}`)
+                                } catch (error) {
+                                    toast.error('Failed to start chat')
+                                }
+                            }}
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-md active:scale-95"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            Message
+                        </button>
+                    )}
+                </>
             ) : (
                 <>
                     <button
@@ -294,6 +331,7 @@ export default function PublicProfilePage() {
                     profile={profile}
                     userInfo={null}
                     events={[]}
+                    organizedEvents={organizedEvents}
                     historyEvents={[]}
                     followers={followersList}
                     following={followingList}
@@ -363,40 +401,7 @@ export default function PublicProfilePage() {
                 </div>
             )}
 
-            {/* Organized Events Section */}
-            <div className="mt-12 bg-white rounded-2xl border border-zinc-100 shadow-sm p-8">
-                <h2 className="text-xl font-black text-zinc-900 mb-6 flex items-center gap-2">
-                    <span className="w-2 h-8 bg-purple-400 rounded-full"></span>
-                    Organized Events
-                </h2>
-                {organizedEvents.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {organizedEvents.map((event) => (
-                            <Link key={event.id} href={`/events/${event.id}`} className="block group">
-                                <div className="bg-white rounded-2xl border border-zinc-100 overflow-hidden shadow-sm hover:shadow-md transition-all group-hover:-translate-y-1">
-                                    <div className="h-40 bg-zinc-200 relative">
-                                        {event.cover_url ? (
-                                            <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-zinc-400 font-bold text-3xl opacity-20">EVENT</div>
-                                        )}
-                                        <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-bold text-zinc-900">
-                                            {new Date(event.start_datetime).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                    <div className="p-5">
-                                        <h3 className="font-bold text-zinc-900 mb-2 truncate group-hover:text-purple-600 transition-colors">{event.title}</h3>
-                                        <p className="text-zinc-500 text-sm line-clamp-2">{event.description || 'No description'}</p>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-zinc-500 italic">No public events organized yet.</div>
-                )}
-            </div>
-
+            {/* Organized Events Section - Moved to ProfileView for width consistency */}
 
 
             {/* Followers/Following Modal */}

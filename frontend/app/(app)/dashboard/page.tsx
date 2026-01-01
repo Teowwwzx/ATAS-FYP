@@ -72,7 +72,7 @@ function DashboardPageInner() {
 
     // Navigation Handler
     const handleEventSelect = (event: MyEventItem) => {
-        const staffRoles = ['organizer', 'committee', 'speaker', 'sponsor']
+        const staffRoles = ['organizer', 'committee']
         if (event.my_role && staffRoles.includes(event.my_role)) {
             router.push(`/manage/${event.event_id}`)
         } else {

@@ -352,8 +352,46 @@ def seed_presentation_data(db: Session):
             db.add(sponsor_p3)
             print("Created Past Event: Cloud Computing Conference 2023 (Sponsored)")
 
+        # 6.4 Past Events Loop (To reach Gold Tier > 10 events)
+        print("Seeding bulk past events for Gold Tier...")
+        for i in range(1, 15): # Create 14 more events to be safe
+            past_event_title = f"Past Tech Conference {2020 + (i % 4)} - Ed. {i}"
+            p_event = db.query(Event).filter(Event.title == past_event_title, Event.organizer_id == owner.id).first()
+            if not p_event:
+                p_event = Event(
+                    id=uuid.uuid4(),
+                    organizer_id=owner.id,
+                    title=past_event_title,
+                    description=f"A great past event from history edition {i}.",
+                    format=EventFormat.seminar,
+                    type=EventType.physical,
+                    start_datetime=datetime.now() - timedelta(days=400 + i*10),
+                    end_datetime=datetime.now() - timedelta(days=399 + i*10),
+                    registration_type=EventRegistrationType.free,
+                    status=EventStatus.completed,
+                    visibility=EventVisibility.public,
+                    venue_place_id="APU Auditorium",
+                    venue_remark=f"Room {i}",
+                    max_participant=200,
+                    cover_url="https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=2670&auto=format&fit=crop"
+                )
+                db.add(p_event)
+                db.flush()
+
+                # Add Sponsor Participant
+                sponsor_p = EventParticipant(
+                    event_id=p_event.id,
+                    user_id=sponsor_user.id,
+                    role=EventParticipantRole.sponsor,
+                    status=EventParticipantStatus.accepted,
+                    join_method="invite",
+                    promo_link="https://www.google.com",
+                    promo_image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png"
+                )
+                db.add(sponsor_p)
+        print("Created Bulk Past Events for Gold Tier")
+
     db.commit()
-    print("Presentation data seeded successfully!")
 
 if __name__ == "__main__":
     db = SessionLocal()

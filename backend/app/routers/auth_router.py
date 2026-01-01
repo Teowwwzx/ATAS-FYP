@@ -6,11 +6,12 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.models.user_model import User, UserStatus
 from app.core.security import create_access_token, verify_password, decode_access_token, get_password_hash
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 from app.dependencies import get_current_user
 from app.core.config import settings
 import requests
 import secrets
+from pydantic import BaseModel, EmailStr
 
 router = APIRouter()
 
@@ -55,11 +56,24 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
-@router.get("/verify/{token}")
-def verify_email(token: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.verification_token == token).first()
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+@router.post("/verify")
+def verify_email(request: VerifyEmailRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == request.email).first()
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid verification token")
+         # Use dummy time to prevent enumeration
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+        
+    if user.verification_token != request.code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    # Check for token expiration
+    if user.verification_token_expires_at and user.verification_token_expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Verification code expired")
+        
     if user.is_verified:
         raise HTTPException(status_code=400, detail="Email already verified")
 
@@ -129,9 +143,10 @@ def resend_verification_email_endpoint(
         return {"message": "Email is already verified. Please login."}
 
     print(" [DEBUG] Sending verification email via background task.")
-    # Generate new token
-    new_token = str(uuid.uuid4())
+    # Generate new 6-digit OTP
+    new_token = str(secrets.randbelow(900000) + 100000)
     user.verification_token = new_token
+    user.verification_token_expires_at = datetime.now() + timedelta(hours=24)
     db.commit()
 
     background_tasks.add_task(send_verification_email, user.email, new_token)

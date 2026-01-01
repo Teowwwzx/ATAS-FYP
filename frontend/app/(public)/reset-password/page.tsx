@@ -12,8 +12,10 @@ import { toast } from 'react-hot-toast'
 function ResetPasswordForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const token = searchParams.get('token')
+    const initialEmail = searchParams.get('email') || ''
 
+    const [email, setEmail] = useState(initialEmail)
+    const [code, setCode] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -22,9 +24,9 @@ function ResetPasswordForm() {
         e.preventDefault()
         setStatus('loading')
 
-        if (!token) {
+        if (!email || !code || !password || !confirmPassword) {
             setStatus('error')
-            toast.error('Invalid or missing reset token.', { id: 'reset-token-error' })
+            toast.error('Please fill in all fields.')
             return
         }
 
@@ -35,7 +37,7 @@ function ResetPasswordForm() {
         }
 
         try {
-            await resetPassword({ token, password })
+            await resetPassword({ email, code, password })
             setStatus('success')
             toast.success('Password reset successfully!')
         } catch (err: any) {
@@ -44,28 +46,6 @@ function ResetPasswordForm() {
             const errorMsg = err.response?.data?.detail || 'Failed to reset password. Please try again.'
             toast.error(errorMsg, { id: 'reset-password-error' })
         }
-    }
-
-    if (!token) {
-        return (
-            <div className="text-center lg:text-left">
-                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-red-100 mb-6">
-                    <svg className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <h3 className="text-2xl font-black text-zinc-900 mb-2">Invalid Link</h3>
-                <p className="text-zinc-500 font-medium mb-8">
-                    This password reset link is invalid or missing a token.
-                </p>
-                <Link
-                    href="/forgot-password"
-                    className="font-bold text-zinc-900 hover:text-yellow-600 transition-colors underline decoration-2 decoration-yellow-400 underline-offset-4"
-                >
-                    Request a new link
-                </Link>
-            </div>
-        )
     }
 
     if (status === 'success') {
@@ -93,6 +73,30 @@ function ResetPasswordForm() {
     return (
         <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-5">
+                <FormInput
+                    id="email"
+                    label="Email Address"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+                 <div>
+                    <label htmlFor="code" className="block text-sm font-bold text-zinc-900 mb-2">
+                        Verification Code
+                    </label>
+                    <input
+                        id="code"
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        required
+                        maxLength={6}
+                        className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 outline-none transition-all font-medium tracking-widest text-center text-2xl"
+                        placeholder="000000"
+                    />
+                </div>
                 <FormInput
                     id="password"
                     label="New Password"

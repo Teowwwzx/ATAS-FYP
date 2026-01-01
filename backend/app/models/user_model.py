@@ -33,6 +33,7 @@ class User(Base):
     # Application-specific fields
     is_verified = Column(Boolean, default=False, server_default=text("FALSE"))
     verification_token = Column(String, unique=True, nullable=True)
+    verification_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(Enum(UserStatus), default=UserStatus.inactive, nullable=False)
     is_dashboard_pro = Column(Boolean, default=False, server_default=text("FALSE"), nullable=False)
     referral_code = Column(String, unique=True, nullable=False)

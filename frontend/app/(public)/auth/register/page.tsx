@@ -240,6 +240,18 @@ function RegisterPageContent() {
                                 {loading ? 'Creating account...' : 'Create account'}
                             </FormButton>
                         </div>
+
+                        <div className="mt-4 text-center text-xs text-gray-500">
+                            By registering, you agree to our{' '}
+                            <Link href="/terms" className="underline hover:text-indigo-600">
+                                Terms & Conditions
+                            </Link>{' '}
+                            and{' '}
+                            <Link href="/privacy" className="underline hover:text-indigo-600">
+                                Privacy Policy
+                            </Link>
+                            .
+                        </div>
                     </form>
                 </div>
             </div>

@@ -85,9 +85,10 @@ export const resendVerification = async (email: string) => {
   return response.data
 }
 
-export const verifyEmail = async (token: string) => {
-  const response = await api.get<VerifyEmailSuccessResponse>(
-    `/auth/verify/${token}`,
+export const verifyEmail = async (email: string, code: string) => {
+  const response = await api.post<VerifyEmailSuccessResponse>(
+    '/auth/verify',
+    { email, code }
   )
   return response.data
 }
@@ -104,8 +105,8 @@ export const forgotPassword = async (email: string) => {
 
 export const resetPassword = async (data: import('./api.types').PasswordReset) => {
   const response = await api.post<{ message: string }>(
-    `/email/reset-password?token=${encodeURIComponent(data.token)}`,
-    { password: data.password }
+    `/email/reset-password`,
+    data
   )
   return response.data
 }

@@ -7,6 +7,7 @@ interface ProfileViewProps {
     profile: ProfileResponse
     userInfo: UserMeResponse | null
     events: MyEventItem[]
+    organizedEvents?: any[] // Added this
     historyEvents?: any[]
     followers: any[]
     following: any[]
@@ -22,6 +23,7 @@ export function ProfileView({
     profile,
     userInfo,
     events,
+    organizedEvents = [], // Default to empty
     historyEvents = [],
     followers,
     following,
@@ -212,6 +214,44 @@ export function ProfileView({
                                     </svg>
                                     {profile.availability}
                                 </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Organized Events Section - Moved here for width consistency */}
+                    <div className="bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden">
+                        <div className="px-8 py-6 border-b border-zinc-100">
+                            <h2 className="text-xl font-black text-zinc-900 flex items-center gap-2">
+                                <span className="w-2 h-6 bg-purple-400 rounded-full"></span>
+                                Organized Events
+                            </h2>
+                        </div>
+                        <div className="p-8">
+                            {organizedEvents.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {organizedEvents.map((event) => (
+                                        <Link key={event.id} href={`/events/${event.id}`} className="block group">
+                                            <div className="bg-white rounded-2xl border border-zinc-100 overflow-hidden shadow-sm hover:shadow-md transition-all group-hover:-translate-y-1">
+                                                <div className="h-40 bg-zinc-200 relative">
+                                                    {event.cover_url ? (
+                                                        <img src={event.cover_url} alt={event.title} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-zinc-400 font-bold text-3xl opacity-20">EVENT</div>
+                                                    )}
+                                                    <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur rounded-full text-xs font-bold text-zinc-900">
+                                                        {new Date(event.start_datetime).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                                <div className="p-5">
+                                                    <h3 className="font-bold text-zinc-900 mb-2 truncate group-hover:text-purple-600 transition-colors">{event.title}</h3>
+                                                    <p className="text-zinc-500 text-sm line-clamp-2">{event.description || 'No description'}</p>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-zinc-500 italic">No public events organized yet.</div>
                             )}
                         </div>
                     </div>

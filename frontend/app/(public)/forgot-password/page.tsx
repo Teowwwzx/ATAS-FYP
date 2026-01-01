@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
                             </div>
                             <h3 className="text-2xl font-black text-zinc-900 mb-2">Check your email</h3>
                             <p className="text-zinc-500 font-medium mb-8">
-                                We've sent a password reset link to{' '}
+                                We've sent a 6-digit code to{' '}
                                 {(() => {
                                     const domain = email.split('@')[1]?.toLowerCase()
                                     let inboxUrl = null
@@ -100,16 +100,14 @@ export default function ForgotPasswordPage() {
                                         >
                                             {email}
                                         </a>
-                                    ) : (
-                                        <span className="font-bold text-zinc-900">{email}</span>
-                                    )
-                                })()}.
+                                    ) : <span className="font-bold text-zinc-900">{email}</span>
+                                })()}
                             </p>
                             <Link
-                                href="/login"
+                                href={`/reset-password?email=${encodeURIComponent(email)}`}
                                 className="w-full flex justify-center py-4 px-6 border border-transparent rounded-full shadow-lg text-base font-bold text-zinc-900 bg-yellow-400 hover:bg-yellow-300 hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
                             >
-                                Back to Login
+                                Enter Code & Reset Password
                             </Link>
                         </div>
                     ) : (

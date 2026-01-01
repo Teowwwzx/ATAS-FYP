@@ -21,8 +21,9 @@ export interface PasswordResetRequest {
 }
 
 export interface PasswordReset {
+    email: string
+    code: string
     password: string
-    token: string
 }
 
 // --- Auth Responses ---

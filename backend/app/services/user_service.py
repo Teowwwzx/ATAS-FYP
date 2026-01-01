@@ -1,5 +1,6 @@
 import uuid
 import secrets
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.models.user_model import User, Role
 from app.models.profile_model import Profile
@@ -9,12 +10,17 @@ from app.services.email_service import send_verification_email
 
 def create_user(db: Session, user: UserCreate, background_tasks=None):
     hashed_password = get_password_hash(user.password)
-    verification_token = secrets.token_urlsafe(32)
+    # Generate 6-digit OTP
+    verification_token = str(secrets.randbelow(900000) + 100000)
+    # Set expiration to 24 hours from now
+    expires_at = datetime.now() + timedelta(hours=24)
+    
     db_user = User(
         email=user.email,
         password=hashed_password,
         referral_code=uuid.uuid4().hex[:8],
-        verification_token=verification_token
+        verification_token=verification_token,
+        verification_token_expires_at=expires_at
     )
     db.add(db_user)
     db.flush()

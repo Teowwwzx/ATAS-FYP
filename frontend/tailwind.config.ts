@@ -61,12 +61,18 @@ const config: Config = {
           'from': { opacity: '0', transform: 'translateY(-8px)' },
           'to': { opacity: '1', transform: 'translateY(0)' },
         },
+        shine: {
+          '0%': { left: '-100%' },
+          '20%': { left: '200%' }, // Fast sweep
+          '100%': { left: '200%' }, // Wait for next cycle
+        },
       },
       animation: {
         fadeIn: 'fadeIn 200ms ease-out',
         slideUpAndFade: 'slideUpAndFade 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         scaleIn: 'scaleIn 200ms ease-out',
         slideDownAndFade: 'slideDownAndFade 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+        shine: 'shine 4s cubic-bezier(0.4, 0, 0.2, 1) infinite',
       },
       container: {
         center: true,

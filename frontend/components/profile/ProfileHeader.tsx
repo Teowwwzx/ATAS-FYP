@@ -1,5 +1,6 @@
 import React from 'react'
 import { ProfileResponse } from '@/services/api.types'
+import { SponsorBadge } from '../ui/SponsorBadge'
 
 interface ProfileHeaderProps {
     profile: ProfileResponse
@@ -32,6 +33,37 @@ export function ProfileHeader({
     onViewFollowing,
     customActions
 }: ProfileHeaderProps) {
+    const getTierStyles = (tier: string | null | undefined) => {
+        switch (tier) {
+            case 'Gold':
+                return {
+                    ring: 'ring-yellow-400',
+                    shadow: 'shadow-[0_0_30px_rgba(250,204,21,0.6)]',
+                    badge: 'bg-gradient-to-r from-yellow-100 via-yellow-200 to-yellow-100 text-yellow-800 border-yellow-300',
+                }
+            case 'Silver':
+                return {
+                    ring: 'ring-slate-300',
+                    shadow: 'shadow-[0_0_30px_rgba(203,213,225,0.6)]',
+                    badge: 'bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 text-slate-800 border-slate-300',
+                }
+            case 'Bronze':
+                return {
+                    ring: 'ring-amber-700',
+                    shadow: 'shadow-[0_0_30px_rgba(180,83,9,0.4)]',
+                    badge: 'bg-gradient-to-r from-amber-100 via-amber-200 to-amber-100 text-amber-800 border-amber-300',
+                }
+            default:
+                return {
+                    ring: 'ring-amber-50',
+                    shadow: 'shadow-2xl',
+                    badge: 'hidden',
+                }
+        }
+    }
+
+    const tierStyle = getTierStyles(profile.sponsor_tier)
+
     return (
         <div className="relative mb-8">
             {/* Cover Image Container */}
@@ -78,7 +110,7 @@ export function ProfileHeader({
                 <div className="-mt-16 sm:-mt-20 shrink-0 relative z-30 mr-0 md:mr-8 mb-4 md:mb-0 flex justify-center md:block">
                     <div className="relative group">
                         <div
-                            className="h-32 w-32 sm:h-44 sm:w-44 rounded-[2rem] ring-8 ring-amber-50 bg-white overflow-hidden shadow-2xl cursor-pointer relative z-20"
+                            className={`h-32 w-32 sm:h-44 sm:w-44 rounded-[2rem] ring-8 ${tierStyle.ring} bg-white overflow-hidden ${tierStyle.shadow} cursor-pointer relative z-20 transition-all duration-500`}
                             onClick={() => profile.avatar_url && onPreviewImage(profile.avatar_url)}
                         >
                             {profile.avatar_url ? (
@@ -92,7 +124,26 @@ export function ProfileHeader({
                                     {profile.full_name?.charAt(0) || 'U'}
                                 </div>
                             )}
+
+                            {/* Gold Shine Effect */}
+                            {profile.sponsor_tier === 'Gold' && (
+                                <div className="absolute inset-0 pointer-events-none z-30">
+                                    <div className="absolute top-0 -left-[100%] w-1/2 h-full bg-gradient-to-r from-transparent via-yellow-100/50 to-transparent -skew-x-12 animate-shine"></div>
+                                </div>
+                            )}
                         </div>
+
+                        {/* Animated Glow for Gold Tier */}
+                        {profile.sponsor_tier === 'Gold' && (
+                            <div className="absolute inset-0 rounded-[2rem] bg-yellow-400 blur-xl opacity-40 animate-pulse z-10"></div>
+                        )}
+
+                        {/* 3D Badge Overlap */}
+                        {profile.sponsor_tier && (
+                            <div className="absolute -bottom-3 -right-3 z-30 transform hover:scale-110 transition-transform duration-300">
+                                <SponsorBadge tier={profile.sponsor_tier} size="lg" />
+                            </div>
+                        )}
 
                         {/* Avatar Edit Button - Always Visible & High Z-Index */}
                         {isOwnProfile && (
@@ -123,14 +174,15 @@ export function ProfileHeader({
                     <div>
                         {/* Name */}
                         {/* Name */}
-                        <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                        <div className="flex items-center justify-center md:justify-start gap-3 mb-2 flex-wrap">
                             <h1 className="text-3xl sm:text-4xl font-black text-zinc-900 tracking-tight leading-none">
                                 {profile.full_name}
                             </h1>
                             {profile.sponsor_tier && (
-                                <span className="text-2xl sm:text-3xl cursor-help animate-pulse" title={`${profile.sponsor_tier} Sponsor`}>
-                                    🏆
-                                </span>
+                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs sm:text-sm font-bold shadow-sm border ${tierStyle.badge} animate-fadeIn`}>
+                                    <SponsorBadge tier={profile.sponsor_tier} size="sm" />
+                                    <span>{profile.sponsor_tier} Sponsor</span>
+                                </div>
                             )}
                         </div>
 
