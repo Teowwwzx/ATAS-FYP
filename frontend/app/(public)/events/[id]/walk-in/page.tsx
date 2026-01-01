@@ -34,7 +34,7 @@ export default function WalkInRegistrationPage() {
         try {
             const data = await getEventById(id)
             setEvent(data)
-            const phase = getEventPhase(data.start_datetime, data.end_datetime)
+            const phase = getEventPhase(data)
             const physical = data.type === 'physical'
             const enabled = !!data.is_attendance_enabled
             const windowOpen = phase === EventPhase.EVENT_DAY || phase === EventPhase.ONGOING

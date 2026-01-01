@@ -31,13 +31,27 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
 
         setLoading(true)
         try {
-            await updateEvent(event.id, { price: val, currency: 'MYR' })
+            await updateEvent(event.id, { price: val })
             toast.success('Price updated')
             onUpdate()
         } catch (error) {
             console.error(error)
             toast.error('Failed to update price')
             setLocalPrice(event.price?.toString() || '')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleCurrencyChange = async (currency: string) => {
+        setLoading(true)
+        try {
+            await updateEvent(event.id, { currency })
+            toast.success('Currency updated')
+            onUpdate()
+        } catch (error) {
+            console.error(error)
+            toast.error('Failed to update currency')
         } finally {
             setLoading(false)
         }
@@ -390,9 +404,10 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
 
             <DeleteEventModal
                 isOpen={showDeleteModal}
+                eventTitle={event.title}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={handleDelete}
-                loading={isDeleting}
+                isDeleting={isDeleting}
             />
         </div>
     )

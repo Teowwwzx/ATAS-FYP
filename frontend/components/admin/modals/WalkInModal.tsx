@@ -4,7 +4,6 @@ import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
 import { organizerWalkInAttendance, createWalkInToken, getWalkInTokens } from '@/services/api'
 import { EventDetails, EventWalkInTokenResponse } from '@/services/api.types'
-import { QrCodeIcon, UserPlusIcon, LinkIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 
 interface WalkInModalProps {
     isOpen: boolean
@@ -27,6 +26,7 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
     const [tokenLabel, setTokenLabel] = useState('')
     const [tokenMaxUses, setTokenMaxUses] = useState<string>('') // empty = unlimited
     const [creatingToken, setCreatingToken] = useState(false)
+    const [showHint, setShowHint] = useState(true)
 
     useEffect(() => {
         if (isOpen) {
@@ -135,7 +135,9 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                                 )
                                             }
                                         >
-                                            <UserPlusIcon className="w-4 h-4" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 19.5a1.5 1.5 0 011.5-1.5h11.25a1.5 1.5 0 011.5 1.5" />
+                                            </svg>
                                             Manual Entry
                                         </Tab>
                                         <Tab
@@ -148,7 +150,9 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                                 )
                                             }
                                         >
-                                            <LinkIcon className="w-4 h-4" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                                            </svg>
                                             Registration Links
                                         </Tab>
                                     </Tab.List>
@@ -200,14 +204,24 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
 
                                     {/* Links Panel */}
                                     <Tab.Panel>
-                                        <div className="mb-6 bg-yellow-50 border border-yellow-100 rounded-lg p-4">
-                                            <h4 className="text-sm font-bold text-yellow-800 mb-1">How this works</h4>
-                                            <p className="text-xs text-yellow-700">
-                                                Generate a unique link for attendees to register themselves at the venue. 
-                                                You can set a limit on how many times a link can be used.
-                                                Display the QR code (generated from the link) on a screen or print it out.
-                                            </p>
-                                        </div>
+                                        {showHint && (
+                                            <div className="mb-6 bg-yellow-50 border border-yellow-100 rounded-lg p-4 relative">
+                                                <button 
+                                                    onClick={() => setShowHint(false)}
+                                                    className="absolute top-2 right-2 text-yellow-600 hover:text-yellow-800"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                                                    </svg>
+                                                </button>
+                                                <h4 className="text-sm font-bold text-yellow-800 mb-1">How this works</h4>
+                                                <p className="text-xs text-yellow-700 pr-4">
+                                                    Generate a unique link for attendees to register themselves at the venue. 
+                                                    You can set a limit on how many times a link can be used.
+                                                    Display the QR code (generated from the link) on a screen or print it out.
+                                                </p>
+                                            </div>
+                                        )}
 
                                         <form onSubmit={handleCreateToken} className="mb-8 p-4 bg-zinc-50 rounded-xl border border-zinc-100">
                                             <h4 className="text-sm font-bold text-zinc-900 mb-3">Create New Link</h4>
@@ -219,7 +233,7 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                                         value={tokenLabel}
                                                         onChange={e => setTokenLabel(e.target.value)}
                                                         placeholder="e.g. Front Desk QR"
-                                                        className="w-full text-sm rounded-lg border-zinc-300 focus:border-yellow-500 focus:ring-yellow-500"
+                                                        className="w-full text-sm text-gray-900 rounded-lg border-zinc-300 focus:border-yellow-500 focus:ring-yellow-500 placeholder:text-gray-400"
                                                     />
                                                 </div>
                                                 <div>
@@ -229,7 +243,7 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                                         value={tokenMaxUses}
                                                         onChange={e => setTokenMaxUses(e.target.value)}
                                                         placeholder="Unlimited"
-                                                        className="w-full text-sm rounded-lg border-zinc-300 focus:border-yellow-500 focus:ring-yellow-500"
+                                                        className="w-full text-sm text-gray-900 rounded-lg border-zinc-300 focus:border-yellow-500 focus:ring-yellow-500 placeholder:text-gray-400"
                                                         min="1"
                                                     />
                                                 </div>
@@ -261,7 +275,7 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                                                     {token.is_active ? 'Active' : 'Inactive'}
                                                                 </span>
                                                             </div>
-                                                            <p className="text-xs text-zinc-500 mt-1">
+                                                            <p className="text-xs text-gray-500 mt-1">
                                                                 Used: {token.current_uses} / {token.max_uses === null ? '∞' : token.max_uses}
                                                             </p>
                                                         </div>
@@ -270,7 +284,9 @@ export function WalkInModal({ isOpen, onClose, event, onSuccess }: WalkInModalPr
                                                             className="ml-4 p-2 text-zinc-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
                                                             title="Copy Link"
                                                         >
-                                                            <ClipboardDocumentCheckIcon className="w-5 h-5" />
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.251 2.251 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                                                            </svg>
                                                         </button>
                                                     </div>
                                                 ))

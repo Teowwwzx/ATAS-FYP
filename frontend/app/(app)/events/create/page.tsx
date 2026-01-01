@@ -417,7 +417,7 @@ export default function CreateEventPage() {
                             if (e.target.value === 'create_new') {
                                 setShowOrgModal(true)
                             } else {
-                                setFormData(prev => ({ ...prev, organization_id: e.target.value || null }))
+                                setFormData(prev => ({ ...prev, organization_id: e.target.value || undefined }))
                             }
                         }}
                     >

@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 import uuid
-from app.models.event_model import EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipantRole, EventParticipantStatus, EventPaymentStatus
+from app.models.event_model import EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipantRole, EventParticipantStatus, EventPaymentStatus, ChecklistVisibility
 from app.schemas.user_schema import UserResponse
 
 # ... (existing content) ...
@@ -45,6 +45,9 @@ class EventParticipantUpdate(BaseModel):
 
 class EventParticipantResponseUpdate(BaseModel):
     status: EventParticipantStatus
+
+class EventParticipantBulkCreate(BaseModel):
+    items: List[EventParticipantCreate]
 
 class EventParticipantDetails(BaseModel):
     id: uuid.UUID
@@ -247,3 +250,107 @@ class WalkInRegistrationRequest(BaseModel):
     name: str
     email: str
     payment_proof_url: str | None = None # Required if paid event
+
+class EventParticipantRoleUpdate(BaseModel):
+    role: EventParticipantRole
+
+class CategoryCreate(BaseModel):
+    name: str
+
+class CategoryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: datetime
+    updated_at: datetime | None = None
+    
+    model_config = {"from_attributes": True}
+
+class EventCategoryAttach(BaseModel):
+    category_ids: List[uuid.UUID]
+
+class AttendanceQRResponse(BaseModel):
+    token: str
+    expires_at: datetime
+
+class AttendanceScanRequest(BaseModel):
+    token: str
+
+class AttendanceUserScanRequest(BaseModel):
+    token: str
+    latitude: float | None = None
+    longitude: float | None = None
+
+class WalkInAttendanceRequest(BaseModel):
+    name: str
+    email: str
+    payment_proof_url: str | None = None
+
+class MyEventItem(BaseModel):
+    event_id: uuid.UUID
+    title: str
+    start_datetime: datetime
+    end_datetime: datetime
+    type: EventType
+    status: EventStatus
+    my_role: EventParticipantRole | None = None
+    my_status: EventParticipantStatus | None = None
+    cover_url: str | None = None
+    venue_remark: str | None = None
+    format: EventFormat
+    participant_count: int = 0
+    
+    model_config = {"from_attributes": True}
+
+class EventAttendanceStats(BaseModel):
+    event_id: uuid.UUID
+    total_audience: int
+    attended_audience: int
+    absent_audience: int
+    total_participants: int
+    attended_total: int
+
+class EventChecklistItemCreate(BaseModel):
+    title: str
+    description: str | None = None
+    visibility: ChecklistVisibility | None = None
+    audience_role: EventParticipantRole | None = None
+    link_url: str | None = None
+    assigned_user_id: uuid.UUID | None = None
+    assigned_user_ids: List[uuid.UUID] | None = None
+    due_datetime: datetime | None = None
+
+class EventChecklistItemUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    is_completed: bool | None = None
+    visibility: ChecklistVisibility | None = None
+    audience_role: EventParticipantRole | None = None
+    link_url: str | None = None
+    assigned_user_id: uuid.UUID | None = None
+    assigned_user_ids: List[uuid.UUID] | None = None
+    sort_order: int | None = None
+    due_datetime: datetime | None = None
+
+class EventChecklistItemResponse(BaseModel):
+    id: uuid.UUID
+    event_id: uuid.UUID
+    title: str
+    description: str | None = None
+    is_completed: bool
+    visibility: ChecklistVisibility
+    audience_role: EventParticipantRole | None = None
+    link_url: str | None = None
+    assigned_user_id: uuid.UUID | None = None
+    due_datetime: datetime | None = None
+    created_by_user_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime | None = None
+    assigned_user_ids: List[uuid.UUID] = []
+
+    model_config = {"from_attributes": True}
+
+class EventParticipationSummary(BaseModel):
+    is_participant: bool
+    my_role: EventParticipantRole | None = None
+    my_status: EventParticipantStatus | None = None
+

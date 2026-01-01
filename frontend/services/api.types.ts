@@ -257,31 +257,7 @@ export interface EventDetails extends EventCreate {
     organization_name?: string
 }
 
-// --- Organization Types ---
-
-export type OrganizationType = 'community' | 'company' | 'non_profit' | 'education'
-export type OrganizationVisibility = 'public' | 'private'
-
-export interface OrganizationResponse {
-    id: string
-    owner_id: string
-    name: string
-    type: OrganizationType
-    visibility: OrganizationVisibility
-    description?: string
-    logo_url?: string
-    website_url?: string
-    created_at: string
-}
-
-export interface OrganizationCreate {
-    name: string
-    type: OrganizationType
-    visibility: OrganizationVisibility
-    description?: string
-    logo_url?: string
-    website_url?: string
-}
+// --- Organization Types (Moved to bottom) ---
 
 // --- Participant Types ---
 
@@ -552,7 +528,7 @@ export interface UserMeResponse {
 // --- Organization Types ---
 
 export type OrganizationVisibility = 'public' | 'private'
-export type OrganizationType = 'company' | 'university' | 'community' | 'nonprofit' | 'government'
+export type OrganizationType = 'company' | 'university' | 'education' | 'community' | 'nonprofit' | 'non_profit' | 'government'
 export type OrganizationStatus = 'pending' | 'approved' | 'rejected'
 
 export interface OrganizationCreate {
@@ -603,6 +579,7 @@ export interface OrganizationResponse {
 export interface AuditLog {
     id: string
     actor_user_id?: string | null
+    actor_email?: string | null
     action: string
     target_type: string
     target_id?: string | null

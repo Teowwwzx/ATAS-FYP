@@ -647,7 +647,11 @@ export default function EventDetailsPage() {
                                                 <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-yellow-800 space-y-3">
                                                     <p className="text-sm font-bold">
                                                         {event.registration_type === 'paid'
-                                                            ? 'Settle the payment and verified by organizer first.'
+                                                            ? (paymentStatus === 'pending'
+                                                                ? 'Payment under review. Waiting organizer approval.'
+                                                                : paymentStatus === 'rejected'
+                                                                    ? 'Payment rejected. Please upload a valid receipt.'
+                                                                    : 'Settle the payment and verified by organizer first.')
                                                             : 'Waiting organizer approval'}
                                                     </p>
                                                     {event.registration_type === 'paid' && (
@@ -661,10 +665,13 @@ export default function EventDetailsPage() {
                                                             />
                                                             <button
                                                                 onClick={() => fileInputRef.current?.click()}
-                                                                disabled={uploadingProof}
-                                                                className="px-4 py-2 bg-yellow-100 text-yellow-800 text-sm font-bold rounded-lg hover:bg-yellow-200 transition-colors w-full border border-yellow-200"
+                                                                disabled={uploadingProof || paymentStatus === 'pending'}
+                                                                className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors w-full border ${paymentStatus === 'pending'
+                                                                        ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed'
+                                                                        : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200'
+                                                                    }`}
                                                             >
-                                                                {uploadingProof ? 'Uploading...' : 'Upload Receipt'}
+                                                                {uploadingProof ? 'Uploading...' : paymentStatus === 'pending' ? 'Proof Uploaded' : 'Upload Receipt'}
                                                             </button>
                                                         </div>
                                                     )}
