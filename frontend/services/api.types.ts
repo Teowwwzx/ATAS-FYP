@@ -170,6 +170,7 @@ export interface ProfileResponse {
     skills?: { id: string; name: string }[]
     followers_count?: number
     following_count?: number
+    sponsor_tier?: string | null
 }
 
 export interface ProfileUpdate {
@@ -256,31 +257,7 @@ export interface EventDetails extends EventCreate {
     organization_name?: string
 }
 
-// --- Organization Types ---
 
-export type OrganizationType = 'community' | 'company' | 'non_profit' | 'education'
-export type OrganizationVisibility = 'public' | 'private'
-
-export interface OrganizationResponse {
-    id: string
-    owner_id: string
-    name: string
-    type: OrganizationType
-    visibility: OrganizationVisibility
-    description?: string
-    logo_url?: string
-    website_url?: string
-    created_at: string
-}
-
-export interface OrganizationCreate {
-    name: string
-    type: OrganizationType
-    visibility: OrganizationVisibility
-    description?: string
-    logo_url?: string
-    website_url?: string
-}
 
 // --- Participant Types ---
 
@@ -317,6 +294,8 @@ export interface EventParticipantDetails {
     proposal_id?: string
     payment_proof_url?: string | null
     payment_status?: string | null
+    promo_link?: string | null
+    promo_image_url?: string | null
 }
 
 export interface EventParticipationSummary {
@@ -342,6 +321,8 @@ export interface EventParticipantCreate {
     role: EventParticipantRole
     description?: string | null
     proposal_id?: string
+    promo_link?: string | null
+    promo_image_url?: string | null
 }
 
 export interface EventParticipantBulkCreate {
@@ -512,7 +493,7 @@ export interface EventChecklistItemResponse {
     created_by_user_id: string
     created_at: string
     updated_at?: string | null
-    visibility: 'internal' | 'external'
+    visibility: string
     audience_role?: EventParticipantRole | null
     link_url?: string | null
 }

@@ -7,7 +7,17 @@ import { Dialog, Transition, Menu } from '@headlessui/react'
 import { Fragment } from 'react'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
-const TEMPLATES = {
+interface TemplateTask {
+    title: string
+    description?: string
+    priority?: 'low' | 'medium' | 'high'
+    due_offset_days?: number
+    assigned_role?: string
+    link_url?: string
+    visibility?: 'internal' | 'external'
+}
+
+const TEMPLATES: Record<string, { id: string, name: string, description: string, tasks: (string | TemplateTask)[] }> = {
     default: {
         id: 'default',
         name: "Default",
@@ -19,6 +29,19 @@ const TEMPLATES = {
             { title: "Prepare appreciation email", assigned_role: "organizer" },
             { title: "Collect car plate numbers", assigned_role: "committee", link_url: "https://docs.google.com/spreadsheets/u/0/create" },
             { title: "Set up registration spreadsheet", link_url: "https://docs.google.com/spreadsheets/u/0/create" }
+        ]
+    },
+    event_prep: {
+        id: 'event_prep',
+        name: "Event Day Prep",
+        description: "Standard preparation items for participants & guests.",
+        tasks: [
+            { title: "Car plate registration", description: "For experts & sponsors parking arrangement", link_url: "https://sheets.new", assigned_role: "organizer", visibility: "external" },
+            { title: "How to get there (Parking)", description: "Map and parking guide", link_url: "https://maps.google.com", visibility: "external" },
+            { title: "Dress Code", description: "Attire guidelines", link_url: "https://docs.new", visibility: "external" },
+            { title: "Arrive 15 mins early", visibility: "external" },
+            { title: "Emergency Contact", description: "Organizer contact info", visibility: "internal" },
+            { title: "Food & Beverage", description: "Menu and dietary requirements", link_url: "https://sheets.new", visibility: "internal" }
         ]
     },
     project_management: {
@@ -175,6 +198,22 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
             console.error(error)
             setItems(originalItems)
             toast.error('Failed to update task')
+        }
+    }
+
+    const handleToggleVisibility = async (itemId: string, currentVisibility: string) => {
+        const newVisibility: 'internal' | 'external' = currentVisibility === 'internal' ? 'external' : 'internal'
+        const originalItems = [...items]
+        const updatedItems = items.map(i => i.id === itemId ? { ...i, visibility: newVisibility } : i)
+        setItems(updatedItems)
+
+        try {
+            await updateEventChecklistItem(event.id, itemId, { visibility: newVisibility })
+            toast.success(`Task is now ${newVisibility}`)
+        } catch (error) {
+            console.error(error)
+            setItems(originalItems)
+            toast.error('Failed to update visibility')
         }
     }
 
@@ -339,6 +378,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                 } else {
                     const payload: any = { title: task.title }
                     if (task.link_url) payload.link_url = task.link_url
+                    if (task.visibility) payload.visibility = task.visibility
                     if (task.assigned_role) {
                         const target = participants.find(p => p.role === task.assigned_role)
                         if (target) payload.assigned_user_ids = [target.user_id]
@@ -537,13 +577,14 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Task</th>
                                     <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Assigned To</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Visibility</th>
                                     <th className="px-6 py-4 w-12 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100">
                                 {items.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-zinc-400 font-medium">
+                                        <td colSpan={5} className="px-6 py-12 text-center text-zinc-400 font-medium">
                                             No tasks yet. Add one below!
                                         </td>
                                     </tr>
@@ -551,169 +592,111 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                     items
                                         .filter(i => viewVisibility === 'all' ? true : (i.visibility || 'internal') === viewVisibility)
                                         .map((item) => (
-                                        <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors group">
-                                            <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => handleToggle(item)}
-                                                    className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.is_completed
-                                                        ? 'bg-green-500 border-green-500 text-white'
-                                                        : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
-                                                        }`}
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                </button>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`font-bold transition-all ${item.is_completed ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
-                                                    {item.title}
-                                                </span>
-                                                {/* Linked Files Display */}
-                                                {(() => {
-                                                    const linkedFiles = files.filter(f => {
-                                                        const linkedChecklistIds = fileLinks[f.id] || []
-                                                        return linkedChecklistIds.includes(item.id)
-                                                    })
+                                            <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors group">
+                                                <td className="px-6 py-4 text-center">
+                                                    <button
+                                                        onClick={() => handleToggle(item)}
+                                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.is_completed
+                                                            ? 'bg-green-500 border-green-500 text-white'
+                                                            : 'bg-zinc-50 border-zinc-300 text-transparent hover:border-yellow-400'
+                                                            }`}
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`font-bold transition-all ${item.is_completed ? 'text-zinc-400 line-through' : 'text-zinc-900'}`}>
+                                                        {item.title}
+                                                    </span>
+                                                    {/* Linked Files Display */}
+                                                    {(() => {
+                                                        const linkedFiles = files.filter(f => {
+                                                            const linkedChecklistIds = fileLinks[f.id] || []
+                                                            return linkedChecklistIds.includes(item.id)
+                                                        })
 
-                                                    if (linkedFiles.length > 0) {
-                                                        return (
-                                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                                {linkedFiles.map(f => (
+                                                        if (linkedFiles.length > 0) {
+                                                            return (
+                                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                                    {linkedFiles.map(f => (
+                                                                        <a
+                                                                            key={f.id}
+                                                                            href={f.file_url ?? '#'}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors border border-blue-100"
+                                                                            title={f.title ?? ''}
+                                                                        >
+                                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                                            {f.title}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )
+                                                        }
+                                                        return null
+                                                    })()}
+                                                    {item.link_url && (
+                                                        <div className="mt-2">
+                                                            {(() => {
+                                                                const type = getLinkType(item.link_url || '')
+                                                                const classes = getLinkBadgeClass(type)
+                                                                let label = ''
+                                                                try {
+                                                                    const u = new URL(item.link_url || '')
+                                                                    const path = u.pathname
+                                                                    const ext = (path.split('.').pop() || '').toUpperCase()
+                                                                    label = ext || u.hostname.replace('www.', '')
+                                                                } catch {
+                                                                    label = 'Link'
+                                                                }
+                                                                return (
                                                                     <a
-                                                                        key={f.id}
-                                                                        href={f.file_url ?? '#'}
+                                                                        href={item.link_url || '#'}
                                                                         target="_blank"
                                                                         rel="noreferrer"
-                                                                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors border border-blue-100"
-                                                                        title={f.title ?? ''}
+                                                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors border ${classes}`}
+                                                                        title={item.link_url || ''}
                                                                     >
-                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                                                                        {f.title}
+                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                                                        {label}
                                                                     </a>
-                                                                ))}
-                                                            </div>
-                                                        )
-                                                    }
-                                                    return null
-                                                 })()}
-                                                {item.link_url && (
-                                                    <div className="mt-2">
-                                                        {(() => {
-                                                            const type = getLinkType(item.link_url || '')
-                                                            const classes = getLinkBadgeClass(type)
-                                                            let label = ''
-                                                            try {
-                                                                const u = new URL(item.link_url || '')
-                                                                const path = u.pathname
-                                                                const ext = (path.split('.').pop() || '').toUpperCase()
-                                                                label = ext || u.hostname.replace('www.', '')
-                                                            } catch {
-                                                                label = 'Link'
-                                                            }
-                                                            return (
-                                                                <a
-                                                                    href={item.link_url || '#'}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors border ${classes}`}
-                                                                    title={item.link_url || ''}
-                                                                >
-                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                                                    {label}
-                                                                </a>
-                                                            )
-                                                        })()}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <Menu as="div" className="relative">
-                                                    <Menu.Button className="w-full text-left focus:outline-none">
-                                                        {item.assigned_user_ids && item.assigned_user_ids.length > 0 ? (
-                                                            <div className="flex items-center -space-x-2 px-2 py-1 -ml-2 rounded-lg hover:bg-zinc-100 transition-colors">
-                                                                {item.assigned_user_ids.map(uid => {
-                                                                    const person = committee.find(p => p.id === uid) || committee.find(p => p.user_id === uid)
-                                                                    if (!person) return null
-                                                                    return (
-                                                                        <div key={uid} className="w-6 h-6 rounded-full bg-zinc-100 ring-2 ring-white overflow-hidden relative" title={person.full_name}>
-                                                                            {person.avatar_url ? (
-                                                                                <Image src={person.avatar_url} alt={person.full_name} fill className="object-cover" />
-                                                                            ) : (
-                                                                                <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-[10px] font-bold">
-                                                                                    {person.full_name[0]}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    )
-                                                                })}
-                                                                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] text-zinc-400 font-bold ring-2 ring-white hover:bg-zinc-50">
-                                                                    +
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="px-2 py-1 -ml-2 rounded-lg hover:bg-zinc-100 transition-colors cursor-pointer group-hover:bg-white text-zinc-400 italic text-xs hover:text-blue-500">
-                                                                Assign...
-                                                            </div>
-                                                        )}
-                                                    </Menu.Button>
-                                                    <Transition
-                                                        as={Fragment}
-                                                        enter="transition ease-out duration-100"
-                                                        enterFrom="transform opacity-0 scale-95"
-                                                        enterTo="transform opacity-100 scale-100"
-                                                        leave="transition ease-in duration-75"
-                                                        leaveFrom="transform opacity-100 scale-100"
-                                                        leaveTo="transform opacity-0 scale-95"
-                                                    >
-                                                        <Menu.Items className="absolute left-0 bottom-full mb-2 w-56 origin-bottom-left divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                                                            <div className="p-1 max-h-60 overflow-y-auto">
-                                                                {committee.length > 0 ? (
-                                                                    committee.map(u => {
-                                                                        const isAssigned = (item.assigned_user_ids || []).includes(u.user_id) || (item.assigned_user_ids || []).includes(u.id)
+                                                                )
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <Menu as="div" className="relative">
+                                                        <Menu.Button className="w-full text-left focus:outline-none">
+                                                            {item.assigned_user_ids && item.assigned_user_ids.length > 0 ? (
+                                                                <div className="flex items-center -space-x-2 px-2 py-1 -ml-2 rounded-lg hover:bg-zinc-100 transition-colors">
+                                                                    {item.assigned_user_ids.map(uid => {
+                                                                        const person = committee.find(p => p.id === uid) || committee.find(p => p.user_id === uid)
+                                                                        if (!person) return null
                                                                         return (
-                                                                            <Menu.Item key={u.id}>
-                                                                                {({ active }) => (
-                                                                                    <button
-                                                                                        onClick={(e) => {
-                                                                                            e.preventDefault() // Try to prevent close?
-                                                                                            handleToggleAssignUser(item.id, u.user_id)
-                                                                                        }}
-                                                                                        className={`${active ? 'bg-yellow-50 text-zinc-900' : 'text-zinc-700'
-                                                                                            } group flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-xs font-bold`}
-                                                                                    >
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <div className="w-5 h-5 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-bold text-zinc-500">
-                                                                                                {u.full_name[0]}
-                                                                                            </div>
-                                                                                            {u.full_name}
-                                                                                        </div>
-                                                                                        {isAssigned && (
-                                                                                            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                                                            </svg>
-                                                                                        )}
-                                                                                    </button>
+                                                                            <div key={uid} className="w-6 h-6 rounded-full bg-zinc-100 ring-2 ring-white overflow-hidden relative" title={person.full_name}>
+                                                                                {person.avatar_url ? (
+                                                                                    <Image src={person.avatar_url} alt={person.full_name} fill className="object-cover" />
+                                                                                ) : (
+                                                                                    <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-[10px] font-bold">
+                                                                                        {person.full_name[0]}
+                                                                                    </div>
                                                                                 )}
-                                                                            </Menu.Item>
+                                                                            </div>
                                                                         )
-                                                                    })
-                                                                ) : (
-                                                                    <div className="px-2 py-2 text-xs text-zinc-400 italic">No members available</div>
-                                                                )}
-                                                            </div>
-                                                        </Menu.Items>
-                                                    </Transition>
-                                                </Menu>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {/* Attach File/Menu */}
-                                                    <Menu as="div" className="relative inline-block text-left">
-                                                        <Menu.Button className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all focus:opacity-100 focus:outline-none">
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                                            </svg>
+                                                                    })}
+                                                                    <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[10px] text-zinc-400 font-bold ring-2 ring-white hover:bg-zinc-50">
+                                                                        +
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="px-2 py-1 -ml-2 rounded-lg hover:bg-zinc-100 transition-colors cursor-pointer group-hover:bg-white text-zinc-400 italic text-xs hover:text-blue-500">
+                                                                    Assign...
+                                                                </div>
+                                                            )}
                                                         </Menu.Button>
                                                         <Transition
                                                             as={Fragment}
@@ -724,33 +707,30 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                             leaveFrom="transform opacity-100 scale-100"
                                                             leaveTo="transform opacity-0 scale-95"
                                                         >
-                                                            <Menu.Items className="absolute right-0 bottom-full mb-2 w-56 origin-bottom-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                                                            <Menu.Items className="absolute left-0 bottom-full mb-2 w-56 origin-bottom-left divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                                                                 <div className="p-1 max-h-60 overflow-y-auto">
-                                                                    <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                                                                        Quick Create
-                                                                    </div>
-                                                                    <div className="px-2 py-1 flex flex-col gap-1">
-                                                                        <a href="https://docs.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-blue-50 text-zinc-700">Create Google Doc</a>
-                                                                        <a href="https://sheets.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-green-50 text-zinc-700">Create Google Sheet</a>
-                                                                        <a href="https://slides.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-orange-50 text-zinc-700">Create Google Slide</a>
-                                                                    </div>
-                                                                    <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                                                                        Attach File
-                                                                    </div>
-                                                                    {files.length > 0 ? (
-                                                                        files.map(f => {
-                                                                            const isLinked = (fileLinks[f.id] || []).includes(item.id)
+                                                                    {committee.length > 0 ? (
+                                                                        committee.map(u => {
+                                                                            const isAssigned = (item.assigned_user_ids || []).includes(u.user_id) || (item.assigned_user_ids || []).includes(u.id)
                                                                             return (
-                                                                                <Menu.Item key={f.id}>
+                                                                                <Menu.Item key={u.id}>
                                                                                     {({ active }) => (
                                                                                         <button
-                                                                                            onClick={() => handleToggleFile(item.id, f.id)}
-                                                                                            className={`${active ? 'bg-blue-50 text-blue-900' : 'text-zinc-700'
-                                                                                                } group flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold`}
+                                                                                            onClick={(e) => {
+                                                                                                e.preventDefault() // Try to prevent close?
+                                                                                                handleToggleAssignUser(item.id, u.user_id)
+                                                                                            }}
+                                                                                            className={`${active ? 'bg-yellow-50 text-zinc-900' : 'text-zinc-700'
+                                                                                                } group flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-xs font-bold`}
                                                                                         >
-                                                                                            <span className="truncate">{f.title || 'Untitled'}</span>
-                                                                                            {isLinked && (
-                                                                                                <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <div className="w-5 h-5 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-bold text-zinc-500">
+                                                                                                    {u.full_name[0]}
+                                                                                                </div>
+                                                                                                {u.full_name}
+                                                                                            </div>
+                                                                                            {isAssigned && (
+                                                                                                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                                                                                 </svg>
                                                                                             )}
@@ -760,71 +740,158 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                                             )
                                                                         })
                                                                     ) : (
-                                                                        <div className="px-3 py-2 text-xs text-zinc-400 italic">No files available</div>
+                                                                        <div className="px-2 py-2 text-xs text-zinc-400 italic">No members available</div>
                                                                     )}
-                                                                    <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                                                                        Attach External Link
-                                                                    </div>
-                                                                    <div className="px-3 py-2">
-                                                                        <button
-                                                                            onClick={() => startEditLink(item)}
-                                                                            className="w-full text-left px-3 py-2 rounded-lg border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-50"
-                                                                        >
-                                                                            Paste link…
-                                                                        </button>
-                                                                    </div>
                                                                 </div>
-                                                        </Menu.Items>
-                                                    </Transition>
+                                                            </Menu.Items>
+                                                        </Transition>
                                                     </Menu>
-                                                    {/* Edit Link Inline */}
-                                                    <div className="relative inline-block">
-                                                        {editLinkItemId === item.id ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="url"
-                                                                    value={editLinkValue}
-                                                                    onChange={(e) => setEditLinkValue(e.target.value)}
-                                                                    placeholder="Paste link"
-                                                                    className="w-40 bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold placeholder-zinc-400 focus:ring-2 focus:ring-yellow-400"
-                                                                />
-                                                                <button
-                                                                    onClick={saveEditLink}
-                                                                    className="p-1 bg-zinc-900 text-yellow-400 rounded-lg text-xs font-bold"
-                                                                >
-                                                                    Save
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setEditLinkItemId(null)}
-                                                                    className="p-1 bg-zinc-100 text-zinc-700 rounded-lg text-xs font-bold"
-                                                                >
-                                                                    Cancel
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => startEditLink(item)}
-                                                                className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-all"
-                                                                title="Edit link"
-                                                            >
-                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536M7.5 20.5l9.192-9.192a2 2 0 10-2.828-2.828L4.672 17.672a2 2 0 00-.586 1.414V20.5H7.5z" />
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={() => handleToggleVisibility(item.id, item.visibility === 'external' ? 'external' : 'internal')}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center gap-2 ${item.visibility === 'external'
+                                                            ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                                                            : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100'
+                                                            }`}
+                                                    >
+                                                        {item.visibility === 'external' ? (
+                                                            <>
+                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                 </svg>
-                                                            </button>
+                                                                External
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                                </svg>
+                                                                Internal
+                                                            </>
                                                         )}
-                                                    </div>
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {/* Attach File/Menu */}
+                                                        <Menu as="div" className="relative inline-block text-left">
+                                                            <Menu.Button className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all focus:opacity-100 focus:outline-none">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                                </svg>
+                                                            </Menu.Button>
+                                                            <Transition
+                                                                as={Fragment}
+                                                                enter="transition ease-out duration-100"
+                                                                enterFrom="transform opacity-0 scale-95"
+                                                                enterTo="transform opacity-100 scale-100"
+                                                                leave="transition ease-in duration-75"
+                                                                leaveFrom="transform opacity-100 scale-100"
+                                                                leaveTo="transform opacity-0 scale-95"
+                                                            >
+                                                                <Menu.Items className="absolute right-0 bottom-full mb-2 w-56 origin-bottom-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                                                                    <div className="p-1 max-h-60 overflow-y-auto">
+                                                                        <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                                            Quick Create
+                                                                        </div>
+                                                                        <div className="px-2 py-1 flex flex-col gap-1">
+                                                                            <a href="https://docs.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-blue-50 text-zinc-700">Create Google Doc</a>
+                                                                            <a href="https://sheets.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-green-50 text-zinc-700">Create Google Sheet</a>
+                                                                            <a href="https://slides.new" target="_blank" rel="noreferrer" className="px-3 py-2 text-xs font-bold rounded-lg hover:bg-orange-50 text-zinc-700">Create Google Slide</a>
+                                                                        </div>
+                                                                        <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                                            Attach File
+                                                                        </div>
+                                                                        {files.length > 0 ? (
+                                                                            files.map(f => {
+                                                                                const isLinked = (fileLinks[f.id] || []).includes(item.id)
+                                                                                return (
+                                                                                    <Menu.Item key={f.id}>
+                                                                                        {({ active }) => (
+                                                                                            <button
+                                                                                                onClick={() => handleToggleFile(item.id, f.id)}
+                                                                                                className={`${active ? 'bg-blue-50 text-blue-900' : 'text-zinc-700'
+                                                                                                    } group flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold`}
+                                                                                            >
+                                                                                                <span className="truncate">{f.title || 'Untitled'}</span>
+                                                                                                {isLinked && (
+                                                                                                    <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                                                                    </svg>
+                                                                                                )}
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </Menu.Item>
+                                                                                )
+                                                                            })
+                                                                        ) : (
+                                                                            <div className="px-3 py-2 text-xs text-zinc-400 italic">No files available</div>
+                                                                        )}
+                                                                        <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                                                            Attach External Link
+                                                                        </div>
+                                                                        <div className="px-3 py-2">
+                                                                            <button
+                                                                                onClick={() => startEditLink(item)}
+                                                                                className="w-full text-left px-3 py-2 rounded-lg border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-50"
+                                                                            >
+                                                                                Paste link…
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </Menu.Items>
+                                                            </Transition>
+                                                        </Menu>
+                                                        {/* Edit Link Inline */}
+                                                        <div className="relative inline-block">
+                                                            {editLinkItemId === item.id ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="url"
+                                                                        value={editLinkValue}
+                                                                        onChange={(e) => setEditLinkValue(e.target.value)}
+                                                                        placeholder="Paste link"
+                                                                        className="w-40 bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold placeholder-zinc-400 focus:ring-2 focus:ring-yellow-400"
+                                                                    />
+                                                                    <button
+                                                                        onClick={saveEditLink}
+                                                                        className="p-1 bg-zinc-900 text-yellow-400 rounded-lg text-xs font-bold"
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setEditLinkItemId(null)}
+                                                                        className="p-1 bg-zinc-100 text-zinc-700 rounded-lg text-xs font-bold"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => startEditLink(item)}
+                                                                    className="opacity-0 group-hover:opacity-100 p-2 text-zinc-300 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-all"
+                                                                    title="Edit link"
+                                                                >
+                                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536M7.5 20.5l9.192-9.192a2 2 0 10-2.828-2.828L4.672 17.672a2 2 0 00-.586 1.414V20.5H7.5z" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
 
-                <button
-                    onClick={() => handleDeleteClick(item.id)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-all px-2 py-1"
-                    title="Remove"
-                >
-                    ×
-                </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                        <button
+                                                            onClick={() => handleDeleteClick(item.id)}
+                                                            className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-all px-2 py-1"
+                                                            title="Remove"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
                                 )}
                             </tbody>
                         </table>
@@ -927,26 +994,26 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                     const pr = participants.find(p => p.user_id === u.user_id)
                                                     const roleTag = pr ? pr.role : null
                                                     return (
-                                                    <button
-                                                        key={u.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setNewItemUser(u)
-                                                            setNewItemFile(null)
-                                                            setShowAssignMenu(false)
-                                                        }}
-                                                        className="w-full text-left px-4 py-3 hover:bg-yellow-50 flex items-center gap-3 group"
-                                                    >
-                                                        <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-bold group-hover:bg-yellow-100 text-zinc-600">
-                                                            {u.full_name[0]}
-                                                        </div>
-                                                        <span className="text-xs font-bold text-zinc-700 group-hover:text-zinc-900">{u.full_name}</span>
-                                                        {roleTag && (
-                                                            <span className="ml-auto text-[10px] px-2 py-1 rounded-lg border bg-zinc-50 text-zinc-600 border-zinc-200">
-                                                                {roleTag}
-                                                            </span>
-                                                        )}
-                                                    </button>
+                                                        <button
+                                                            key={u.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setNewItemUser(u)
+                                                                setNewItemFile(null)
+                                                                setShowAssignMenu(false)
+                                                            }}
+                                                            className="w-full text-left px-4 py-3 hover:bg-yellow-50 flex items-center gap-3 group"
+                                                        >
+                                                            <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-bold group-hover:bg-yellow-100 text-zinc-600">
+                                                                {u.full_name[0]}
+                                                            </div>
+                                                            <span className="text-xs font-bold text-zinc-700 group-hover:text-zinc-900">{u.full_name}</span>
+                                                            {roleTag && (
+                                                                <span className="ml-auto text-[10px] px-2 py-1 rounded-lg border bg-zinc-50 text-zinc-600 border-zinc-200">
+                                                                    {roleTag}
+                                                                </span>
+                                                            )}
+                                                        </button>
                                                     )
                                                 })
                                             ) : (

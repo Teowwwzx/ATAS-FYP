@@ -30,6 +30,7 @@ from app.models.user_model import Role, user_roles
 from app.models.onboarding_model import UserOnboarding, OnboardingStatus
 from app.models.review_model import Review
 from app.models.follows_model import Follow
+from app.models.event_model import EventParticipant, EventParticipantRole, EventParticipantStatus
 
 # Simple in-memory rate limiter
 # Map: IP -> List[timestamp]
@@ -52,6 +53,25 @@ print(f"LOADED PROFILE_ROUTER FROM: {__file__}")
 logger = logging.getLogger(__name__)
 
 from app.core.config import settings
+
+def calculate_sponsor_tier(db: Session, user_id: uuid.UUID) -> str | None:
+    count = (
+        db.query(func.count(EventParticipant.id))
+        .filter(
+            EventParticipant.user_id == user_id,
+            EventParticipant.role == EventParticipantRole.sponsor,
+            EventParticipant.status == EventParticipantStatus.accepted
+        )
+        .scalar()
+    ) or 0
+    
+    if count >= 10:
+        return "Gold"
+    elif count >= 5:
+        return "Silver"
+    elif count >= 1:
+        return "Bronze"
+    return None
 
 @router.get("/discover", response_model=List[ProfileResponse])
 def discover_profiles(
@@ -170,6 +190,7 @@ def discover_profiles(
             "email": p.user.email if p.user else None,
             "intents": p.intents,
             "today_status": p.today_status,
+            "sponsor_tier": calculate_sponsor_tier(db, p.user_id),
         })
         result.append(pr)
     return result
@@ -443,7 +464,8 @@ def semantic_search_profiles(
                 "can_be_speaker": p.can_be_speaker,
                 "intents": p.intents,
                 "today_status": p.today_status,
-                "distance": dists.get(p.user_id) if dists else None
+                "distance": dists.get(p.user_id) if dists else None,
+                "sponsor_tier": calculate_sponsor_tier(db, p.user_id),
             })
             result.append(pr)
         return result
@@ -503,6 +525,7 @@ def semantic_search_profiles(
             "can_be_speaker": p.can_be_speaker,
             "intents": p.intents,
             "today_status": p.today_status,
+            "sponsor_tier": calculate_sponsor_tier(db, p.user_id),
         })
         result.append(pr)
     return result
@@ -722,6 +745,7 @@ def read_my_profile(db: Session = Depends(get_db), current_user: User = Depends(
     
     setattr(db_profile, "followers_count", followers)
     setattr(db_profile, "following_count", following)
+    setattr(db_profile, "sponsor_tier", calculate_sponsor_tier(db, current_user.id))
     
     return db_profile
 
@@ -748,6 +772,7 @@ def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db), current_user
     
     setattr(db_profile, "followers_count", followers)
     setattr(db_profile, "following_count", following)
+    setattr(db_profile, "sponsor_tier", calculate_sponsor_tier(db, user_id))
         
     return db_profile
 

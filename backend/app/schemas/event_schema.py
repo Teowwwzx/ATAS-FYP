@@ -126,6 +126,10 @@ class EventParticipantDetails(BaseModel):
     
     payment_proof_url: str | None = None
     payment_status: str | None = None
+    
+    # Sponsor specific fields
+    promo_link: str | None = None
+    promo_image_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -137,6 +141,10 @@ class EventParticipantCreate(BaseModel):
     role: str = "audience"
     description: str | None = None
     proposal_id: uuid.UUID | None = None
+    
+    # Sponsor specific fields
+    promo_link: str | None = None
+    promo_image_url: str | None = None
 
 
 class EventParticipantResponseUpdate(BaseModel):

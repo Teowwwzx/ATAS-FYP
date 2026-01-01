@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, deleteEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary, getMyReminders, getEventExternalChecklist, uploadPaymentProof } from '@/services/api'
-import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse, EventReminderResponse, EventReminderOption, EventChecklistItemResponse } from '@/services/api.types'
+import { getEventById, joinPublicEvent, leaveEvent, getMe, getEventAttendanceStats, setEventReminder, deleteEventReminder, getPublicOrganizations, getReviewsByEvent, getMyParticipationSummary, getMyReminders, getEventExternalChecklist, uploadPaymentProof, getEventParticipants } from '@/services/api'
+import { EventDetails, UserMeResponse, EventAttendanceStats, OrganizationResponse, ReviewResponse, EventReminderResponse, EventReminderOption, EventChecklistItemResponse, EventParticipantDetails } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/Skeleton'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ import { AttendanceQRModal } from '@/components/event/AttendanceQRModal'
 import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 import { EventBadge } from '@/components/ui/EventBadge'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
+import { ResourcePreviewModal } from '@/components/ui/ResourcePreviewModal'
 import { ReminderModal } from '@/components/event/ReminderModal'
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 import { formatEventDate, formatEventTimeRange } from '@/lib/date'
@@ -46,6 +47,8 @@ export default function EventDetailsPage() {
     const [showPaymentQRModal, setShowPaymentQRModal] = useState(false)
     const [externalChecklist, setExternalChecklist] = useState<EventChecklistItemResponse[]>([])
     const [uploadingProof, setUploadingProof] = useState(false)
+    const [previewResource, setPreviewResource] = useState<{ title: string, url: string, type?: any } | null>(null)
+    const [participants, setParticipants] = useState<EventParticipantDetails[]>([])
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     const handleUploadProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,7 +157,7 @@ export default function EventDetailsPage() {
                     .then(res => ({ type: 'reviews', data: res }))
                     .catch(() => ({ type: 'reviews', data: [] }))
             )
-            
+
             if (eventData.organizer_id) {
                 promises.push(
                     getPublicOrganizations()
@@ -162,6 +165,12 @@ export default function EventDetailsPage() {
                         .catch(() => ({ type: 'hostOrg', data: null }))
                 )
             }
+
+            promises.push(
+                getEventParticipants(id)
+                    .then(res => ({ type: 'participants', data: res }))
+                    .catch(() => ({ type: 'participants', data: [] }))
+            )
 
             // Execute all secondary requests
             const results = await Promise.all(promises)
@@ -201,6 +210,9 @@ export default function EventDetailsPage() {
                         break
                     case 'hostOrg':
                         setHostOrg(data)
+                        break
+                    case 'participants':
+                        setParticipants(data)
                         break
                 }
             })
@@ -591,9 +603,9 @@ export default function EventDetailsPage() {
                                                             <div>
                                                                 <p className="text-sm font-bold text-emerald-800">You are going!</p>
                                                                 <p className="text-xs text-emerald-600">
-                                                                    {myRole === 'speaker' ? 'Speaker' : 
-                                                                     myRole === 'sponsor' ? 'Sponsor' : 
-                                                                     participantStatus === 'attended' ? 'Attendance marked' : 'Ticket confirmed'}
+                                                                    {myRole === 'speaker' ? 'Speaker' :
+                                                                        myRole === 'sponsor' ? 'Sponsor' :
+                                                                            participantStatus === 'attended' ? 'Attendance marked' : 'Ticket confirmed'}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -719,46 +731,40 @@ export default function EventDetailsPage() {
                                         </svg>
                                         What to Prepare
                                     </h3>
-                                    <ul className="space-y-4 relative z-10 mb-6">
-                                        <li className="flex gap-3 text-amber-900">
-                                            <div className="w-6 h-6 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
-                                                <span className="text-xs font-bold">1</span>
-                                            </div>
-                                            <span className="text-sm font-medium leading-tight pt-0.5">Arrive 15 mins early.</span>
-                                        </li>
-
-                                        {(event.type != 'online') && (
-                                            <li className="flex gap-3 text-amber-900">
-                                                <div className="w-6 h-6 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 shadow-sm">
-                                                    <span className="text-xs font-bold">2</span>
-                                                </div>
-                                                <span className="text-sm font-medium leading-tight pt-0.5">Dress: Smart Casual.</span>
-                                            </li>
-                                        )}
-
-                                    </ul>
-                                    {externalChecklist.length > 0 && (
-                                        <div className="mt-4">
-                                            <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">Checklist</h4>
-                                            <ul className="space-y-3">
-                                                {externalChecklist.map(item => (
-                                                    <li key={item.id} className="flex items-start gap-3">
-                                                        <div className="mt-1 w-2 h-2 rounded-full bg-amber-300"></div>
-                                                        <div className="flex-1">
-                                                            <p className="text-sm font-bold text-amber-900">{item.title}</p>
-                                                            {item.description && (
-                                                                <p className="text-xs text-amber-800">{item.description}</p>
-                                                            )}
+                                    {externalChecklist.length === 0 ? (
+                                        <div className="text-center py-4 bg-white/50 rounded-xl border border-amber-100/50">
+                                            <p className="text-sm text-amber-800 italic">No specific preparations listed.</p>
+                                        </div>
+                                    ) : (
+                                        <ul className="space-y-4 relative z-10 mb-6">
+                                            {externalChecklist.map((item, index) => (
+                                                <li key={item.id} className="flex gap-3 text-amber-900 group/item">
+                                                    <div className="w-6 h-6 rounded-lg bg-white border border-amber-200 flex items-center justify-center shrink-0 shadow-sm font-bold text-xs text-amber-700">
+                                                        {index + 1}
+                                                    </div>
+                                                    <div className="flex-1 pt-0.5">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-sm font-bold leading-tight">{item.title}</span>
                                                             {item.link_url && (
-                                                                <a href={item.link_url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-amber-700 underline mt-1 inline-block">
-                                                                    Open Link
-                                                                </a>
+                                                                <button
+                                                                    onClick={() => setPreviewResource({ title: item.title, url: item.link_url! })}
+                                                                    className="text-[10px] uppercase font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full hover:bg-amber-200 transition-colors flex items-center gap-1"
+                                                                >
+                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                    </svg>
+                                                                    Preview
+                                                                </button>
                                                             )}
                                                         </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
+                                                        {item.description && (
+                                                            <p className="text-xs text-amber-800/80 mt-1 leading-relaxed">{item.description}</p>
+                                                        )}
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     )}
                                     {participantStatus !== 'attended' && (
                                         <div className="relative z-10">
@@ -810,6 +816,36 @@ export default function EventDetailsPage() {
                                             Payment Rejected.
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Featured Partners */}
+                            {participants.some(p => p.role === 'sponsor') && (
+                                <div className="bg-white rounded-3xl border border-zinc-200 p-6 shadow-sm">
+                                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Featured Partners</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {participants
+                                            .filter(p => p.role === 'sponsor')
+                                            .map(sponsor => (
+                                                <a
+                                                    key={sponsor.id}
+                                                    href={sponsor.promo_link || '#'}
+                                                    target={sponsor.promo_link ? "_blank" : "_self"}
+                                                    rel="noopener noreferrer"
+                                                    className={`block group relative ${!sponsor.promo_link ? 'pointer-events-none' : 'cursor-pointer hover:-translate-y-1 transition-transform'}`}
+                                                >
+                                                    {sponsor.promo_image_url ? (
+                                                        <div className="aspect-[3/2] bg-white rounded-xl border border-zinc-100 overflow-hidden flex items-center justify-center p-2 shadow-sm group-hover:shadow-md transition-all">
+                                                            <img src={sponsor.promo_image_url} alt={sponsor.name || 'Sponsor'} className="w-full h-full object-contain" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="aspect-[3/2] bg-zinc-50 rounded-xl border border-zinc-100 flex items-center justify-center p-2 text-center shadow-sm">
+                                                            <span className="text-xs font-bold text-zinc-600 break-words w-full">{sponsor.name || sponsor.email?.split('@')[0] || 'Sponsor'}</span>
+                                                        </div>
+                                                    )}
+                                                </a>
+                                            ))}
+                                    </div>
                                 </div>
                             )}
 
@@ -931,6 +967,13 @@ export default function EventDetailsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Resource Preview Modal */}
+            <ResourcePreviewModal
+                isOpen={!!previewResource}
+                resource={previewResource}
+                onClose={() => setPreviewResource(null)}
+            />
         </div>
     )
 }

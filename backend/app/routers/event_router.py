@@ -535,9 +535,6 @@ def create_event(
     )
     db.add(organizer_participant)
     
-    # Create default checklist for the event if needed
-    # (Leaving simplified for now)
-
     db.commit()
     db.refresh(db_event)
 
@@ -1362,6 +1359,13 @@ def invite_event_participant(
             existing.role = role_enum
             if body.description is not None:
                 existing.description = body.description
+            
+            # Update sponsor fields if provided
+            if body.promo_link is not None:
+                existing.promo_link = body.promo_link
+            if body.promo_image_url is not None:
+                existing.promo_image_url = body.promo_image_url
+                
             db.add(existing)
 
             notif = Notification(
@@ -1380,6 +1384,13 @@ def invite_event_participant(
                 send_event_role_update_email(email=recipient.email, event=event, new_role=role_enum)
             return existing
         else:
+            # Even if role is same, allow updating sponsor details? 
+            # The current logic raises 409 if role is same. 
+            # I will modify to allow update if it is a sponsor and we have new data? 
+            # For now, let's stick to existing flow but maybe I should allow updates.
+            # User said "added by organizer". If already added, maybe they want to update.
+            # But the 409 explicitly blocks. I will leave the 409 for now to avoid breaking existing flow logic 
+            # unless requested. The prompt implies "filling" logic.
             raise HTTPException(status_code=409, detail="User is already a participant of this event")
     participant = EventParticipant(
         event_id=event.id,
@@ -1388,6 +1399,8 @@ def invite_event_participant(
         description=body.description,
         join_method="invited",
         status=EventParticipantStatus.pending,
+        promo_link=body.promo_link,
+        promo_image_url=body.promo_image_url,
     )
     db.add(participant)
     # Create in-app notification

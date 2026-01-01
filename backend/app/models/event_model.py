@@ -158,6 +158,11 @@ class EventParticipant(Base):
     # Validation / Payment fields
     payment_status = Column(Enum(EventPaymentStatus), nullable=True, default=None)
     payment_proof_url = Column(String, nullable=True)
+
+    # Sponsor specific fields
+    promo_link = Column(String, nullable=True)
+    promo_image_url = Column(String, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
