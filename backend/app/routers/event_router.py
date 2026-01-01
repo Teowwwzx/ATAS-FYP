@@ -1401,6 +1401,7 @@ def invite_event_participant(
         status=EventParticipantStatus.pending,
         promo_link=body.promo_link,
         promo_image_url=body.promo_image_url,
+        proposal_id=body.proposal_id,
     )
     db.add(participant)
     # Create in-app notification

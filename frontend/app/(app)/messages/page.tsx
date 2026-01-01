@@ -19,6 +19,7 @@ function MessagesContent() {
     // Check if redirecting from profile with ?conversation_id=...
     const searchParams = useSearchParams()
     const initialConvId = searchParams.get('conversation_id')
+    const initialText = searchParams.get('initial_text')
 
     // Initialize Stream Chat (shared client)
     const { client } = useStreamChat(me?.id);
@@ -103,6 +104,7 @@ function MessagesContent() {
                             onMessageSent={refreshList}
                             onBack={() => setSelectedId(null)}
                             client={client} // Pass client
+                            initialText={initialText || undefined}
                         />
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center bg-zinc-50/30 text-zinc-400 p-8 text-center">
