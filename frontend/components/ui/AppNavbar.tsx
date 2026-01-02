@@ -136,6 +136,13 @@ export function AppNavbar() {
                                             >
                                                 Your Profile
                                             </Link>
+                                            <Link
+                                                href="/settings"
+                                                className="block px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-yellow-50 hover:text-zinc-900 mx-2 rounded-xl transition-colors"
+                                                onClick={() => setIsMenuOpen(false)}
+                                            >
+                                                Settings
+                                            </Link>
                                             <button
                                                 onClick={handleLogout}
                                                 className="block w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 mx-2 rounded-xl transition-colors mt-1"

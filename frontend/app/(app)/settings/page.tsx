@@ -34,8 +34,8 @@ export default function SettingsPage() {
 
         setChangingPassword(true)
         try {
-            // TODO: Implement password change API call
-            // await changePassword(currentPassword, newPassword)
+            const { changePassword } = await import('@/services/api')
+            await changePassword(currentPassword, newPassword)
 
             toast.success('Password changed successfully')
             setCurrentPassword('')
@@ -56,8 +56,8 @@ export default function SettingsPage() {
 
         setDeleting(true)
         try {
-            // TODO: Implement soft delete API call
-            // await deleteMyAccount()
+            const { deleteMyAccount } = await import('@/services/api')
+            await deleteMyAccount()
 
             toast.success('Account deleted successfully')
             localStorage.removeItem('atas_token')
@@ -93,8 +93,8 @@ export default function SettingsPage() {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${activeTab === tab.id
-                                            ? 'bg-yellow-400 text-zinc-900 shadow-lg shadow-yellow-400/20'
-                                            : 'text-zinc-600 hover:bg-gray-50'
+                                        ? 'bg-yellow-400 text-zinc-900 shadow-lg shadow-yellow-400/20'
+                                        : 'text-zinc-600 hover:bg-gray-50'
                                         }`}
                                 >
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,7 +120,7 @@ export default function SettingsPage() {
                                                 value={currentPassword}
                                                 onChange={(e) => setCurrentPassword(e.target.value)}
                                                 required
-                                                className="w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
+                                                className="text-gray-700 w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
                                             />
                                         </div>
                                         <div>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                                                 onChange={(e) => setNewPassword(e.target.value)}
                                                 required
                                                 minLength={8}
-                                                className="w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
+                                                className="text-gray-700 w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
                                             />
                                         </div>
                                         <div>
@@ -142,7 +142,7 @@ export default function SettingsPage() {
                                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                                 required
                                                 minLength={8}
-                                                className="w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
+                                                className="text-gray-700 w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
                                             />
                                         </div>
                                         <button
@@ -185,7 +185,7 @@ export default function SettingsPage() {
                                 <div className="space-y-4">
                                     <div className="p-4 bg-gray-50 rounded-xl">
                                         <label className="block text-sm font-bold text-zinc-900 mb-2">Profile Visibility</label>
-                                        <select className="w-full max-w-xs rounded-xl bg-white border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium">
+                                        <select className="text-gray-700 w-full max-w-xs rounded-xl bg-white border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium">
                                             <option value="public">Public</option>
                                             <option value="private">Private</option>
                                         </select>
@@ -233,7 +233,7 @@ export default function SettingsPage() {
                             value={deleteConfirmText}
                             onChange={(e) => setDeleteConfirmText(e.target.value)}
                             placeholder="Type DELETE"
-                            className="w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-red-400 py-3 px-4 font-bold mb-6"
+                            className="text-gray-700 w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-red-400 py-3 px-4 font-bold mb-6"
                         />
                         <div className="flex gap-3">
                             <button

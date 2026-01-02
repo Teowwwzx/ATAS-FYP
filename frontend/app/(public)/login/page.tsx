@@ -144,9 +144,22 @@ function LoginPageContent() {
         } catch (error: any) {
             const message = getApiErrorMessage(error, 'Invalid credentials.')
 
-            // Check if error is related to inactive/unverified account
-            // Backend returns: "User is not active. Please verify your email."
-            if (error.response?.status === 400 && message.toLowerCase().includes('not active')) {
+            // Check if account is suspended - show contact admin message
+            if (error.response?.status === 400 && message.toLowerCase().includes('suspended')) {
+                toast.error('Your account has been suspended. Please contact admin for assistance.', {
+                    duration: 6000,
+                    id: 'login-error'
+                })
+            }
+            // Check if account is inactive (but verified) - show contact admin message
+            else if (error.response?.status === 400 && message.toLowerCase().includes('inactive')) {
+                toast.error('Your account is inactive. Please contact admin for assistance.', {
+                    duration: 6000,
+                    id: 'login-error'
+                })
+            }
+            // Check if error is related to unverified account - show verification modal
+            else if (error.response?.status === 400 && message.toLowerCase().includes('verify your email')) {
                 try { localStorage.setItem('pending_login_email', email) } catch { }
                 setShowVerificationModal(true)
             } else {
@@ -188,7 +201,7 @@ function LoginPageContent() {
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-4 animate-fade-in">
                     <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl transform scale-100 transition-all relative overflow-hidden">
                         {/* Close button absolute top right */}
-                        <button 
+                        <button
                             onClick={() => setShowVerificationModal(false)}
                             className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-full transition-all"
                         >
@@ -203,10 +216,10 @@ function LoginPageContent() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
-                            
-                            <h3 className="text-xl font-black text-zinc-900 mb-2">Check your email</h3>
+
+                            <h3 className="text-xl font-black text-zinc-900 mb-2">Verify your email</h3>
                             <p className="text-zinc-500 font-medium mb-8 leading-relaxed">
-                                Your account is inactive. Enter the 6-digit code sent to <span className="text-zinc-900 font-bold">{email}</span>
+                                Your account needs verification. Enter the 6-digit code sent to <span className="text-zinc-900 font-bold">{email}</span>
                             </p>
 
                             <div className="space-y-4">
@@ -216,7 +229,7 @@ function LoginPageContent() {
                                 >
                                     Enter Code
                                 </button>
-                                
+
                                 <button
                                     onClick={handleResendVerification}
                                     disabled={isResending || countdown > 0}
