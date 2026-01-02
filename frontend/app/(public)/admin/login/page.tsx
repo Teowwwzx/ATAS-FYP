@@ -86,8 +86,8 @@ export default function AdminLoginPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2 ml-1">
-                  <label htmlFor="password" className="block text-sm font-bold text-zinc-900">Password</label>
-                  <Link href="/forgot-password" className="text-xs font-bold text-gray-400 hover:text-zinc-900 transition-colors">Forgot?</Link>
+                  {/* <label htmlFor="password" className="block text-sm font-bold text-zinc-900">Password</label>
+                  <Link href="/forgot-password" className="text-xs font-bold text-gray-400 hover:text-zinc-900 transition-colors">Forgot?</Link> */}
                 </div>
                 <input
                   id="password"

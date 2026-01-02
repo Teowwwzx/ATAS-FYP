@@ -91,6 +91,10 @@ async def stream_notifications(current_user: User = Depends(get_current_user_sse
                     # Wait for notification with timeout (30 seconds for heartbeat)
                     notification_data = await asyncio.wait_for(queue.get(), timeout=30.0)
                     
+                    # Check for shutdown signal
+                    if isinstance(notification_data, dict) and notification_data.get("type") == "shutdown":
+                        break
+
                     # Send notification as SSE event
                     yield f"data: {json.dumps(notification_data)}\n\n"
                     
@@ -126,7 +130,7 @@ class BroadcastNotificationRequest(BaseModel):
     link_url: str | None = None
 
 @router.post("/admin/notifications/broadcast")
-def broadcast_notification(
+async def broadcast_notification(
     body: BroadcastNotificationRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"])),

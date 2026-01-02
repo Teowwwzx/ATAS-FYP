@@ -42,5 +42,22 @@ class SSEConnectionManager:
         """Check if a user has an active SSE connection"""
         return user_id in self.connections
 
+    async def broadcast_shutdown(self):
+        """Notify all connected clients that the server is shutting down"""
+        logger.info("Broadcasting shutdown to all SSE connections")
+        shutdown_msg = {"type": "shutdown", "message": "Server shutting down"}
+        
+        # Create a list of futures to ensure we don't block sequentially too long
+        tasks = []
+        for user_id, queue in list(self.connections.items()):
+            try:
+                tasks.append(queue.put(shutdown_msg))
+            except Exception:
+                pass
+        
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+
 # Global SSE manager instance
 sse_manager = SSEConnectionManager()

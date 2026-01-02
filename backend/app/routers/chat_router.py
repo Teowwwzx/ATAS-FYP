@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, desc, or_
 from typing import List
 import uuid
+import asyncio
 
 from app.database.database import get_db
 from app.models.chat_model import Conversation, ConversationParticipant, Message
@@ -227,7 +228,7 @@ def get_messages(
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=MessageResponse)
-def send_message(
+async def send_message(
     conversation_id: uuid.UUID,
     msg_in: MessageCreate,
     db: Session = Depends(get_db),
@@ -273,6 +274,25 @@ def send_message(
     if current_user.profile and current_user.profile.full_name:
         sender_name = current_user.profile.full_name
 
+    from app.services.notification_service import NotificationService
+
+    # --- Sync to GetStream ---
+    try:
+        stream_service = get_stream_service()
+        channel_id = f"legacy_{str(conversation_id)}"
+        
+        # Run sync call in thread to avoid blocking async loop
+        await asyncio.to_thread(
+            stream_service.send_message,
+            channel_type="messaging",
+            channel_id=channel_id,
+            user_id=str(current_user.id),
+            text=new_msg.content
+        )
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Failed to sync message to GetStream: {e}")
+
     for p in other_participants:
         # Determine Link
         link = "/dashboard" # Default
@@ -298,16 +318,15 @@ def send_message(
                   # Recipient is Organizer
                   link = f"/dashboard?eventId={linked_proposal.event_id}&tab=proposals"
 
-        notif = Notification(
+        # Use NotificationService to create AND broadcast via SSE
+        NotificationService.create_notification(
+            db=db,
             recipient_id=p.user_id,
             actor_id=current_user.id,
             type=NotificationType.chat,
             content=f"New message from {sender_name}: {new_msg.content[:50]}...",
             link_url=link
         )
-        db.add(notif)
-    
-    db.commit()
     
     return _format_message_response(new_msg)
 

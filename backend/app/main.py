@@ -26,7 +26,11 @@ def startup_db():
     Base.metadata.create_all(bind=engine)
 
 @app.on_event("shutdown")
-def shutdown_db():
+async def shutdown_event():
+    # Close SSE connections
+    from app.services.sse_manager import sse_manager
+    await sse_manager.broadcast_shutdown()
+    
     # Close database connections gracefully to prevent "stuck" reloads
     engine.dispose()
 
