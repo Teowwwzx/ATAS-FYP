@@ -42,10 +42,18 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="Your account has been suspended. Please contact support.",
         )
     if user.status != UserStatus.active:
-        raise HTTPException(
-            status_code=400,
-            detail="User is not active. Please verify your email.",
-        )
+        # If account is inactive but already verified, it's an admin issue
+        if user.is_verified:
+            raise HTTPException(
+                status_code=400,
+                detail="Your account is inactive. Please contact admin for assistance.",
+            )
+        # If account is inactive and not verified, needs email verification
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="User is not active. Please verify your email.",
+            )
     access_token = create_access_token(
         data={"sub": str(user.id), "type": "access"}
     )

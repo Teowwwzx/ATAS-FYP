@@ -17,15 +17,15 @@ export default function AdminLoginPage() {
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('atas_token') : null
     if (!token) return
-    ;(async () => {
-      try {
-        const me = await getMe()
-        const ok = (me.roles || []).some(r => ADMIN_ROLES.includes(r))
-        if (ok) {
-          router.replace('/admin')
-        }
-      } catch {}
-    })()
+      ; (async () => {
+        try {
+          const me = await getMe()
+          const ok = (me.roles || []).some(r => ADMIN_ROLES.includes(r))
+          if (ok) {
+            router.replace('/admin')
+          }
+        } catch { }
+      })()
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,13 +39,21 @@ export default function AdminLoginPage() {
       const ok = (me.roles || []).some(r => ADMIN_ROLES.includes(r))
       if (!ok) {
         toast.error('This account does not have admin access')
-        try { localStorage.removeItem('atas_token') } catch {}
+        try { localStorage.removeItem('atas_token') } catch { }
         return
       }
       toast.success('Welcome, admin')
       router.push('/admin')
-    } catch (error) {
-      toast.error('Invalid credentials.')
+    } catch (error: any) {
+      // Check if account is suspended or inactive
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Invalid credentials.'
+      if (errorMessage.toLowerCase().includes('suspended')) {
+        toast.error('Your account has been suspended. Please contact the system administrator.', { duration: 6000 })
+      } else if (errorMessage.toLowerCase().includes('inactive')) {
+        toast.error('Your account is inactive. Please contact the system administrator.', { duration: 6000 })
+      } else {
+        toast.error(errorMessage)
+      }
     } finally {
       setIsLoading(false)
     }
