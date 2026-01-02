@@ -71,17 +71,17 @@ function MessagesContent() {
 
                 {/* Sidebar / List */}
                 <div className={`w-full md:w-[350px] lg:w-[400px] border-r border-zinc-100 flex flex-col ${selectedId ? 'hidden md:flex' : 'flex'}`}>
-                    <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
+                    {/* <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
                         <h2 className="text-xl font-black text-zinc-900 tracking-tight">Messages</h2>
                         <button className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors">
                             + New Chat
                         </button>
-                    </div>
+                    </div> */}
 
                     <div className="p-3 border-b border-zinc-100 bg-white">
                         <input
                             placeholder="Search messages..."
-                            className="w-full bg-zinc-100 border-none rounded-xl text-sm px-4 py-2.5 focus:ring-2 focus:ring-amber-400"
+                            className="text-gray-700 w-full bg-zinc-100 border-none rounded-xl text-sm px-4 py-2.5 focus:ring-2 focus:ring-amber-400"
                         />
                     </div>
 

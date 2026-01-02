@@ -6,6 +6,7 @@ function Show-Menu {
     Write-Host "==============================" -ForegroundColor Cyan
     Write-Host "   Port Management Tool       " -ForegroundColor Cyan
     Write-Host "==============================" -ForegroundColor Cyan
+    Write-Host "0. Start all services (Backend & Frontend)"
     Write-Host "1. List all active listening ports"
     Write-Host "2. Search for a specific port"
     Write-Host "3. Kill process by port number"
@@ -85,6 +86,7 @@ do {
     Show-Menu
     $choice = Read-Host "Select an option"
     switch ($choice) {
+        '0' { . .\dev.ps1 }
         '1' { List-Ports }
         '2' { Search-Port }
         '3' { Kill-Process-By-Port }
