@@ -1,39 +1,36 @@
-'use client'
-
-import Link from 'next/link'
+"use client"
+import '@/app/(public)/experts/experts.css'
+import { PublicNavbar } from '@/components/ui/PublicNavbar'
 
 export default function TermsPage() {
     return (
-        <div className="min-h-screen bg-amber-50">
-            <div className="max-w-3xl mx-auto px-4 py-16">
-                <h1 className="text-3xl font-black text-zinc-900 mb-4">Terms & Conditions</h1>
-                <p className="text-zinc-600 mb-6 font-medium">
-                    These terms govern your use of ATAS. By using the platform, you agree to the following.
-                </p>
-                <div className="space-y-6 bg-white p-8 rounded-2xl border border-yellow-100 shadow-sm">
+        <div className="experts-page-wrapper">
+            <div className="noise" />
+            <PublicNavbar />
+
+            <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
+                <h1 className="text-4xl font-display font-bold text-white mb-8">Terms of Service</h1>
+
+                <div className="legal-content text-gray-300 space-y-8 leading-relaxed">
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Use of Service</h2>
-                        <p className="text-zinc-700 text-sm">You agree to use ATAS responsibly and comply with applicable laws.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">1. Acceptance of Terms</h2>
+                        <p>By accessing and using the ATAS Platform ("Service"), you accept and agree to be bound by the terms and provision of this agreement.</p>
                     </section>
+
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Accounts</h2>
-                        <p className="text-zinc-700 text-sm">Keep your credentials secure. Admins may verify or suspend accounts per policy.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">2. User Conduct</h2>
+                        <p>You agree to use the Service only for lawful purposes. You are solely responsible for the knowledge of and adherence to any and all laws, rules, and regulations pertaining to your use of the Service.</p>
                     </section>
+
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Content</h2>
-                        <p className="text-zinc-700 text-sm">Ensure event information is accurate and non-infringing.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">3. Intellectual Property</h2>
+                        <p>All content included on this site, such as text, graphics, logos, button icons, images, audio clips, digital downloads, data compilations, and software, is the property of ATAS or its content suppliers and protected by international copyright laws.</p>
                     </section>
+
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Liability</h2>
-                        <p className="text-zinc-700 text-sm">ATAS is provided &quot;as is&quot;. We are not liable for indirect damages.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">4. Termination</h2>
+                        <p>We may terminate your access to the Service, without cause or notice, which may result in the forfeiture and destruction of all information associated with your account.</p>
                     </section>
-                    <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Changes</h2>
-                        <p className="text-zinc-700 text-sm">We may update these terms. Continued use implies acceptance.</p>
-                    </section>
-                </div>
-                <div className="mt-8">
-                    <Link href="/" className="text-zinc-900 font-bold hover:underline">Back to Home</Link>
                 </div>
             </div>
         </div>

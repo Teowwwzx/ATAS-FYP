@@ -13,6 +13,21 @@ import { APU_DEGREES, COUNTRIES } from '@/lib/constants'
 
 import { OrganizationSearchCombobox } from '@/components/profile/OrganizationSearchCombobox'
 
+// Intent mapping: Frontend labels -> Backend enum values
+const INTENT_MAP: Record<string, string> = {
+  // Student intents
+  'Find Expert / Speaker': 'seeking_mentorship',
+  'Find Sponsorship': 'looking_for_sponsor',
+  'Join Events': 'open_to_collaborate',
+  // Expert intents
+  'Open to Speaking': 'open_to_speak',
+  'Judging Hackathons': 'offering_mentorship',
+  'Hiring Talents': 'hiring_talent',
+  // Sponsor intents
+  'Sponsor Event': 'looking_for_sponsor',
+  'Provide Drinks / Food': 'offering_mentorship',
+}
+
 // --- Components ---
 
 function CountryCombobox({ value, onChange, disabled, placeholder }: { value: string, onChange: (val: string | null) => void, disabled?: boolean, placeholder?: string }) {
@@ -208,7 +223,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
-  const [otherIntent, setOtherIntent] = useState('')
 
   // Form State
   const [form, setForm] = useState<OnboardingData>({ full_name: '', role: 'student', country: 'Malaysia', origin_country: 'Malaysia', same_as_origin: true })
@@ -270,15 +284,20 @@ export default function OnboardingPage() {
         payload.specialist = form.education.field_of_study
       }
 
-      // Handle Other Intent
-      if (payload.intents?.includes('Other') && otherIntent.trim()) {
-        payload.intents = payload.intents.filter(i => i !== 'Other')
-        payload.intents.push(`Other: ${otherIntent}`)
+      // Filter out "Other" selections entirely (not supported by backend enum)
+      // Users can describe their goals in their bio instead
+      if (payload.intents) {
+        payload.intents = payload.intents.filter(i => i !== 'Other' && !i.startsWith('Other:'))
+      }
+
+      // Map frontend intent labels to backend enum values
+      if (payload.intents) {
+        payload.intents = payload.intents.map(intent => INTENT_MAP[intent] || intent)
       }
 
       if (form.role === 'expert') {
-        const intents = form.intents || []
-        payload.can_be_speaker = intents.includes('Open to Speaking')
+        const intents = payload.intents || []
+        payload.can_be_speaker = intents.includes('open_to_speak')
       }
 
       await completeOnboarding(payload)
@@ -409,37 +428,20 @@ export default function OnboardingPage() {
                     <div>
                       <label className="block text-sm font-bold text-black mb-3">I am looking for...</label>
                       <div className="grid grid-cols-2 gap-4">
-                        {['Find Expert / Speaker', 'Find Sponsorship', 'Join Events', 'Other'].map(intent => {
-                          const isOther = intent === 'Other';
-                          const isSelected = form.intents?.includes(intent);
-
-                          return (
-                            <div key={intent} className="h-full">
-                              <label className={`flex items-center space-x-3 p-3 rounded-xl border transition-colors cursor-pointer h-full ${isSelected ? 'bg-yellow-50 border-yellow-400' : 'border-zinc-100 hover:bg-zinc-50'
-                                }`}>
-                                <input
-                                  type="checkbox"
-                                  className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500 border-gray-300 flex-shrink-0"
-                                  checked={!!isSelected}
-                                  onChange={() => toggleIntent(intent)}
-                                />
-                                {isOther && isSelected ? (
-                                  <input
-                                    type="text"
-                                    autoFocus
-                                    placeholder="Please specify..."
-                                    value={otherIntent}
-                                    onChange={(e) => setOtherIntent(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="block w-full bg-transparent border-none p-0 text-sm text-black placeholder-zinc-400 focus:ring-0 outline-none"
-                                  />
-                                ) : (
-                                  <span className="text-sm font-medium text-black">{intent}</span>
-                                )}
-                              </label>
-                            </div>
-                          );
-                        })}
+                        {['Find Expert / Speaker', 'Find Sponsorship', 'Join Events'].map(intent => (
+                          <label
+                            key={intent}
+                            className={`flex items-center space-x-3 p-3 rounded-xl border transition-colors cursor-pointer ${form.intents?.includes(intent) ? 'bg-yellow-50 border-yellow-400' : 'border-zinc-100 hover:bg-zinc-50'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="w-5 h-5 text-yellow-500 rounded focus:ring-yellow-500 border-gray-300 flex-shrink-0"
+                              checked={!!form.intents?.includes(intent)}
+                              onChange={() => toggleIntent(intent)}
+                            />
+                            <span className="text-sm font-medium text-black">{intent}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
                   </>
@@ -512,7 +514,7 @@ export default function OnboardingPage() {
                       <p className="text-xs text-zinc-500 mb-3">
                         Describe when you are free. Our AI uses this to match you with event organizers.
                       </p>
-                      
+
                       <div className="space-y-3">
                         <textarea
                           value={form.availability || ''}
@@ -520,7 +522,7 @@ export default function OnboardingPage() {
                           placeholder="e.g. I am usually available on Weekdays after 6pm. I can also do weekends if booked in advance."
                           className="block w-full px-4 py-3 rounded-xl border-zinc-200 bg-zinc-50 text-black focus:bg-white focus:ring-2 focus:ring-yellow-400/50 outline-none min-h-[100px] resize-none text-sm border"
                         />
-                        
+
                         <div className="flex flex-wrap gap-2">
                           {['Prefer Weekend', 'Weekdays after 6pm', 'Flexible', 'Remote Only', 'TBD'].map(opt => {
                             const isIncluded = form.availability?.includes(opt);
@@ -531,18 +533,17 @@ export default function OnboardingPage() {
                                 onClick={() => {
                                   let current = form.availability || '';
                                   if (isIncluded) {
-                                     // Simple remove attempt: remove text and cleanup commas
-                                     current = current.replace(opt, '').replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+                                    // Simple remove attempt: remove text and cleanup commas
+                                    current = current.replace(opt, '').replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
                                   } else {
-                                     current = current.trim() ? `${current}, ${opt}` : opt;
+                                    current = current.trim() ? `${current}, ${opt}` : opt;
                                   }
                                   updateField('availability', current);
                                 }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                                  isIncluded
-                                    ? 'bg-yellow-100 border-yellow-400 text-yellow-900'
-                                    : 'bg-white border-zinc-200 text-zinc-600 hover:border-yellow-300'
-                                }`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${isIncluded
+                                  ? 'bg-yellow-100 border-yellow-400 text-yellow-900'
+                                  : 'bg-white border-zinc-200 text-zinc-600 hover:border-yellow-300'
+                                  }`}
                               >
                                 {isIncluded ? <CheckIcon className="w-3 h-3" /> : <span>+</span>} {opt}
                               </button>
@@ -555,8 +556,7 @@ export default function OnboardingPage() {
                     <div>
                       <label className="block text-sm font-bold text-black mb-3">I am open to...</label>
                       <div className="grid grid-cols-2 gap-4">
-                        {['Open to Speaking', 'Judging Hackathons', 'Hiring Talents', 'Other'].map(intent => {
-                          const isOther = intent === 'Other';
+                        {['Open to Speaking', 'Judging Hackathons', 'Hiring Talents'].map(intent => {
                           const isSelected = form.intents?.includes(intent);
 
                           return (
@@ -569,19 +569,7 @@ export default function OnboardingPage() {
                                   checked={!!isSelected}
                                   onChange={() => toggleIntent(intent)}
                                 />
-                                {isOther && isSelected ? (
-                                  <input
-                                    type="text"
-                                    autoFocus
-                                    placeholder="Please specify..."
-                                    value={otherIntent}
-                                    onChange={(e) => setOtherIntent(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="block w-full bg-transparent border-none p-0 text-sm text-black placeholder-zinc-400 focus:ring-0 outline-none"
-                                  />
-                                ) : (
-                                  <span className="text-sm font-medium text-black">{intent}</span>
-                                )}
+                                <span className="text-sm font-medium text-black">{intent}</span>
                               </label>
                             </div>
                           );
@@ -601,7 +589,7 @@ export default function OnboardingPage() {
                           <label className="block text-sm font-bold text-black">Company Name</label>
                           <span className="text-xs text-zinc-500">(Can be edited later)</span>
                         </div>
-                        <OrganizationSearchCombobox 
+                        <OrganizationSearchCombobox
                           value={form.specialist || ''}
                           onChange={(val) => updateField('specialist', val)}
                           onSelect={(org) => updateField('specialist', org.name)} // Or store org_id if backend supports it
@@ -612,8 +600,7 @@ export default function OnboardingPage() {
                       <div>
                         <label className="block text-sm font-bold text-black mb-3">Our goals...</label>
                         <div className="grid grid-cols-2 gap-4">
-                          {['Sponsor Event', 'Provide Drinks / Food', 'Hiring Talents', 'Other'].map(intent => {
-                            const isOther = intent === 'Other';
+                          {['Sponsor Event', 'Provide Drinks / Food', 'Hiring Talents'].map(intent => {
                             const isSelected = form.intents?.includes(intent);
 
                             return (

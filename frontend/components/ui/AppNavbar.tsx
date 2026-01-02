@@ -153,12 +153,15 @@ export function AppNavbar() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 ml-2">
-                                    <Link href="/login" className="text-sm font-bold text-zinc-600 hover:text-zinc-900 transition-colors">
+                                <div className="flex items-center gap-6 ml-2">
+                                    <div className="hidden lg:flex items-center gap-6 text-sm font-semibold text-zinc-600">
+                                        <Link href="/discover" className="hover:text-yellow-600 transition-colors">Discover</Link>
+                                        <Link href="/organizations" className="hover:text-yellow-600 transition-colors">Organizations</Link>
+                                        <Link href="/experts" className="hover:text-yellow-600 transition-colors">People</Link>
+                                    </div>
+                                    <div className="h-5 w-px bg-zinc-200 hidden lg:block"></div>
+                                    <Link href="/login" className="text-sm font-bold text-zinc-900 px-5 py-2.5 bg-yellow-400 rounded-full hover:bg-yellow-300 hover:scale-105 transition-all duration-200 shadow-sm">
                                         Login
-                                    </Link>
-                                    <Link href="/register" className="text-sm font-bold px-5 py-2.5 bg-zinc-900 text-yellow-400 rounded-full hover:bg-zinc-800 hover:scale-105 transition-all duration-200 shadow-md">
-                                        Get Started
                                     </Link>
                                 </div>
                             )}

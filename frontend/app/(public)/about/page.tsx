@@ -1,60 +1,61 @@
-'use client'
-
+"use client"
+import '@/app/(public)/experts/experts.css'
+import { PublicNavbar } from '@/components/ui/PublicNavbar'
 import Link from 'next/link'
 
 export default function AboutPage() {
     return (
-        <div className="min-h-screen bg-amber-50">
-            <div className="max-w-4xl mx-auto px-4 py-16">
-                <h1 className="text-4xl font-black text-zinc-900 mb-6">About ATAS</h1>
-                <p className="text-xl text-zinc-600 mb-12 font-medium">
-                    The platform connecting universities with industry experts for seamless event collaboration.
+        <div className="experts-page-wrapper">
+            <div className="noise" />
+            <PublicNavbar />
+
+            <div className="pt-32 pb-20 px-6 max-w-5xl mx-auto text-center">
+                <div className="hero-badge mb-8 mx-auto" style={{ borderColor: '#FFD700', color: '#FFD700' }}>
+                    About ATAS
+                </div>
+                <h1 className="hero-title font-display mb-8">
+                    Bridging academia <br /> & industry.
+                </h1>
+                <p className="hero-desc mx-auto">
+                    We are on a mission to democratize access to industry expertise for every university student in Southeast Asia.
                 </p>
+            </div>
 
-                <div className="grid md:grid-cols-2 gap-8 mb-16">
-                    <div className="bg-white p-8 rounded-2xl border border-yellow-100 shadow-sm">
-                        <div className="h-12 w-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-6">
-                            <svg className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
+            {/* Content Cards */}
+            <div className="px-6 pb-32 max-w-6xl mx-auto">
+                <div className="grid md:grid-cols-2 gap-8">
+                    <div className="expert-card-glass p-12 text-left items-start">
+                        <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 flex items-center justify-center text-3xl mb-6 text-yellow-500 border border-yellow-500/30">
+                            🚀
                         </div>
-                        <h2 className="text-xl font-bold text-zinc-900 mb-4">Our Mission</h2>
-                        <p className="text-zinc-600">
-                            To bridge the gap between academia and industry by simplifying the process of finding, verifying, and booking experts for university events.
+                        <h2 className="text-3xl font-bold text-white mb-4">Our Mission</h2>
+                        <p className="text-gray-400 leading-relaxed text-lg">
+                            To empower student organizers with the tools they need to run world-class events, and to provide industry experts a platform to give back and scout talent efficiently.
                         </p>
                     </div>
-                    <div className="bg-white p-8 rounded-2xl border border-yellow-100 shadow-sm">
-                        <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
-                            <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
+
+                    <div className="expert-card-glass p-12 text-left items-start">
+                        <div className="w-16 h-16 rounded-2xl bg-blue-500/20 flex items-center justify-center text-3xl mb-6 text-blue-500 border border-blue-500/30">
+                            🤝
                         </div>
-                        <h2 className="text-xl font-bold text-zinc-900 mb-4">Our Community</h2>
-                        <p className="text-zinc-600">
-                            A growing network of university organizers, student committees, and industry professionals working together to create impactful learning experiences.
+                        <h2 className="text-3xl font-bold text-white mb-4">The Ecosystem</h2>
+                        <p className="text-gray-400 leading-relaxed text-lg">
+                            We connect 500+ universities with top tech companies. Students get mentorship, companies get branding, and universities get engagement.
                         </p>
                     </div>
                 </div>
 
-                <div className="bg-zinc-900 text-white rounded-[2.5rem] p-12 text-center">
-                    <h2 className="text-3xl font-black mb-6">Ready to get started?</h2>
-                    <p className="text-zinc-400 mb-8 max-w-xl mx-auto">
-                        Join hundreds of organizers and experts making events better, faster, and more professional.
+                <div className="mt-20 p-12 rounded-[2rem] border border-white/10 bg-white/5 text-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-yellow-500/10 to-purple-500/10 opacity-50" />
+                    <h2 className="text-4xl font-display font-bold text-white mb-6 relative z-10">Join the movement</h2>
+                    <p className="text-gray-400 max-w-2xl mx-auto mb-10 relative z-10">
+                        Whether you are a student leader, an industry veteran, or a forward-thinking brand.
                     </p>
-                    <div className="flex justify-center gap-4">
-                        <Link href="/register" className="px-8 py-4 bg-yellow-400 text-zinc-900 rounded-full font-bold hover:bg-yellow-300 transition-colors">
-                            Join Now
-                        </Link>
-                        <Link href="/discover" className="px-8 py-4 bg-transparent border border-zinc-700 text-white rounded-full font-bold hover:bg-zinc-800 transition-colors">
-                            Explore Events
+                    <div className="flex justify-center gap-4 relative z-10">
+                        <Link href="/register" className="px-8 py-4 bg-yellow-500 text-black font-bold rounded-xl hover:bg-yellow-400 transition-colors">
+                            Get Started
                         </Link>
                     </div>
-                </div>
-
-                <div className="mt-16 text-center border-t border-zinc-200 pt-8">
-                    <Link href="/" className="text-zinc-500 font-bold hover:text-zinc-900 transition-colors">
-                        Back to Home
-                    </Link>
                 </div>
             </div>
         </div>

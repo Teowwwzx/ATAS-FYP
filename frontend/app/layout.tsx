@@ -25,6 +25,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Fonts */}
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        {/* Icons */}
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+      </head>
       <body className={`${inter.className} bg-gray-50 text-gray-900`} suppressHydrationWarning>
         {/* This provider component will render all our toasts */}
         <Toaster

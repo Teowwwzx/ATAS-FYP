@@ -1,39 +1,36 @@
-'use client'
-
-import Link from 'next/link'
+"use client"
+import '@/app/(public)/experts/experts.css'
+import { PublicNavbar } from '@/components/ui/PublicNavbar'
 
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen bg-amber-50">
-            <div className="max-w-3xl mx-auto px-4 py-16">
-                <h1 className="text-3xl font-black text-zinc-900 mb-4">Privacy Policy</h1>
-                <p className="text-zinc-600 mb-6 font-medium">
-                    We respect your privacy. This page describes how ATAS collects, uses, and protects your information.
-                </p>
-                <div className="space-y-6 bg-white p-8 rounded-2xl border border-yellow-100 shadow-sm">
+        <div className="experts-page-wrapper">
+            <div className="noise" />
+            <PublicNavbar />
+
+            <div className="pt-32 pb-20 px-6 max-w-4xl mx-auto">
+                <h1 className="text-4xl font-display font-bold text-white mb-8">Privacy Policy</h1>
+
+                <div className="legal-content text-gray-300 space-y-8 leading-relaxed">
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Information We Collect</h2>
-                        <p className="text-zinc-700 text-sm">Account info (email, name), profile details, and event-related data you provide.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Data Collection</h2>
+                        <p>We collect information you provide directly to us, such as when you create or modify your account, request on-demand services, contact customer support, or otherwise communicate with us.</p>
                     </section>
+
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">How We Use Information</h2>
-                        <p className="text-zinc-700 text-sm">To authenticate, display profiles, manage events, send notifications, and improve the platform.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Use of Information</h2>
+                        <p>We use the information we collect to provide, maintain, and improve our services, such as to facilitate payments, send receipts, provide products and services you request (and send related information), develop new features, provide customer support to Users and Drivers, develop safety features, authenticate users, and send product updates and administrative messages.</p>
                     </section>
+
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Data Sharing</h2>
-                        <p className="text-zinc-700 text-sm">We do not sell personal data. Public profiles and events are visible to other users by design.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Sharing of Information</h2>
+                        <p>We may share the information we collect about you as described in this Statement or as described at the time of collection or sharing, including as follows: with third party Service Providers to enable them to provide the Services you request.</p>
                     </section>
+
                     <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Security</h2>
-                        <p className="text-zinc-700 text-sm">We apply industry practices to protect data. Do not share your login credentials.</p>
+                        <h2 className="text-2xl font-bold text-white mb-4">Security</h2>
+                        <p>We take reasonable measures to help protect information about you from loss, theft, misuse and unauthorized access, disclosure, alteration and destruction.</p>
                     </section>
-                    <section>
-                        <h2 className="text-lg font-bold text-zinc-900 mb-2">Contact</h2>
-                        <p className="text-zinc-700 text-sm">Questions? Contact support via the dashboard or email.</p>
-                    </section>
-                </div>
-                <div className="mt-8">
-                    <Link href="/" className="text-zinc-900 font-bold hover:underline">Back to Home</Link>
                 </div>
             </div>
         </div>

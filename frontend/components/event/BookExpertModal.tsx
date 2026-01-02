@@ -22,6 +22,8 @@ export function BookExpertModal({
     const [topic, setTopic] = useState('')
     const [startDatetime, setStartDatetime] = useState('')
     const [duration, setDuration] = useState('60') // minutes
+    const [eventFormat, setEventFormat] = useState('panel_discussion')
+    const [eventType, setEventType] = useState('online')
     const [message, setMessage] = useState('')
     const [isGenerating, setIsGenerating] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -66,13 +68,13 @@ export function BookExpertModal({
             const event = await api.createEvent({
                 title: `Session with ${expert.full_name}: ${topic}`,
                 description: message,
-                format: 'panel_discussion', // Default or allow select? Using panel for now or 'other'
-                type: 'online',
+                format: eventFormat as any,
+                type: eventType as any,
                 start_datetime: start.toISOString(),
                 end_datetime: end.toISOString(),
                 registration_type: 'free',
                 visibility: 'private',
-                venue_remark: 'Online Session'
+                venue_remark: eventType === 'online' ? 'Online Session' : 'TBD'
             })
 
             // 3. Invite Expert
@@ -134,10 +136,10 @@ export function BookExpertModal({
 
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-zinc-700 mb-1">Topic</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
                                         <input
                                             type="text"
-                                            className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                            className="text-gray-700 w-full px-4 py-2 rounded-xl border border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
                                             placeholder="e.g. Career Advice, Mock Interview"
                                             value={topic}
                                             onChange={(e) => setTopic(e.target.value)}
@@ -147,19 +149,19 @@ export function BookExpertModal({
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-zinc-700 mb-1">Date & Time</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
                                             <input
                                                 type="datetime-local"
-                                                className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                                className="text-gray-700 w-full px-4 py-2 rounded-xl border border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
                                                 value={startDatetime}
                                                 onChange={(e) => setStartDatetime(e.target.value)}
                                                 required
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-zinc-700 mb-1">Duration (mins)</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Duration (mins)</label>
                                             <select
-                                                className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                                className="text-gray-700 w-full px-4 py-2 rounded-xl border border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
                                                 value={duration}
                                                 onChange={(e) => setDuration(e.target.value)}
                                             >
@@ -172,9 +174,39 @@ export function BookExpertModal({
                                         </div>
                                     </div>
 
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Event Format</label>
+                                            <select
+                                                className="text-gray-700 w-full px-4 py-2 rounded-xl border border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                                value={eventFormat}
+                                                onChange={(e) => setEventFormat(e.target.value)}
+                                            >
+                                                <option value="panel_discussion">Panel Discussion</option>
+                                                <option value="workshop">Workshop</option>
+                                                <option value="webinar">Webinar</option>
+                                                <option value="seminar">Seminar</option>
+                                                <option value="club_event">Club Event</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+                                            <select
+                                                className="text-gray-700 w-full px-4 py-2 rounded-xl border border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                                value={eventType}
+                                                onChange={(e) => setEventType(e.target.value)}
+                                            >
+                                                <option value="online">Online</option>
+                                                <option value="physical">Physical</option>
+                                                <option value="hybrid">Hybrid</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
                                     <div>
                                         <div className="flex justify-between items-center mb-1">
-                                            <label className="block text-sm font-medium text-zinc-700">Invitation Message</label>
+                                            <label className="block text-sm font-medium text-gray-700">Invitation Message</label>
                                             <button
                                                 type="button"
                                                 onClick={handleGenerate}
@@ -185,7 +217,7 @@ export function BookExpertModal({
                                             </button>
                                         </div>
                                         <textarea
-                                            className="w-full rounded-xl border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
+                                            className="text-gray-700 w-full px-4 py-2 rounded-xl border border-zinc-200 focus:border-yellow-500 focus:ring-yellow-500 transition-colors"
                                             rows={6}
                                             placeholder="Describe what you want to discuss..."
                                             value={message}

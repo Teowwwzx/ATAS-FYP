@@ -1,15 +1,28 @@
 "use client"
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ProfileResponse } from '@/services/api.types'
 import { BookExpertModal } from '@/components/event/BookExpertModal'
+import { useUser } from '@/hooks/useUser'
 
 interface ExpertCardProps {
     expert: ProfileResponse
 }
 
 export function ExpertCard({ expert }: ExpertCardProps) {
+    const router = useRouter()
+    const { user } = useUser() // Check authentication
     const [isBookingOpen, setIsBookingOpen] = useState(false)
+
+    const handleBookClick = () => {
+        if (!user) {
+            // Redirect to login if not authenticated
+            router.push('/login?redirect=/experts')
+        } else {
+            setIsBookingOpen(true)
+        }
+    }
 
     return (
         <>
@@ -50,7 +63,7 @@ export function ExpertCard({ expert }: ExpertCardProps) {
 
                 <div className="mt-6">
                     <button
-                        onClick={() => setIsBookingOpen(true)}
+                        onClick={handleBookClick}
                         className="w-full py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition-colors"
                     >
                         Book Session

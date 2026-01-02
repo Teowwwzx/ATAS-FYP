@@ -49,7 +49,7 @@ export function AiAssistantFab() {
                     </button>
                   )}
                 </Menu.Item>
-                <Menu.Item>
+                {/* <Menu.Item>
                   {({ active }) => (
                     <button
                       className={`${active ? 'bg-gray-50' : 'text-gray-400'
@@ -60,8 +60,8 @@ export function AiAssistantFab() {
                       AI Chat (Coming Soon)
                     </button>
                   )}
-                </Menu.Item>
-                <Menu.Item>
+                </Menu.Item> */}
+                {/* <Menu.Item>
                   {({ active }) => (
                     <button
                       className={`${active ? 'bg-gray-50' : 'text-gray-400'
@@ -72,7 +72,7 @@ export function AiAssistantFab() {
                       AI Event Planner (Coming Soon)
                     </button>
                   )}
-                </Menu.Item>
+                </Menu.Item> */}
               </div>
             </Menu.Items>
           </Transition>
