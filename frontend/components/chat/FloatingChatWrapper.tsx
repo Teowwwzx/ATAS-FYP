@@ -34,10 +34,15 @@ export function FloatingChatWrapper() {
         };
 
         const handleNewMessage = (event: any) => {
-            updateCount();
-            // Fallback: if total_unread_count isn't updated yet, increment manually
-            // But usually client.user is updated by the event
-            // We can also force a fetch if needed, but let's trust the SDK event flow first
+            // Check if the event carries the new unread count directly
+            if (event.total_unread_count !== undefined) {
+                setUnreadCount(event.total_unread_count);
+            } else if (event.user?.total_unread_count !== undefined) {
+                 setUnreadCount(event.user.total_unread_count);
+            } else {
+                 // Fallback: increment locally or fetch
+                 updateCount();
+            }
         };
 
         const handleNotification = () => {
@@ -61,9 +66,20 @@ export function FloatingChatWrapper() {
     const pathname = usePathname()
     const wrapperRef = useRef<HTMLDivElement>(null)
 
-    // Load data when opened
+    // Load data when opened, but also load ME immediately to connect to chat
     useEffect(() => {
-        if (isOpen && !me) {
+        // Load user immediately to establish connection
+        if (!me) {
+            getMe().then(setMe).catch(err => {
+                // Silent fail if not logged in
+                // console.log('Not logged in for chat'); 
+            });
+        }
+    }, [])
+
+    // Load full conversations when opened
+    useEffect(() => {
+        if (isOpen) {
             loadData()
         }
     }, [isOpen])

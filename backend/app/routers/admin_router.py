@@ -1021,7 +1021,7 @@ class EmailTemplateBroadcastRequest(BaseModel):
 
 
 @router.post("/email-templates/broadcast")
-def broadcast_email_template(
+async def broadcast_email_template(
     body: EmailTemplateBroadcastRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(["admin"]))

@@ -120,6 +120,7 @@ class ProfileResponse(ProfileBase):
 class EducationBase(BaseModel):
     qualification: Optional[str] = None
     field_of_study: Optional[str] = None
+    school: Optional[str] = None
     start_datetime: Optional[datetime] = None
     end_datetime: Optional[datetime] = None
     resume_url: Optional[str] = None

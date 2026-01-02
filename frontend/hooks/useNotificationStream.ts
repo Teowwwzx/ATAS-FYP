@@ -24,30 +24,29 @@ export function useNotificationStream() {
             return localStorage.getItem('atas_token');
         };
 
-        const token = getAccessToken();
-
-        if (!token) {
-            console.log('No access token, skipping SSE connection');
-            return;
-        }
-
-        // Create EventSource connection
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-        const url = `${API_URL}/api/v1/notifications/stream?token=${token}`;
-
-        // EventSource doesn't support custom headers directly, so we append token as query param
-        // OR we can use a different approach - fetch with ReadableStream
-        // For simplicity, let's use a workaround with a custom EventSource polyfill or use fetch
-
-        // Using native EventSource with token in URL (not recommended for production, but works for MVP)
-        // Better approach: use fetch with ReadableStream, but EventSource is simpler
+        let eventSource: EventSource | null = null;
+        let retryTimeout: NodeJS.Timeout;
 
         const connectSSE = () => {
-            try {
-                // Note: EventSource doesn't support Authorization header
-                // We'll need to use cookies or implement a custom fetch-based SSE client
-                // For now, relying on cookie-based auth which FastAPI should support
+            const token = getAccessToken();
 
+            if (!token) {
+                console.log('No access token, skipping SSE connection');
+                // Retry in 2 seconds (in case login just happened)
+                retryTimeout = setTimeout(connectSSE, 2000);
+                return;
+            }
+
+            // Avoid double connection
+            if (eventSourceRef.current?.readyState === EventSource.OPEN) {
+                return;
+            }
+
+            // Create EventSource connection
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+            const url = `${API_URL}/api/v1/notifications/stream?token=${token}`;
+
+            try {
                 const es = new EventSource(url, { withCredentials: true });
 
                 es.onopen = () => {
@@ -75,20 +74,20 @@ export function useNotificationStream() {
                     console.error('SSE error:', error);
                     setIsConnected(false);
                     es.close();
+                    eventSourceRef.current = null;
 
-                    // Only retry if we have a valid token
-                    if (token) {
-                        // Retry connection after 5 seconds
-                        setTimeout(() => {
-                            console.log('Attempting to reconnect SSE...');
-                            connectSSE();
-                        }, 5000);
-                    }
+                    // Retry connection after 5 seconds
+                    retryTimeout = setTimeout(() => {
+                        console.log('Attempting to reconnect SSE...');
+                        connectSSE();
+                    }, 5000);
                 };
 
                 eventSourceRef.current = es;
+                eventSource = es;
             } catch (err) {
                 console.error('Failed to create EventSource:', err);
+                retryTimeout = setTimeout(connectSSE, 5000);
             }
         };
 
@@ -96,12 +95,14 @@ export function useNotificationStream() {
 
         // Cleanup on unmount
         return () => {
+            if (retryTimeout) clearTimeout(retryTimeout);
             if (eventSourceRef.current) {
                 console.log('Closing SSE connection');
                 eventSourceRef.current.close();
+                eventSourceRef.current = null;
             }
         };
-    }, []); // Only run once on mount
+    }, []); // Run once, but internal logic handles retries/token checks
 
     return {
         isConnected,

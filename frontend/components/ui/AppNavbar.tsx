@@ -50,7 +50,7 @@ export function AppNavbar() {
                 <div className="flex justify-between h-20">
                     <div className="flex">
                         <div className="flex-shrink-0 flex items-center">
-                            <Link href="/dashboard" className="flex items-center gap-2 group">
+                            <Link href={profile ? "/dashboard" : "/"} className="flex items-center gap-2 group">
                                 <div className="bg-yellow-400 text-zinc-900 h-10 w-10 flex items-center justify-center rounded-xl font-black text-xl transform group-hover:rotate-12 transition-transform duration-300 shadow-sm">
                                     ATAS
                                 </div>
@@ -96,14 +96,16 @@ export function AppNavbar() {
                                 </div>
                             )}
 
-                            <Link href="/events/create" className="hidden sm:block">
-                                <Button
-                                    variant="primary"
-                                    className="rounded-full"
-                                >
-                                    Create Event
-                                </Button>
-                            </Link>
+                            {profile && (
+                                <Link href="/events/create" className="hidden sm:block">
+                                    <Button
+                                        variant="primary"
+                                        className="rounded-full"
+                                    >
+                                        Create Event
+                                    </Button>
+                                </Link>
+                            )}
 
                             {profile ? (
                                 <div className="relative hidden sm:block">

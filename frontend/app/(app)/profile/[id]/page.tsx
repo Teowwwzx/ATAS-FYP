@@ -309,7 +309,7 @@ export default function PublicProfilePage() {
 
     return (
         <div className="min-h-screen bg-amber-50 pb-20">
-            <div className="max-w-4xl mx-auto pt-6 px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto pt-6 px-4 sm:px-6 lg:px-8">
 
                 <ProfileHeader
                     profile={profile}

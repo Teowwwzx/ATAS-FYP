@@ -53,6 +53,9 @@ export default function DiscoverPage() {
     const [aiEvents, setAiEvents] = useState<EventDetails[]>([])
     const [careerEvents, setCareerEvents] = useState<EventDetails[]>([])
     const [blockchainEvents, setBlockchainEvents] = useState<EventDetails[]>([])
+    const [friendsEvents, setFriendsEvents] = useState<EventDetails[]>([])
+    const [healthEvents, setHealthEvents] = useState<EventDetails[]>([])
+    const [artsEvents, setArtsEvents] = useState<EventDetails[]>([])
 
     // Event Filters State
     const [eventFiltersOpen, setEventFiltersOpen] = useState(false)
@@ -140,12 +143,15 @@ export default function DiscoverPage() {
     const loadAllEventSections = async () => {
         try {
             setEventsLoading(true)
-            const [incoming, fintech, ai, career, blockchain, myData] = await Promise.all([
+            const [incoming, fintech, ai, career, blockchain, friends, health, arts, myData] = await Promise.all([
                 getPublicEvents({ upcoming: true }),
                 getPublicEvents({ category_name: 'Fintech' }),
                 getPublicEvents({ category_name: 'AI' }),
                 getPublicEvents({ category_name: 'Future Career' }),
                 getPublicEvents({ category_name: 'Blockchain' }),
+                getPublicEvents({ friends_only: true }).catch(() => []),
+                getPublicEvents({ category_name: 'Health & Wellness' }),
+                getPublicEvents({ category_name: 'Arts & Culture' }),
                 getMyEvents().catch(() => []) // Silently fail if not logged in
             ])
             setIncomingEvents(incoming)
@@ -153,6 +159,9 @@ export default function DiscoverPage() {
             setAiEvents(ai)
             setCareerEvents(career)
             setBlockchainEvents(blockchain)
+            setFriendsEvents(friends)
+            setHealthEvents(health)
+            setArtsEvents(arts)
 
             // Filter for events joined (not organized)
             const joinedEvents = myData.filter(e => e.my_role !== 'organizer')
@@ -404,10 +413,11 @@ export default function DiscoverPage() {
                                                         className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
                                                     >
                                                         <option value="">All Types</option>
-                                                        <option value="Bank">Bank</option>
-                                                        <option value="Investment">Investment</option>
-                                                        <option value="Fintech">Fintech</option>
-                                                        <option value="University">University</option>
+                                                        <option value="company">Company</option>
+                                                        <option value="university">University</option>
+                                                        <option value="community">Community</option>
+                                                        <option value="nonprofit">Nonprofit</option>
+                                                        <option value="government">Government</option>
                                                     </select>
                                                 </div>
                                                 <button
@@ -520,10 +530,13 @@ export default function DiscoverPage() {
 
                             {/* Categories */}
                             {[
+                                { title: 'Your Friend Events', data: friendsEvents },
                                 { title: 'IT in Fintech', data: fintechEvents },
                                 { title: 'AI', data: aiEvents },
                                 { title: 'Future Career', data: careerEvents },
-                                { title: 'Blockchain', data: blockchainEvents }
+                                { title: 'Blockchain', data: blockchainEvents },
+                                { title: 'Health & Wellness', data: healthEvents },
+                                { title: 'Arts & Culture', data: artsEvents }
                             ].map((cat) => cat.data.length > 0 && (
                                 <div key={cat.title}>
                                     <div className="flex items-center justify-between mb-6">

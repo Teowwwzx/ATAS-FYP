@@ -94,6 +94,7 @@ class Education(Base):
     org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     qualification = Column(String, nullable=True)
     field_of_study = Column(String, nullable=True)
+    school = Column(String, nullable=True)
     start_datetime = Column(DateTime(timezone=True), nullable=True)
     end_datetime = Column(DateTime(timezone=True), nullable=True)
     resume_url = Column(String, nullable=True)
