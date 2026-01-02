@@ -59,6 +59,56 @@ export function ProfileEdit(props: ProfileEditProps) {
     } = props
 
     const [deleteModal, setDeleteModal] = useState<{ id: string, type: 'job' | 'edu' } | null>(null)
+    const [tagSearch, setTagSearch] = useState('')
+
+    const INTENT_OPTIONS = [
+        {
+            value: 'open_to_speak',
+            label: 'Open to Speaking',
+            color: 'text-blue-700',
+            bgColor: 'bg-blue-100',
+            icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>,
+        },
+        {
+            value: 'hiring_talent',
+            label: 'Hiring Talent',
+            color: 'text-green-700',
+            bgColor: 'bg-green-100',
+            icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
+        },
+        {
+            value: 'looking_for_sponsor',
+            label: 'Seeking Sponsor',
+            color: 'text-purple-700',
+            bgColor: 'bg-purple-100',
+            icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+        },
+        {
+            value: 'open_to_collaborate',
+            label: 'Open to Collaborate',
+            color: 'text-yellow-700',
+            bgColor: 'bg-yellow-100',
+            icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
+        },
+        {
+            value: 'seeking_mentorship',
+            label: 'Seeking Mentorship',
+            color: 'text-orange-700',
+            bgColor: 'bg-orange-100',
+            icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>,
+        },
+        {
+            value: 'offering_mentorship',
+            label: 'Offering Mentorship',
+            color: 'text-teal-700',
+            bgColor: 'bg-teal-100',
+            icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+        },
+    ]
+
+    const filteredTags = availableTags.filter(tag =>
+        tag.name.toLowerCase().includes(tagSearch.toLowerCase())
+    )
 
     const scrollToSection = (id: string) => {
         const el = document.getElementById(id)
@@ -176,47 +226,52 @@ export function ProfileEdit(props: ProfileEditProps) {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Location (City, Country)</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={formData.city || ''}
-                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                            placeholder="City"
-                                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={formData.country || ''}
-                                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                                            placeholder="Country"
-                                            className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Current Status</label>
+                            <div>
+                                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Location (City, Country)</label>
+                                <div className="flex gap-2">
                                     <input
                                         type="text"
-                                        value={formData.today_status || ''}
-                                        onChange={(e) => setFormData({ ...formData, today_status: e.target.value })}
-                                        placeholder="e.g. Open to work"
+                                        value={formData.city || ''}
+                                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                        placeholder="City"
+                                        className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={formData.country || ''}
+                                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                        placeholder="Country"
                                         className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
                                     />
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                                <input
-                                    type="checkbox"
-                                    id="can_be_speaker"
-                                    checked={formData.can_be_speaker || false}
-                                    onChange={(e) => setFormData({ ...formData, can_be_speaker: e.target.checked })}
-                                    className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300"
-                                />
-                                <label htmlFor="can_be_speaker" className="font-bold text-zinc-900 cursor-pointer">I am open to being a speaker at events</label>
+                            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                                <h4 className="font-bold text-zinc-900 text-sm uppercase tracking-wider mb-4">Status & Availability</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Current Status</label>
+                                        <input
+                                            type="text"
+                                            value={formData.today_status || ''}
+                                            onChange={(e) => setFormData({ ...formData, today_status: e.target.value })}
+                                            placeholder="e.g. Open to work"
+                                            className="block w-full rounded-xl bg-white border-transparent focus:border-yellow-400 focus:ring-0 text-zinc-900 font-medium py-3 px-4 shadow-sm"
+                                        />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <div className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm h-[52px]">
+                                            <input
+                                                type="checkbox"
+                                                id="can_be_speaker"
+                                                checked={formData.can_be_speaker || false}
+                                                onChange={(e) => setFormData({ ...formData, can_be_speaker: e.target.checked })}
+                                                className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300 ml-2"
+                                            />
+                                            <label htmlFor="can_be_speaker" className="font-bold text-zinc-900 cursor-pointer text-sm select-none">Open to being a speaker</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -466,22 +521,105 @@ export function ProfileEdit(props: ProfileEditProps) {
                             <h3 className="text-2xl font-black text-zinc-900">Skills & Tags</h3>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                            {availableTags.map(tag => {
-                                const isSelected = myTags.some(t => t.id === tag.id)
-                                return (
-                                    <button
-                                        key={tag.id}
-                                        onClick={() => onTagToggle(tag.id)}
-                                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all border ${isSelected
-                                            ? 'bg-zinc-900 text-yellow-400 border-zinc-900'
-                                            : 'bg-white text-zinc-500 border-gray-200 hover:border-zinc-300'
-                                            }`}
+                        {/* Tags Section */}
+                        <div className="mb-6">
+                            <div className="flex justify-between items-center mb-3">
+                                <label className="block text-sm font-bold text-zinc-900">Tags (Max 3)</label>
+                                <span className={`text-xs font-bold ${myTags.length >= 3 ? 'text-red-600' : 'text-zinc-400'}`}>
+                                    {myTags.length}/3 selected
+                                </span>
+                            </div>
+
+                            {/* Selected Tags */}
+                            {myTags.length > 0 && (
+                                <div className="mb-4 p-3 bg-yellow-50 rounded-xl border border-yellow-100">
+                                    <div className="text-xs font-bold text-yellow-700 mb-2">Selected Tags:</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {myTags.map(tag => (
+                                            <button
+                                                key={tag.id}
+                                                onClick={() => onTagToggle(tag.id)}
+                                                className="px-3 py-1.5 rounded-full text-xs font-bold bg-zinc-900 text-yellow-400 border border-zinc-900 hover:bg-zinc-800 transition-all flex items-center gap-1"
+                                            >
+                                                {tag.name}
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Tag Search */}
+                            <div className="mb-3">
+                                <input
+                                    type="text"
+                                    placeholder="Search tags..."
+                                    className="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 focus:ring-2 focus:ring-yellow-400"
+                                    value={tagSearch}
+                                    onChange={(e) => setTagSearch(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Available Tags */}
+                            <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                                {filteredTags.map(tag => {
+                                    const isSelected = myTags.some(t => t.id === tag.id)
+                                    const isDisabled = !isSelected && myTags.length >= 3
+                                    return (
+                                        <button
+                                            key={tag.id}
+                                            onClick={() => !isDisabled && onTagToggle(tag.id)}
+                                            disabled={isDisabled}
+                                            className={`px-4 py-2 rounded-full text-sm font-bold transition-all border ${isSelected
+                                                ? 'bg-zinc-900 text-yellow-400 border-zinc-900'
+                                                : isDisabled
+                                                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                    : 'bg-white text-zinc-500 border-gray-200 hover:border-zinc-300'
+                                                }`}
+                                        >
+                                            {tag.name} {isSelected && '✓'}
+                                        </button>
+                                    )
+                                })}
+                                {filteredTags.length === 0 && (
+                                    <div className="text-sm text-zinc-400 italic p-4">No tags found matching "{tagSearch}"</div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Intents Section */}
+                        <div className="pt-6 border-t border-gray-100">
+                            <label className="block text-sm font-bold text-zinc-900 mb-3">Profile Badges (Intents)</label>
+                            <p className="text-xs text-zinc-500 mb-4">These will appear on your profile avatar</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {INTENT_OPTIONS.map(intent => (
+                                    <label
+                                        key={intent.value}
+                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 cursor-pointer transition-all"
                                     >
-                                        {tag.name} {isSelected && '✓'}
-                                    </button>
-                                )
-                            })}
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.intents?.includes(intent.value) || false}
+                                            onChange={(e) => {
+                                                const currentIntents = formData.intents || []
+                                                const newIntents = e.target.checked
+                                                    ? [...currentIntents, intent.value]
+                                                    : currentIntents.filter(i => i !== intent.value)
+                                                setFormData({ ...formData, intents: newIntents })
+                                            }}
+                                            className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300"
+                                        />
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <div className={`p-1.5 rounded-lg ${intent.bgColor} ${intent.color}`}>
+                                                {intent.icon}
+                                            </div>
+                                            <span className="font-bold text-zinc-900 text-sm">{intent.label}</span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     </div>
 

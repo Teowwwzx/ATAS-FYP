@@ -40,6 +40,22 @@ def enable_dashboard_pro(
     return {"dashboard_pro": True}
 
 
+@router.delete("/me")
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Soft delete the current user's account"""
+    from datetime import datetime
+    
+    # Soft delete: set deleted_at timestamp and change status to inactive
+    current_user.deleted_at = datetime.now()
+    current_user.status = UserStatus.inactive
+    db.commit()
+    
+    return {"message": "Account deleted successfully"}
+
+
 @router.get("/{user_id}")
 def get_user(
     user_id: str,

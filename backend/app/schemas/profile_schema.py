@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 import uuid
 from datetime import datetime
 from typing import List, Optional
 from app.models.profile_model import ProfileVisibility
+from app.schemas.intent_types import IntentType
 
 class TagBase(BaseModel):
     name: str
@@ -65,6 +66,27 @@ class ProfileUpdate(BaseModel):
     can_be_speaker: bool = None
     intents: Optional[List[str]] = None
     today_status: Optional[str] = None
+    tag_ids: Optional[List[uuid.UUID]] = None  # For updating tags
+    
+    @field_validator('intents')
+    @classmethod
+    def validate_intents(cls, v):
+        if v is None:
+            return v
+        # Validate each intent is a valid IntentType
+        valid_intents = IntentType.values()
+        for intent in v:
+            if intent not in valid_intents:
+                raise ValueError(f"Invalid intent: {intent}. Must be one of {valid_intents}")
+        return v
+    
+    @field_validator('tag_ids')
+    @classmethod
+    def validate_tag_limit(cls, v):
+        if v is not None and len(v) > 3:
+            raise ValueError("Maximum 3 tags allowed")
+        return v
+
 
 class ProfileResponse(ProfileBase):
     id: uuid.UUID

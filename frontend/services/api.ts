@@ -98,6 +98,19 @@ export const loginWithGoogle = async (idToken: string) => {
   return response.data
 }
 
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  const response = await api.post<{ message: string }>('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
+  return response.data
+}
+
+export const deleteMyAccount = async () => {
+  const response = await api.delete<{ message: string }>('/users/me')
+  return response.data
+}
+
 export const forgotPassword = async (email: string) => {
   const response = await api.post<{ message: string }>('/email/forgot-password', { email })
   return response.data
@@ -725,17 +738,17 @@ export const listCategories = async () => {
 }
 
 export const createCategory = async (body: CategoryCreate) => {
-  const response = await api.post<CategoryResponse>(`/categories`, body)
+  const response = await api.post<CategoryResponse>(`/admin/categories`, body)
   return response.data
 }
 
 export const updateCategory = async (categoryId: string, body: { name: string }) => {
-  const response = await api.put<CategoryResponse>(`/categories/${categoryId}`, body)
+  const response = await api.put<CategoryResponse>(`/admin/categories/${categoryId}`, body)
   return response.data
 }
 
 export const deleteCategory = async (categoryId: string) => {
-  await api.delete(`/categories/${categoryId}`)
+  await api.delete(`/admin/categories/${categoryId}`)
 }
 
 export const deleteEventReminder = async (eventId: string) => {

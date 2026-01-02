@@ -464,9 +464,33 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                         <p className="text-gray-600 whitespace-pre-wrap">{event.description || 'No description provided.'}</p>
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-semibold text-gray-900 mb-1">Venue</h4>
-                                                        <p className="text-gray-600">{event.venue_remark || 'TBD'}</p>
+                                                        <h4 className="font-semibold text-gray-900 mb-2">Venue Remark</h4>
+                                                        <p className="text-gray-600">
+                                                            {event.venue_remark || 'TBD'}
+                                                        </p>
+                                                        {event.venue_place_id && (
+                                                            <p className="text-xs text-gray-400 mt-1">Venue Place ID: {event.venue_place_id}</p>
+                                                        )}
                                                     </div>
+                                                    {event.registration_type === 'paid' && event.payment_qr_url && (
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-900 mb-2">Payment QR</h4>
+                                                            <button
+                                                                onClick={() => setPreviewImage(event.payment_qr_url || null)}
+                                                                className="relative group"
+                                                            >
+                                                                <img
+                                                                    src={event.payment_qr_url}
+                                                                    alt="Payment QR"
+                                                                    className="w-32 h-32 rounded-lg border border-gray-200 object-contain bg-white group-hover:opacity-80 transition-opacity"
+                                                                />
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <ImageIcon className="w-6 h-6 text-white drop-shadow-md" />
+                                                                </div>
+                                                            </button>
+                                                            <p className="text-xs text-gray-500 mt-1">Click to enlarge</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <ParticipantList eventId={event.id} event={event} onRefresh={onRefresh} />
                                             </td>
