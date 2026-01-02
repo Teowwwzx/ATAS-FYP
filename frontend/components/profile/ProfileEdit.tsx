@@ -7,8 +7,8 @@ interface ProfileEditProps {
     profile: ProfileResponse
 
     // Education Props
-    newEducation: EducationCreate
-    setNewEducation: (data: EducationCreate) => void
+    newEducation: EducationCreate & { school?: string }
+    setNewEducation: (data: EducationCreate & { school?: string }) => void
     onAddEducation: (e: React.FormEvent) => void
     onDeleteEducation: (id: string) => void
     addingEdu: boolean
@@ -39,6 +39,7 @@ interface ProfileEditProps {
     // Tags
     availableTags: { id: string, name: string }[]
     onTagToggle: (id: string) => void
+    onCreateTag: (name: string) => void
     myTags: { id: string, name: string }[]
 
     // Actions
@@ -54,12 +55,22 @@ export function ProfileEdit(props: ProfileEditProps) {
         newJob, setNewJob, onAddJob, onDeleteJob, addingJob,
         orgSearch, setOrgSearch, orgOptions, orgLoading, selectedOrg, setSelectedOrg,
         showCreateOrg, setShowCreateOrg, newOrgName, setNewOrgName, newOrgType, setNewOrgType, onCreateOrg, creatingOrg,
-        availableTags, onTagToggle, myTags,
+        availableTags, onTagToggle, onCreateTag, myTags,
         onSave, onCancel, saving
     } = props
 
     const [deleteModal, setDeleteModal] = useState<{ id: string, type: 'job' | 'edu' } | null>(null)
     const [tagSearch, setTagSearch] = useState('')
+
+    const QUALIFICATION_OPTIONS = [
+        "High School / Secondary",
+        "Diploma / Associate Degree",
+        "Bachelor's Degree",
+        "Master's Degree",
+        "PhD / Doctorate",
+        "Professional Certificate",
+        "Other"
+    ]
 
     const INTENT_OPTIONS = [
         {
@@ -204,15 +215,15 @@ export function ProfileEdit(props: ProfileEditProps) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Professional Title</label>
-                                    <input
-                                        type="text"
-                                        value={formData.title || ''}
-                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        placeholder="e.g. Software Engineer"
-                                        className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
-                                    />
-                                </div>
+                                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Job Title</label>
+                                <input
+                                    type="text"
+                                    value={formData.title || ''}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    placeholder="e.g. Software Engineer"
+                                    className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
+                                />
+                            </div>
                             </div>
 
                             <div>
@@ -247,30 +258,58 @@ export function ProfileEdit(props: ProfileEditProps) {
                             </div>
 
                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                <h4 className="font-bold text-zinc-900 text-sm uppercase tracking-wider mb-4">Status & Availability</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Current Status</label>
-                                        <input
-                                            type="text"
-                                            value={formData.today_status || ''}
-                                            onChange={(e) => setFormData({ ...formData, today_status: e.target.value })}
-                                            placeholder="e.g. Open to work"
-                                            className="block w-full rounded-xl bg-white border-transparent focus:border-yellow-400 focus:ring-0 text-zinc-900 font-medium py-3 px-4 shadow-sm"
-                                        />
-                                    </div>
-                                    <div className="flex items-end">
-                                        <div className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm h-[52px]">
-                                            <input
-                                                type="checkbox"
-                                                id="can_be_speaker"
-                                                checked={formData.can_be_speaker || false}
-                                                onChange={(e) => setFormData({ ...formData, can_be_speaker: e.target.checked })}
-                                                className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300 ml-2"
-                                            />
-                                            <label htmlFor="can_be_speaker" className="font-bold text-zinc-900 cursor-pointer text-sm select-none">Open to being a speaker</label>
-                                        </div>
-                                    </div>
+                                <h4 className="font-bold text-zinc-900 text-sm uppercase tracking-wider mb-4">Profile Badges & Intents</h4>
+                                <p className="text-sm text-zinc-500 mb-4">Select an intent to display a badge on your profile picture.</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {INTENT_OPTIONS.map((intent) => {
+                                        const isSelected = formData.intents?.includes(intent.value)
+                                        return (
+                                            <button
+                                                key={intent.value}
+                                                type="button"
+                                                onClick={() => {
+                                                    const current = formData.intents || []
+                                                    let newIntents
+                                                    if (current.includes(intent.value)) {
+                                                        newIntents = current.filter(i => i !== intent.value)
+                                                    } else {
+                                                        // Optional: Limit to 1 badge if desired, but multiple is fine for logic
+                                                        // newIntents = [intent.value] 
+                                                        newIntents = [...current, intent.value]
+                                                    }
+                                                    
+                                                    const updates: any = { intents: newIntents }
+                                                    
+                                                    // Sync can_be_speaker if specific intent is toggled
+                                                    if (intent.value === 'open_to_speak') {
+                                                        updates.can_be_speaker = newIntents.includes('open_to_speak')
+                                                    }
+                                                    
+                                                    setFormData({ ...formData, ...updates })
+                                                }}
+                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                                                    isSelected 
+                                                        ? `bg-white border-zinc-900 shadow-md ring-1 ring-zinc-900` 
+                                                        : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <div className={`p-2 rounded-full ${isSelected ? intent.bgColor + ' ' + intent.color : 'bg-gray-100 text-gray-400'}`}>
+                                                    {intent.icon}
+                                                </div>
+                                                <span className={`font-bold text-sm ${isSelected ? 'text-zinc-900' : 'text-zinc-600'}`}>
+                                                    {intent.label}
+                                                </span>
+                                                {isSelected && (
+                                                    <div className="ml-auto text-zinc-900">
+                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -440,10 +479,9 @@ export function ProfileEdit(props: ProfileEditProps) {
                                             )}
                                         </div>
                                     )}
-                                    <input
-                                        type="text"
-                                        placeholder="Description (Optional if Organization selected)"
-                                        className="w-full bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400 mt-2"
+                                    <textarea
+                                        placeholder="Description (e.g. Responsibilities, Achievements)"
+                                        className="w-full bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400 mt-2 min-h-[80px]"
                                         value={newJob.description || ''}
                                         onChange={e => setNewJob({ ...newJob, description: e.target.value })}
                                     />
@@ -475,6 +513,7 @@ export function ProfileEdit(props: ProfileEditProps) {
                                         <div>
                                             <div className="font-bold text-zinc-900">{edu.qualification}</div>
                                             <div className="text-sm text-zinc-500">{edu.field_of_study}</div>
+                                            {edu.school && <div className="text-xs text-zinc-400 font-medium">at {edu.school}</div>}
                                         </div>
                                         <button
                                             onClick={() => setDeleteModal({ id: edu.id, type: 'edu' })}
@@ -488,19 +527,36 @@ export function ProfileEdit(props: ProfileEditProps) {
                         )}
 
                         <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="relative">
+                                <select
+                                    value={newEducation.qualification || ''}
+                                    onChange={e => setNewEducation({ ...newEducation, qualification: e.target.value })}
+                                    className="w-full bg-white border-0 rounded-xl px-4 py-3 font-bold text-zinc-900 focus:ring-2 focus:ring-yellow-400 appearance-none"
+                                >
+                                    <option value="" disabled>Select Qualification</option>
+                                    {QUALIFICATION_OPTIONS.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+                                    <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                             <input
                                 type="text"
-                                placeholder="Qualification (e.g. BSc)"
-                                value={newEducation.qualification}
-                                onChange={e => setNewEducation({ ...newEducation, qualification: e.target.value })}
-                                className="w-full bg-white border-0 rounded-xl px-4 py-3 font-bold text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Field / School"
+                                placeholder="Field of Study (e.g. Computer Science)"
                                 value={newEducation.field_of_study}
                                 onChange={e => setNewEducation({ ...newEducation, field_of_study: e.target.value })}
                                 className="w-full bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400"
+                            />
+                            <input
+                                type="text"
+                                placeholder="School / University"
+                                value={newEducation.school || ''}
+                                onChange={e => setNewEducation({ ...newEducation, school: e.target.value })}
+                                className="md:col-span-2 w-full bg-white border-0 rounded-xl px-4 py-3 font-medium text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-yellow-400"
                             />
                             <button
                                 onClick={onAddEducation}
@@ -583,44 +639,23 @@ export function ProfileEdit(props: ProfileEditProps) {
                                         </button>
                                     )
                                 })}
-                                {filteredTags.length === 0 && (
-                                    <div className="text-sm text-zinc-400 italic p-4">No tags found matching "{tagSearch}"</div>
+                                {tagSearch && !availableTags.some(t => t.name.toLowerCase() === tagSearch.toLowerCase()) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { onCreateTag(tagSearch); setTagSearch(''); }}
+                                        className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-zinc-600 border border-gray-100 rounded-xl flex items-center gap-2 mt-2"
+                                    >
+                                        <span className="w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-600">+</span>
+                                        Create new tag "{tagSearch}"
+                                    </button>
+                                )}
+                                {filteredTags.length === 0 && !tagSearch && (
+                                    <div className="text-sm text-zinc-400 italic p-4">Type to search or create tags...</div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Intents Section */}
-                        <div className="pt-6 border-t border-gray-100">
-                            <label className="block text-sm font-bold text-zinc-900 mb-3">Profile Badges (Intents)</label>
-                            <p className="text-xs text-zinc-500 mb-4">These will appear on your profile avatar</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {INTENT_OPTIONS.map(intent => (
-                                    <label
-                                        key={intent.value}
-                                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 cursor-pointer transition-all"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.intents?.includes(intent.value) || false}
-                                            onChange={(e) => {
-                                                const currentIntents = formData.intents || []
-                                                const newIntents = e.target.checked
-                                                    ? [...currentIntents, intent.value]
-                                                    : currentIntents.filter(i => i !== intent.value)
-                                                setFormData({ ...formData, intents: newIntents })
-                                            }}
-                                            className="w-5 h-5 rounded text-yellow-400 focus:ring-yellow-400 border-gray-300"
-                                        />
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className={`p-1.5 rounded-lg ${intent.bgColor} ${intent.color}`}>
-                                                {intent.icon}
-                                            </div>
-                                            <span className="font-bold text-zinc-900 text-sm">{intent.label}</span>
-                                        </div>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Intents Section - Deleted (Moved to Basic Info) */}
                     </div>
 
                     {/* Social Links */}

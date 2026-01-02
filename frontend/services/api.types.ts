@@ -94,11 +94,30 @@ export interface OnboardingData {
     same_as_origin?: boolean
 }
 
+export interface TagCreate {
+    name: string
+}
+
+export interface TagResponse {
+    id: string
+    name: string
+}
+
+export interface SkillCreate {
+    name: string
+}
+
+export interface SkillResponse {
+    id: string
+    name: string
+}
+
 // Based on your profile_schema.py -> ProfileResponse
 export interface EducationCreate {
     org_id?: string
     qualification?: string
     field_of_study?: string
+    school?: string // Frontend only, mapped to field_of_study on submit
     start_datetime?: string
     end_datetime?: string
     resume_url?: string
@@ -118,7 +137,8 @@ export interface EducationResponse {
     user_id: string
     org_id?: string
     qualification?: string // Degree
-    field_of_study?: string // Major / School
+    field_of_study?: string // Major
+    school?: string
     start_datetime?: string
     end_datetime?: string
     resume_url?: string

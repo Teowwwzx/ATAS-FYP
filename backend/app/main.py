@@ -94,11 +94,12 @@ from app.routers import booking_router
 app.include_router(booking_router.router, prefix="/api/v1", tags=["Bookings"])
 
 # Ensure pgvector extension and embeddings tables exist in development/runtime
-try:
-    from app.database.apply_pgvector_embeddings import main as ensure_pgvector
-    ensure_pgvector()
-except Exception as e:
-    logger.warning(f"pgvector setup skipped: {e}")
+# Moved to startup event to prevent import-time execution
+# try:
+#     from app.database.apply_pgvector_embeddings import main as ensure_pgvector
+#     ensure_pgvector()
+# except Exception as e:
+#     logger.warning(f"Could not init pgvector on import: {e}")
 
 @app.get("/")
 def read_root():

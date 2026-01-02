@@ -2,6 +2,15 @@ import React from 'react'
 import { ProfileResponse } from '@/services/api.types'
 import { SponsorBadge } from '../ui/SponsorBadge'
 
+const INTENT_BADGE_CONFIG: Record<string, { color: string; label: string; bgColor: string }> = {
+    'open_to_speak': { color: '#ffffff', label: '#OPEN TO SPEAK', bgColor: '#2563eb' },
+    'hiring_talent': { color: '#ffffff', label: '#HIRING', bgColor: '#16a34a' },
+    'looking_for_sponsor': { color: '#ffffff', label: '#SEEKING SPONSOR', bgColor: '#9333ea' },
+    'open_to_collaborate': { color: '#ffffff', label: '#OPEN TO COLLAB', bgColor: '#ca8a04' },
+    'seeking_mentorship': { color: '#ffffff', label: '#SEEKING MENTOR', bgColor: '#ea580c' },
+    'offering_mentorship': { color: '#ffffff', label: '#MENTOR', bgColor: '#0d9488' },
+}
+
 interface ProfileHeaderProps {
     profile: ProfileResponse
     isOwnProfile: boolean
@@ -63,6 +72,9 @@ export function ProfileHeader({
     }
 
     const tierStyle = getTierStyles(profile.sponsor_tier)
+
+    const primaryIntent = profile.intents && profile.intents.length > 0 ? profile.intents[0] : null
+    const badgeConfig = primaryIntent ? INTENT_BADGE_CONFIG[primaryIntent] : null
 
     return (
         <div className="relative mb-8">
@@ -131,6 +143,21 @@ export function ProfileHeader({
                                     <div className="absolute top-0 -left-[100%] w-1/2 h-full bg-gradient-to-r from-transparent via-yellow-100/50 to-transparent -skew-x-12 animate-shine"></div>
                                 </div>
                             )}
+
+                            {/* Straight Intent Badge Banner */}
+                            {badgeConfig && (
+                                <div 
+                                    className="absolute bottom-0 left-0 right-0 py-1.5 z-20 flex items-center justify-center"
+                                    style={{ backgroundColor: badgeConfig.bgColor }}
+                                >
+                                    <span 
+                                        className="text-[10px] font-black tracking-widest uppercase truncate px-2"
+                                        style={{ color: badgeConfig.color }}
+                                    >
+                                        {badgeConfig.label}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Animated Glow for Gold Tier */}
@@ -138,19 +165,12 @@ export function ProfileHeader({
                             <div className="absolute inset-0 rounded-[2rem] bg-yellow-400 blur-xl opacity-40 animate-pulse z-10"></div>
                         )}
 
-                        {/* 3D Badge Overlap */}
-                        {profile.sponsor_tier && (
-                            <div className="absolute -bottom-3 -right-3 z-30 transform hover:scale-110 transition-transform duration-300">
-                                <SponsorBadge tier={profile.sponsor_tier} size="lg" />
-                            </div>
-                        )}
-
                         {/* Avatar Edit Button - Always Visible & High Z-Index */}
                         {isOwnProfile && (
                             <>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); avatarInputRef.current?.click(); }}
-                                    className="absolute bottom-1 right-1 z-40 bg-zinc-900 text-yellow-400 p-2.5 rounded-full shadow-xl hover:scale-110 hover:bg-zinc-800 transition-all border-2 border-white"
+                                    className="absolute top-1 right-1 z-40 bg-zinc-900 text-yellow-400 p-2.5 rounded-full shadow-xl hover:scale-110 hover:bg-zinc-800 transition-all border-2 border-white"
                                     title="Change Avatar"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,18 +206,9 @@ export function ProfileHeader({
                             )}
                         </div>
 
-                        {/* Title & Location */}
+                        {/* Title & Location - Removed Location as requested */}
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-zinc-600 font-medium text-sm sm:text-base mb-4">
                             {profile.title && <span className="text-zinc-900 font-bold">{profile.title}</span>}
-                            {(profile.city || profile.country) && (
-                                <>
-                                    {profile.title && <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>}
-                                    <span className="flex items-center gap-1">
-                                        <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        {[profile.city, profile.country].filter(Boolean).join(', ')}
-                                    </span>
-                                </>
-                            )}
                         </div>
 
                         {/* Followers/Following - Moved Below Country */}

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import {
     getMyProfile, updateProfile, updateAvatar, updateCoverPicture, getMe, getMyEvents, getMyEventHistory,
     getTags, attachMyTag, detachMyTag, addMyEducation, deleteMyEducation, getMyFollows, getMyFollowers, unfollowUser,
-    addMyJobExperience, deleteMyJobExperience,
+    addMyJobExperience, deleteMyJobExperience, createTag,
     getPublicOrganizations, createOrganization, getOrganizationById
 } from '@/services/api'
 import {
@@ -26,7 +26,13 @@ export default function ProfilePage() {
     const [following, setFollowing] = useState<any[]>([])
 
     // States for Edit Mode
-    const [newEducation, setNewEducation] = useState<EducationCreate>({ qualification: '', field_of_study: '' })
+    const [newEducation, setNewEducation] = useState<EducationCreate & { school?: string }>({
+        qualification: '',
+        field_of_study: '',
+        school: '',
+        start_datetime: '',
+        end_datetime: ''
+    })
     const [newJob, setNewJob] = useState<JobExperienceCreate>({ title: '', description: '' })
     const [viewFriends, setViewFriends] = useState<'none' | 'followers' | 'following'>('none')
     const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -208,13 +214,35 @@ export default function ProfilePage() {
         }
     }
 
+    const handleCreateTag = async (name: string) => {
+        try {
+            const tag = await createTag({ name })
+            setAvailableTags(prev => [...prev, tag])
+            // Also toggle it ON immediately
+            await handleTagToggle(tag.id)
+            toast.success('Tag created and added')
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || 'Failed to create tag')
+        }
+    }
+
     const handleAddEducation = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!newEducation.qualification || !newEducation.field_of_study) return
+
         setAddingEdu(true)
         try {
-            const edu = await addMyEducation(newEducation)
+            const payload: EducationCreate = {
+                qualification: newEducation.qualification,
+                field_of_study: newEducation.field_of_study,
+                school: newEducation.school,
+                start_datetime: newEducation.start_datetime ? new Date(newEducation.start_datetime).toISOString() : undefined,
+                end_datetime: newEducation.end_datetime ? new Date(newEducation.end_datetime).toISOString() : undefined
+            }
+
+            const edu = await addMyEducation(payload)
             setProfile(prev => prev ? { ...prev, educations: [...(prev.educations || []), edu] } : null)
-            setNewEducation({ qualification: '', field_of_study: '' })
+            setNewEducation({ qualification: '', field_of_study: '', school: '', start_datetime: '', end_datetime: '' })
             toast.success('Education added')
         } catch { toast.error('Failed to add education') } finally { setAddingEdu(false) }
     }
@@ -458,6 +486,7 @@ export default function ProfilePage() {
                     creatingOrg={creatingOrg}
                     availableTags={availableTags}
                     onTagToggle={handleTagToggle}
+                    onCreateTag={handleCreateTag}
                     myTags={profile.tags || []}
                     onSave={handleSave}
                     onCancel={() => setEditing(false)}

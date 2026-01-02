@@ -959,7 +959,12 @@ export const getUnreadNotificationCount = async () => {
 }
 // --- Taxonomy ---
 export const getTags = async () => {
-  const response = await api.get<{ id: string, name: string }[]>('/tags')
+  const response = await api.get<import('./api.types').TagResponse[]>('/tags')
+  return response.data
+}
+
+export const createTag = async (data: import('./api.types').TagCreate) => {
+  const response = await api.post<import('./api.types').TagResponse>('/tags', data)
   return response.data
 }
 

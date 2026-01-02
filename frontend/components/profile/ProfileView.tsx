@@ -116,26 +116,12 @@ export function ProfileView({
                 {/* Left Column (Sticky Sidebar on Desktop) */}
                 <div className="lg:col-span-4 space-y-6">
 
-                    {/* Expertise / Intents - PRIORITY FIRST */}
+                    {/* Skills & Tags - PRIORITY FIRST */}
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-lg text-zinc-900 mb-4">Expertise</h3>
+                        <h3 className="font-bold text-lg text-zinc-900 mb-4">Skills & Tags</h3>
                         <div className="space-y-4">
-                            {profile.intents && profile.intents.length > 0 && (
+                            {profile.tags && profile.tags.length > 0 ? (
                                 <div>
-                                    <h4 className="text-xs font-black text-zinc-400 uppercase tracking-wider mb-2">Detailed intents</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {profile.intents.map((intent, i) => (
-                                            <span key={i} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 uppercase tracking-wider">
-                                                {intent.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {profile.tags && profile.tags.length > 0 && (
-                                <div>
-                                    <h4 className="text-xs font-black text-zinc-400 uppercase tracking-wider mb-2">Tags</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {profile.tags.map(tag => (
                                             <span key={tag.id} className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -144,9 +130,8 @@ export function ProfileView({
                                         ))}
                                     </div>
                                 </div>
-                            )}
-                            {(!profile.intents?.length && !profile.tags?.length) && (
-                                <p className="text-zinc-400 italic text-sm">No specific expertise tags added.</p>
+                            ) : (
+                                <p className="text-zinc-400 italic text-sm">No specific skills or tags added.</p>
                             )}
                         </div>
                     </div>
@@ -193,26 +178,22 @@ export function ProfileView({
                                 </div>
                             )}
                             {(profile.city || profile.country) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 text-zinc-600 rounded-lg text-sm font-bold">
-                                    <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-bold border border-blue-100">
+                                    <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
+                                    <span className="text-xs uppercase tracking-wider opacity-70 mr-1">Lives in</span>
                                     {[profile.city, profile.country].filter(Boolean).join(', ')}
                                 </div>
                             )}
                             {profile.origin_country && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 text-zinc-600 rounded-lg text-sm font-bold">
-                                    <span className="text-zinc-400 text-xs uppercase font-bold tracking-wider">From</span>
-                                    {profile.origin_country}
-                                </div>
-                            )}
-                            {profile.availability && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-sm font-bold">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-full text-sm font-bold border border-orange-100">
+                                    <svg className="w-4 h-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    {profile.availability}
+                                    <span className="text-xs uppercase tracking-wider opacity-70 mr-1">From</span>
+                                    {profile.origin_country}
                                 </div>
                             )}
                         </div>
@@ -399,13 +380,22 @@ export function ProfileView({
 
                                             <div>
                                                 <div className="font-black text-lg text-zinc-900 leading-tight mb-0.5">{job.title}</div>
-                                                <div className="text-zinc-700 font-medium flex flex-wrap items-center gap-1.5">
-                                                    {renderOrgContent(org, job.description)}
+                                                <div className="text-zinc-600 font-bold mb-0.5">
+                                                    {org ? (
+                                                        <span className="flex items-center gap-1.5">
+                                                            at {renderOrgContent(org)}
+                                                        </span>
+                                                    ) : (
+                                                        <span>{job.org_id ? 'Organization not found' : 'Freelance / Self-employed'}</span>
+                                                    )}
                                                 </div>
-                                                <div className="text-zinc-400 text-sm mt-1 font-medium">
-                                                    {job.start_datetime ? new Date(job.start_datetime).getFullYear() : ''}
-                                                    {job.end_datetime ? ` - ${new Date(job.end_datetime).getFullYear()}` : job.start_datetime ? ' - Present' : ''}
+                                                <div className="text-zinc-400 text-sm mt-1 font-medium mb-2">
+                                                    {job.start_datetime ? new Date(job.start_datetime).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : ''}
+                                                    {job.end_datetime ? ` - ${new Date(job.end_datetime).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : job.start_datetime ? ' - Present' : ''}
                                                 </div>
+                                                {job.description && (
+                                                    <p className="text-sm text-zinc-600 whitespace-pre-wrap leading-relaxed mt-2">{job.description}</p>
+                                                )}
                                             </div>
                                         </div>
                                     )
@@ -428,9 +418,9 @@ export function ProfileView({
                                             <div>
                                                 <div className="font-black text-lg text-zinc-900 leading-tight mb-0.5">{edu.qualification}</div>
                                                 <div className="text-zinc-600 font-bold mb-0.5">{edu.field_of_study}</div>
-                                                {org && (
+                                                {(org || edu.school) && (
                                                     <div className="text-sm font-medium text-zinc-500 flex items-center gap-1.5 mt-0.5">
-                                                        at {renderOrgContent(org)}
+                                                        at {org ? renderOrgContent(org) : <span className="text-zinc-700 font-bold">{edu.school}</span>}
                                                     </div>
                                                 )}
                                                 <div className="text-zinc-400 text-sm mt-1 font-medium">

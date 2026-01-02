@@ -271,10 +271,35 @@ export default function OnboardingPage() {
       }
 
       // Handle Other Intent
-      if (payload.intents?.includes('Other') && otherIntent.trim()) {
-        payload.intents = payload.intents.filter(i => i !== 'Other')
-        payload.intents.push(`Other: ${otherIntent}`)
+      // Note: Backend strictly validates intents against IntentType enum.
+      // We need to map UI friendly strings to backend enum values.
+      
+      const INTENT_MAPPING: Record<string, string> = {
+        'Find Expert / Speaker': 'seeking_mentorship',
+        'Find Sponsorship': 'looking_for_sponsor',
+        'Join Events': 'open_to_collaborate',
+        'Open to Speaking': 'open_to_speak',
+        // Expert defaults that might be added later
+        'Mentoring': 'offering_mentorship',
+        'Hiring': 'hiring_talent'
       }
+
+      const finalIntents = new Set<string>()
+      
+      // Process selected intents
+      payload.intents?.forEach(intent => {
+        if (intent === 'Other') {
+          // 'Other' isn't supported by backend enum, we map it to open_to_collaborate 
+          // or just ignore it if we can't store the custom text in intents.
+          // For now, let's map it to open_to_collaborate as a fallback.
+          finalIntents.add('open_to_collaborate')
+        } else if (INTENT_MAPPING[intent]) {
+          finalIntents.add(INTENT_MAPPING[intent])
+        }
+      })
+
+      // Overwrite payload with mapped intents
+      payload.intents = Array.from(finalIntents)
 
       if (form.role === 'expert') {
         const intents = form.intents || []

@@ -63,10 +63,10 @@ def list_tags(db: Session = Depends(get_db)):
     return db.query(Tag).order_by(Tag.name.asc()).all()
 
 @router.post("/tags", response_model=TagResponse)
-def create_tag(body: TagCreate, db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
+def create_tag(body: TagCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     existing = db.query(Tag).filter(func.lower(Tag.name) == func.lower(body.name)).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Tag already exists")
+        return existing  # Return existing tag if it already exists, instead of 400
     item = Tag(name=body.name)
     db.add(item)
     db.commit()
