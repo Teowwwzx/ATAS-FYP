@@ -23,6 +23,11 @@ interface EventCardProps {
 
 export const EventCard: React.FC<EventCardProps> = ({ event, className = '', compact = false, reviewsSummary }) => {
     const startDate = new Date(event.start_datetime)
+    const endDate = new Date(event.end_datetime)
+    const durationMs = endDate.getTime() - startDate.getTime()
+    const durationHrs = durationMs / (1000 * 60 * 60)
+    const durationStr = durationHrs > 0 ? `(${durationHrs % 1 === 0 ? durationHrs : durationHrs.toFixed(1)}h)` : ''
+
     const heightClass = compact ? 'h-56' : 'h-[280px] md:h-[400px]'
     const avg = reviewsSummary?.averageRating || 0
     const count = reviewsSummary?.reviewsCount || 0
@@ -64,20 +69,22 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '', com
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-95" />
 
                 {/* Badges - Top Right */}
-                <div className="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2 z-10 w-full justify-end px-4 md:px-6">
-                    {event.format && (
-                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                            {event.format.replace('_', ' ')}
-                        </span>
-                    )}
-                    {event.registration_type && (
-                        <span className={`px-3 py-1 rounded-full backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${event.registration_type === 'free'
-                            ? 'bg-green-500/20 text-green-100 border-green-500/30'
-                            : 'bg-yellow-500/20 text-yellow-100 border-yellow-500/30'
-                            }`}>
-                            {event.registration_type}
-                        </span>
-                    )}
+                <div className="absolute top-4 right-4 md:top-6 md:right-6 flex flex-col items-end gap-2 z-10 w-full px-4 md:px-6 pointer-events-none">
+                    <div className="flex gap-2">
+                        {event.format && (
+                            <span className="px-3 py-1 rounded-full bg-zinc-900/90 text-white border border-zinc-700 text-[10px] font-black uppercase tracking-wider shadow-md">
+                                {event.format.replace('_', ' ')}
+                            </span>
+                        )}
+                        {event.registration_type && (
+                            <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider shadow-md ${event.registration_type === 'free'
+                                ? 'bg-emerald-600 text-white border-emerald-700'
+                                : 'bg-blue-600 text-white border-blue-700'
+                                }`}>
+                                {event.registration_type}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {/* Content Overlay */}
@@ -98,6 +105,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, className = '', com
                                 {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 <span className="w-1 h-1 rounded-full bg-zinc-500"></span>
                                 {startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                {durationStr && <span className="text-zinc-400 text-xs ml-1">{durationStr}</span>}
                             </div>
                         </div>
 

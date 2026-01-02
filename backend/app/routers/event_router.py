@@ -7,7 +7,7 @@ import hashlib
 import io
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, select
 from app.database.database import get_db
 from app.models.event_model import (
     Event,
@@ -234,10 +234,29 @@ def get_all_events(
     include_all_visibility: bool = False, # New param
     status: EventStatus | None = Query(None),
     include_all_status: bool = False,
+    current_user: User | None = Depends(get_current_user_optional),
+    friends_only: bool = Query(False),
 ):
     query = db.query(Event)
     # Exclude soft-deleted events
     query = query.filter(Event.deleted_at.is_(None))
+
+    if friends_only:
+        if not current_user:
+            # If not logged in, return empty or throw? Returning empty seems safer for public page resilience.
+            # Alternatively, ignore the filter. But "Your Friend Event" implies specific user context.
+            # Let's return empty list to signify no results for this filter.
+            return []
+        
+        from app.models.follows_model import Follow
+        # Get IDs of users/orgs the current user follows
+        followed_user_ids = db.query(Follow.followee_id).filter(
+            Follow.follower_id == current_user.id,
+            Follow.followee_id.isnot(None)
+        ).subquery()
+        
+        # Filter events where organizer is in followed list
+        query = query.filter(Event.organizer_id.in_(select(followed_user_ids)))
     
     if not include_all_visibility:
         if visibility is None:

@@ -217,6 +217,7 @@ export const getPublicEvents = async (params?: {
   end_before?: string
   page?: number
   page_size?: number
+  friends_only?: boolean
 }) => {
   const response = await api.get<EventDetails[]>('/events', { params })
   return response.data
