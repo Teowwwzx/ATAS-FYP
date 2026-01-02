@@ -404,10 +404,11 @@ export default function DiscoverPage() {
                                                         className="w-full px-3 py-2 rounded-lg border border-zinc-200 text-sm text-zinc-900 bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
                                                     >
                                                         <option value="">All Types</option>
-                                                        <option value="Bank">Bank</option>
-                                                        <option value="Investment">Investment</option>
-                                                        <option value="Fintech">Fintech</option>
-                                                        <option value="University">University</option>
+                                                        <option value="company">Company</option>
+                                                        <option value="university">University</option>
+                                                        <option value="community">Community</option>
+                                                        <option value="nonprofit">Nonprofit</option>
+                                                        <option value="government">Government</option>
                                                     </select>
                                                 </div>
                                                 <button
