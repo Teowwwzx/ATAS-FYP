@@ -100,6 +100,30 @@ def refresh_access_token(refresh_token: str, db: Session = Depends(get_db)):
 def logout(current_user: User = Depends(get_current_user)):
     return {"message": "Logged out"}
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify current password
+    if not verify_password(body.current_password, current_user.password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    
+    # Update password
+    current_user.password = get_password_hash(body.new_password)
+    db.commit()
+    
+    return {"message": "Password changed successfully"}
+
 from pydantic import BaseModel, EmailStr
 import uuid
 from app.services.email_service import send_verification_email

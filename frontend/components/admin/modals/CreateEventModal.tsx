@@ -104,16 +104,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 uploadPromises.push(adminService.updateEventLogo(eventId, files.logo))
             }
             if (files.paymentQR) {
-                // Upload payment QR using FormData
-                const fd = new FormData()
-                fd.append('file', files.paymentQR)
-                uploadPromises.push(
-                    adminService.updateEvent(eventId, { payment_qr_url: files.paymentQR })
-                        .catch(() => {
-                            // If direct update doesn't work, we'll handle it separately
-                            toast.error('Payment QR upload is not yet supported in backend')
-                        })
-                )
+                uploadPromises.push(adminService.updateEventPaymentQR(eventId, files.paymentQR))
             }
 
             if (uploadPromises.length > 0) {
@@ -192,7 +183,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                         </div>
 
                         {/* Section: Organizer & Organization */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Event Organizer (Owner)</label>
                                 <UserSearchSelect
@@ -365,7 +356,7 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                                     />
                                     <div className="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
                                 </div>
-                                <span className="text-sm font-medium text-gray-700">Publish Event Immediately</span>
+                                <span className="text-sm font-medium text-gray-700">Publish directly</span>
                             </label>
 
                             <div className="flex-1"></div>

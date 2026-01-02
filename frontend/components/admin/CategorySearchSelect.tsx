@@ -42,10 +42,16 @@ export function CategorySearchSelect({
         cat.name.toLowerCase().includes(query.toLowerCase())
     ) || []
 
+    const maxCategories = 3 // Maximum number of categories allowed
+
     const toggleCategory = (categoryId: string) => {
         if (selectedCategoryIds.includes(categoryId)) {
             onChange(selectedCategoryIds.filter(id => id !== categoryId))
         } else {
+            // Check if limit reached
+            if (selectedCategoryIds.length >= maxCategories) {
+                return // Don't add more if limit reached
+            }
             onChange([...selectedCategoryIds, categoryId])
         }
     }
@@ -79,6 +85,12 @@ export function CategorySearchSelect({
                         </button>
                     </div>
                 ))}
+                {selectedCategoryIds.length > 0 && (
+                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${selectedCategoryIds.length >= 3 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-600 border border-gray-200'
+                        }`}>
+                        {selectedCategoryIds.length}/3 selected
+                    </div>
+                )}
             </div>
 
             {/* Search Input */}

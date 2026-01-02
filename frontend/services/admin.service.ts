@@ -223,12 +223,12 @@ export const adminService = {
         start_after?: string
         end_before?: string
     }) => {
-        const response = await api.get<EventDetails[]>('/events', { params })
+        const response = await api.get<EventDetails[]>('/admin/events', { params })
         return response.data
     },
 
     createEvent: async (data: any) => {
-        const response = await api.post<import('./api.types').EventDetails>('/events', data)
+        const response = await api.post<import('./api.types').EventDetails>('/admin/events', data)
         return response.data
     },
 
@@ -275,6 +275,15 @@ export const adminService = {
         const fd = new FormData()
         fd.append('file', file)
         const response = await api.put<EventDetails>(`/admin/events/${eventId}/images/cover`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return response.data
+    },
+
+    updateEventPaymentQR: async (eventId: string, file: File) => {
+        const fd = new FormData()
+        fd.append('file', file)
+        const response = await api.put<EventDetails>(`/admin/events/${eventId}/images/payment-qr`, fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
         return response.data

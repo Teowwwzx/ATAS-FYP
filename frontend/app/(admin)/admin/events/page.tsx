@@ -32,7 +32,7 @@ export default function AdminEventsPage() {
         page,
         page_size: pageSize,
         q_text: debouncedSearch || undefined,
-        status: statusFilter || undefined,
+        status: statusFilter === '' ? undefined : statusFilter, // Empty string becomes undefined
         type: typeFilter || undefined,
         include_all_visibility: true,
         organizer_id: selectedOrganizer?.id || undefined

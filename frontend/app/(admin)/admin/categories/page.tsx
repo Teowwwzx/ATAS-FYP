@@ -6,6 +6,7 @@ import { listCategories, deleteCategory } from '@/services/api'
 import type { CategoryResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { CreateCategoryModal } from '@/components/admin/modals/CreateCategoryModal'
+import { BatchCreateCategoriesModal } from '@/components/admin/modals/BatchCreateCategoriesModal'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { Pagination } from '@/components/ui/Pagination'
 import { MagnifyingGlassIcon, Pencil1Icon, TrashIcon } from '@radix-ui/react-icons'
@@ -16,6 +17,7 @@ export default function AdminCategoriesPage() {
     const [search, setSearch] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [isBatchCreateOpen, setIsBatchCreateOpen] = useState(false)
     const [editingCategory, setEditingCategory] = useState<CategoryResponse | null>(null)
     const [deleteId, setDeleteId] = useState<string | null>(null)
 
@@ -68,12 +70,20 @@ export default function AdminCategoriesPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
                     <p className="text-gray-500 mt-1">Manage tag library used for event discovery</p>
                 </div>
-                <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
-                >
-                    + Create Category
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsBatchCreateOpen(true)}
+                        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    >
+                        ⚡ Batch Create
+                    </button>
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-lg hover:bg-yellow-300 transition-colors font-bold"
+                    >
+                        + Create Category
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -175,6 +185,12 @@ export default function AdminCategoriesPage() {
                 }}
                 onSuccess={() => mutate()}
                 editingCategory={editingCategory}
+            />
+
+            <BatchCreateCategoriesModal
+                isOpen={isBatchCreateOpen}
+                onClose={() => setIsBatchCreateOpen(false)}
+                onSuccess={() => mutate()}
             />
 
             <ConfirmationModal

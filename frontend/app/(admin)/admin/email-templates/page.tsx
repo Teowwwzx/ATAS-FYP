@@ -90,7 +90,7 @@ export default function AdminEmailTemplatesPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      if (editing) {
+      if (editing?.id) {
         await adminService.updateEmailTemplate(editing.id, { subject: form.subject, body_html: form.body_html })
         toast.success('Template updated')
       } else {
@@ -230,7 +230,9 @@ export default function AdminEmailTemplatesPage() {
               </div>
               <div className="flex items-center justify-end gap-2">
                 <button type="button" onClick={compilePreview} className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900">Preview</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-lg font-bold hover:bg-yellow-300">{isSubmitting ? 'Saving...' : 'Save'}</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-yellow-400 text-zinc-900 rounded-lg font-bold hover:bg-yellow-300">
+                  {isSubmitting ? (editing?.id ? 'Updating...' : 'Creating...') : (editing?.id ? 'Save' : 'Create Template')}
+                </button>
               </div>
             </form>
           </Dialog.Content>

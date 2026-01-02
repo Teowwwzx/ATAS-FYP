@@ -115,6 +115,8 @@ class EventUpdate(BaseModel):
     price: float | None = None
     currency: str | None = None
     categories: List[uuid.UUID] | None = None
+    organizer_id: uuid.UUID | None = None
+    organization_id: uuid.UUID | None = None
 
 class EventDetails(BaseModel):
     id: uuid.UUID

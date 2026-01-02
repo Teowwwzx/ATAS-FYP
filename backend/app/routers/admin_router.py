@@ -1,7 +1,7 @@
 # app/routers/admin_router.py
 
 
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.sql import func
 from typing import List
@@ -32,7 +32,7 @@ from app.models.event_model import (
     EventCategory,
     Category
 )
-from app.schemas.event_schema import EventUpdate, EventDetails
+from app.schemas.event_schema import EventUpdate, EventDetails, EventCreate
 from app.services.cloudinary_service import upload_file
 
 router = APIRouter()
@@ -119,6 +119,8 @@ def admin_update_event(
         event.price = body.price
     if body.currency is not None:
         event.currency = body.currency
+    if body.status is not None:
+        event.status = body.status
 
     if body.categories is not None:
         # Clear existing categories
@@ -278,13 +280,285 @@ def admin_update_event_cover(
     db.refresh(event)
     return event
 
+@router.put("/events/{event_id}/images/payment-qr", response_model=EventDetails)
+def admin_update_event_payment_qr(
+    event_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    event = db.query(Event).filter(Event.id == event_uuid).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    url = upload_file(file, "payment_qrs")
+    event.payment_qr_url = url
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+@router.get("/events", response_model=List[EventDetails])
+def admin_list_events(
+    q: str | None = Query(None),
+    status: EventStatus | None = Query(None),
+    type: EventType | None = Query(None),
+    format: EventFormat | None = Query(None),
+    organizer_id: uuid.UUID | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Admin endpoint to list all events with filters"""
+    query = db.query(Event)
+    
+    if q:
+        query = query.filter(Event.title.ilike(f"%{q}%"))
+    if status:
+        query = query.filter(Event.status == status)
+    if type:
+        query = query.filter(Event.type == type)
+    if format:
+        query = query.filter(Event.format == format)
+    if organizer_id:
+        query = query.filter(Event.organizer_id == organizer_id)
+    
+    return (
+        query.order_by(Event.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+@router.post("/events", response_model=EventDetails)
+def admin_create_event(
+    body: EventCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    """
+    Admin endpoint to create a new event.
+    """
+    # Validate dates
+    if body.end_datetime <= body.start_datetime:
+        raise HTTPException(status_code=400, detail="End datetime must be after start datetime")
+    
+    # Create event with admin as organizer
+    event = Event(
+        organizer_id=current_user.id,
+        title=body.title,
+        description=body.description,
+        format=body.format,
+        type=body.type,
+        start_datetime=body.start_datetime,
+        end_datetime=body.end_datetime,
+        registration_type=body.registration_type,
+        visibility=body.visibility,
+        status=EventStatus.draft,
+        max_participant=body.max_participant,
+        venue_place_id=body.venue_place_id,
+        venue_remark=body.venue_remark,
+        remark=body.remark,
+        price=body.price or 0.0,
+        currency=body.currency or "MYR",
+        payment_qr_url=body.payment_qr_url,
+        organization_id=body.organization_id
+    )
+    
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    # Add categories if provided
+    if body.categories:
+        for cat_id in body.categories:
+            cat_exists = db.query(Category).filter(Category.id == cat_id).first()
+            if cat_exists:
+                db.add(EventCategory(event_id=event.id, category_id=cat_id))
+        db.commit()
+    
+    # Add organizer as participant
+    db.add(EventParticipant(
+        event_id=event.id,
+        user_id=current_user.id,
+        role=EventParticipantRole.organizer,
+        status=EventParticipantStatus.accepted,
+        join_method="admin_create"
+    ))
+    db.commit()
+    
+    log_admin_action(db, current_user.id, "event.create", "event", event.id)
+    db.refresh(event)
+    return event
+
+
+@router.delete("/events/{event_id}")
+def admin_delete_event(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    """
+    Admin endpoint to delete an event.
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    log_admin_action(db, current_user.id, "event.delete", "event", event.id)
+    
+    # Delete associated data
+    db.query(EventCategory).filter(EventCategory.event_id == event_id).delete()
+    db.query(EventParticipant).filter(EventParticipant.event_id == event_id).delete()
+    
+    # Delete the event
+    db.delete(event)
+    db.commit()
+    
+    return {"status": "success", "message": "Event deleted"}
+
+
+@router.put("/events/{event_id}/publish", response_model=EventDetails)
+def admin_publish_event(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.status = EventStatus.published
+    # default registration to opened on publish if not set
+    if getattr(event, "registration_status", None) is None:
+        event.registration_status = EventRegistrationStatus.opened
+        
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    try:
+        from app.services.ai_service import upsert_event_embedding
+        src = f"{event.title}\n{event.description or ''}\nformat:{event.format} type:{event.type}"
+        upsert_event_embedding(db, event.id, src)
+    except Exception:
+        db.rollback()
+        
+    log_admin_action(db, current_user.id, "event.publish", "event", event.id)
+    return event
+
+
+@router.put("/events/{event_id}/unpublish", response_model=EventDetails)
+def admin_unpublish_event(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.status = EventStatus.draft
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    log_admin_action(db, current_user.id, "event.unpublish", "event", event.id)
+    return event
+
+@router.put("/events/{event_id}/registration/open", response_model=EventDetails)
+def admin_open_event_registration(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    event.registration_status = EventRegistrationStatus.opened
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    log_admin_action(db, current_user.id, "event.registration.open", "event", event.id)
+    return event
+
+@router.put("/events/{event_id}/registration/close", response_model=EventDetails)
+def admin_close_event_registration(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    event.registration_status = EventRegistrationStatus.closed
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    log_admin_action(db, current_user.id, "event.registration.close", "event", event.id)
+    return event
+
+@router.put("/events/{event_id}/images/logo", response_model=EventDetails)
+def admin_update_event_logo(
+    event_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    event = db.query(Event).filter(Event.id == event_uuid).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    url = upload_file(file, "event_logos")
+    event.logo_url = url
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.put("/events/{event_id}/images/cover", response_model=EventDetails)
+def admin_update_event_cover(
+    event_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    try:
+        event_uuid = uuid.UUID(event_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+    event = db.query(Event).filter(Event.id == event_uuid).first()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    url = upload_file(file, "event_covers")
+    event.cover_url = url
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
 @router.get("/ping")
 def read_admin_root():
     return {"message": "Welcome to the ATAS Admin API!"}
 
 from app.models.organization_model import Organization, OrganizationVisibility, OrganizationType, OrganizationStatus
-from app.schemas.organization_schema import OrganizationResponse
-from fastapi import Query
+from app.schemas.organization_schema import OrganizationResponse, OrganizationUpdate
 
 @router.get("/organizations", response_model=List[OrganizationResponse])
 def admin_list_organizations(
@@ -334,6 +608,109 @@ def admin_count_organizations(
         query = query.filter(Organization.status == status)
     total = query.with_entities(Organization.id).distinct().count()
     return {"total_count": total}
+
+
+@router.post("/organizations/{org_id}/approve", response_model=OrganizationResponse)
+def admin_approve_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Approve a pending organization"""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    org.status = OrganizationStatus.approved
+    db.commit()
+    db.refresh(org)
+    
+    log_admin_action(db, current_user.id, "organization.approve", "organization", org.id)
+    return org
+
+
+@router.post("/organizations/{org_id}/reject", response_model=OrganizationResponse)
+def admin_reject_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Reject a pending organization"""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    org.status = OrganizationStatus.rejected
+    db.commit()
+    db.refresh(org)
+    
+    log_admin_action(db, current_user.id, "organization.reject", "organization", org.id)
+    return org
+
+
+@router.put("/organizations/{org_id}", response_model=OrganizationResponse)
+def admin_update_organization(
+    org_id: uuid.UUID,
+    body: OrganizationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Update organization details"""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    # Apply partial updates
+    if body.name is not None:
+        org.name = body.name
+    if body.description is not None:
+        org.description = body.description
+    if body.logo_url is not None:
+        org.logo_url = body.logo_url
+    if body.cover_url is not None:
+        org.cover_url = body.cover_url
+    if body.type is not None:
+        org.type = body.type
+    if body.website_url is not None:
+        org.website_url = body.website_url
+    if body.location is not None:
+        org.location = body.location
+    if body.visibility is not None:
+        org.visibility = body.visibility
+    if body.bank_details is not None:
+        org.bank_details = body.bank_details
+    if body.owner_id is not None:
+        # Verify new owner exists
+        new_owner = db.query(User).filter(User.id == body.owner_id).first()
+        if not new_owner:
+            raise HTTPException(status_code=404, detail="New owner user not found")
+        org.owner_id = body.owner_id
+    
+    db.commit()
+    db.refresh(org)
+    
+    log_admin_action(db, current_user.id, "organization.update", "organization", org.id)
+    return org
+
+
+@router.delete("/organizations/{org_id}")
+def admin_delete_organization(
+    org_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Delete an organization"""
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    log_admin_action(db, current_user.id, "organization.delete", "organization", org.id)
+    
+    # Delete the organization
+    db.delete(org)
+    db.commit()
+    
+    return {"status": "success", "message": "Organization deleted"}
 
 @router.get("/audit-logs", response_model=List[dict])
 def list_audit_logs(
@@ -796,3 +1173,96 @@ def admin_update_org_cover(
     db.refresh(org)
     log_admin_action(db, current_user.id, "organization.update_cover", "organization", org.id)
     return org
+
+
+# Category Management Endpoints
+
+class CategoryCreate(BaseModel):
+    name: str
+
+class CategoryUpdate(BaseModel):
+    name: str | None = None
+
+class CategoryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: __import__("datetime").datetime
+    updated_at: __import__("datetime").datetime | None = None
+    
+    model_config = {"from_attributes": True}
+
+
+@router.post("/categories", response_model=CategoryResponse)
+def admin_create_category(
+    body: CategoryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Create a new category"""
+    # Check for duplicate category name (case-insensitive)
+    existing = db.query(Category).filter(
+        func.lower(Category.name) == func.lower(body.name)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Category '{body.name}' already exists")
+    
+    category = Category(name=body.name)
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    
+    log_admin_action(db, current_user.id, "category.create", "category", category.id)
+    return category
+
+
+@router.put("/categories/{category_id}", response_model=CategoryResponse)
+def admin_update_category(
+    category_id: uuid.UUID,
+    body: CategoryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Update a category"""
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    if body.name is not None:
+        # Check for duplicate category name (case-insensitive), excluding current category
+        existing = db.query(Category).filter(
+            func.lower(Category.name) == func.lower(body.name),
+            Category.id != category_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Category '{body.name}' already exists")
+        
+        category.name = body.name
+    
+    db.commit()
+    db.refresh(category)
+    
+    log_admin_action(db, current_user.id, "category.update", "category", category.id)
+    return category
+
+
+@router.delete("/categories/{category_id}")
+def admin_delete_category(
+    category_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Delete a category"""
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    log_admin_action(db, current_user.id, "category.delete", "category", category.id)
+    
+    # Delete associated event-category relationships
+    db.query(EventCategory).filter(EventCategory.category_id == category_id).delete()
+    
+    # Delete the category
+    db.delete(category)
+    db.commit()
+    
+    return {"status": "success", "message": "Category deleted"}
