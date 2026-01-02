@@ -320,7 +320,6 @@ export default function PublicProfilePage() {
                     coverInputRef={coverInputRef}
                     onAvatarChange={() => { }}
                     onCoverChange={() => { }}
-                    onPreviewImage={(url) => window.open(url, '_blank')}
                     followersCount={profile.followers_count || 0}
                     followingCount={profile.following_count || 0}
                     onViewFollowers={handleViewFollowers}
@@ -458,7 +457,6 @@ export default function PublicProfilePage() {
                 </div>
             )}
 
-            {/* Book Expert Modal */}
             <BookExpertModal
                 isOpen={showInviteModal}
                 onClose={() => setShowInviteModal(false)}

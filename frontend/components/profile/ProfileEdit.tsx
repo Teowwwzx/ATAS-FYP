@@ -210,20 +210,24 @@ export function ProfileEdit(props: ProfileEditProps) {
                                     <input
                                         type="text"
                                         value={formData.full_name || ''}
+                                        maxLength={100}
                                         onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                                         className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-bold py-3 px-4"
                                     />
+                                    <div className="text-xs text-gray-500 mt-1 ml-1">{formData.full_name?.length || 0}/100</div>
                                 </div>
                                 <div>
-                                <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Job Title</label>
-                                <input
-                                    type="text"
-                                    value={formData.title || ''}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    placeholder="e.g. Software Engineer"
-                                    className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
-                                />
-                            </div>
+                                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">Job Title</label>
+                                    <input
+                                        type="text"
+                                        value={formData.title || ''}
+                                        maxLength={60}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        placeholder="e.g. Software Engineer"
+                                        className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
+                                    />
+                                    <div className="text-xs text-gray-500 mt-1 ml-1">{formData.title?.length || 0}/60</div>
+                                </div>
                             </div>
 
                             <div>
@@ -231,10 +235,12 @@ export function ProfileEdit(props: ProfileEditProps) {
                                 <textarea
                                     rows={4}
                                     value={formData.bio || ''}
+                                    maxLength={500}
                                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                                     className="block w-full rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-3 px-4"
                                     placeholder="Tell us about yourself..."
                                 />
+                                <div className="text-xs text-gray-500 mt-1 ml-1">{formData.bio?.length || 0}/500 characters</div>
                             </div>
 
                             <div>
@@ -260,7 +266,7 @@ export function ProfileEdit(props: ProfileEditProps) {
                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
                                 <h4 className="font-bold text-zinc-900 text-sm uppercase tracking-wider mb-4">Profile Badges & Intents</h4>
                                 <p className="text-sm text-zinc-500 mb-4">Select an intent to display a badge on your profile picture.</p>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {INTENT_OPTIONS.map((intent) => {
                                         const isSelected = formData.intents?.includes(intent.value)
@@ -278,21 +284,20 @@ export function ProfileEdit(props: ProfileEditProps) {
                                                         // newIntents = [intent.value] 
                                                         newIntents = [...current, intent.value]
                                                     }
-                                                    
+
                                                     const updates: any = { intents: newIntents }
-                                                    
+
                                                     // Sync can_be_speaker if specific intent is toggled
                                                     if (intent.value === 'open_to_speak') {
                                                         updates.can_be_speaker = newIntents.includes('open_to_speak')
                                                     }
-                                                    
+
                                                     setFormData({ ...formData, ...updates })
                                                 }}
-                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                                                    isSelected 
-                                                        ? `bg-white border-zinc-900 shadow-md ring-1 ring-zinc-900` 
+                                                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isSelected
+                                                        ? `bg-white border-zinc-900 shadow-md ring-1 ring-zinc-900`
                                                         : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className={`p-2 rounded-full ${isSelected ? intent.bgColor + ' ' + intent.color : 'bg-gray-100 text-gray-400'}`}>
                                                     {intent.icon}

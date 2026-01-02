@@ -85,10 +85,10 @@ export const resendVerification = async (email: string) => {
   return response.data
 }
 
-export const verifyEmail = async (email: string, code: string) => {
+export const verifyEmail = async (emailOrToken: string, code?: string) => {
   const response = await api.post<VerifyEmailSuccessResponse>(
     '/auth/verify',
-    { email, code }
+    code ? { email: emailOrToken, code } : { email: '', code: emailOrToken }
   )
   return response.data
 }

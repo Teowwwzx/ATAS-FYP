@@ -35,7 +35,6 @@ export default function ProfilePage() {
     })
     const [newJob, setNewJob] = useState<JobExperienceCreate>({ title: '', description: '' })
     const [viewFriends, setViewFriends] = useState<'none' | 'followers' | 'following'>('none')
-    const [previewImage, setPreviewImage] = useState<string | null>(null)
     const [confirmUnfollowId, setConfirmUnfollowId] = useState<string | null>(null)
 
     // ... (rest of the component)
@@ -310,28 +309,6 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen bg-amber-50">
-            {/* Image Preview Modal */}
-            {previewImage && (
-                <div
-                    className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out animate-fadeIn backdrop-blur-sm"
-                    onClick={() => setPreviewImage(null)}
-                >
-                    <img
-                        src={previewImage}
-                        className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
-                        alt="Preview"
-                    />
-                    <button
-                        onClick={() => setPreviewImage(null)}
-                        className="absolute top-6 right-6 text-white text-opacity-70 hover:text-opacity-100 transition-opacity"
-                    >
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            )}
-
             {/* Followers/Following Modal */}
             {viewFriends !== 'none' && (
                 <div
@@ -436,7 +413,6 @@ export default function ProfilePage() {
                 onEdit={() => setEditing(true)}
                 onAvatarChange={handleAvatarChange}
                 onCoverChange={handleCoverChange}
-                onPreviewImage={setPreviewImage}
                 avatarInputRef={avatarInputRef}
                 coverInputRef={coverInputRef}
             />

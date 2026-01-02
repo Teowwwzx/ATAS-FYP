@@ -1,15 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { ProfileResponse } from '@/services/api.types'
 import { SponsorBadge } from '../ui/SponsorBadge'
 
-const INTENT_BADGE_CONFIG: Record<string, { color: string; label: string; bgColor: string }> = {
-    'open_to_speak': { color: '#ffffff', label: '#OPEN TO SPEAK', bgColor: '#2563eb' },
-    'hiring_talent': { color: '#ffffff', label: '#HIRING', bgColor: '#16a34a' },
-    'looking_for_sponsor': { color: '#ffffff', label: '#SEEKING SPONSOR', bgColor: '#9333ea' },
-    'open_to_collaborate': { color: '#ffffff', label: '#OPEN TO COLLAB', bgColor: '#ca8a04' },
-    'seeking_mentorship': { color: '#ffffff', label: '#SEEKING MENTOR', bgColor: '#ea580c' },
-    'offering_mentorship': { color: '#ffffff', label: '#MENTOR', bgColor: '#0d9488' },
-}
+import { ProfileBadge, IntentType, INTENT_CONFIG } from './ProfileBadge'
+import { ImagePreviewModal } from '../ui/ImagePreviewModal'
 
 interface ProfileHeaderProps {
     profile: ProfileResponse
@@ -17,7 +11,6 @@ interface ProfileHeaderProps {
     onEdit: () => void
     onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void
     onCoverChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-    onPreviewImage: (url: string) => void
     avatarInputRef: React.RefObject<HTMLInputElement | null>
     coverInputRef: React.RefObject<HTMLInputElement | null>
     followersCount: number
@@ -33,7 +26,6 @@ export function ProfileHeader({
     onEdit,
     onAvatarChange,
     onCoverChange,
-    onPreviewImage,
     avatarInputRef,
     coverInputRef,
     followersCount,
@@ -42,6 +34,7 @@ export function ProfileHeader({
     onViewFollowing,
     customActions
 }: ProfileHeaderProps) {
+    const [previewImage, setPreviewImage] = useState<string | null>(null)
     const getTierStyles = (tier: string | null | undefined) => {
         switch (tier) {
             case 'Gold':
@@ -74,7 +67,7 @@ export function ProfileHeader({
     const tierStyle = getTierStyles(profile.sponsor_tier)
 
     const primaryIntent = profile.intents && profile.intents.length > 0 ? profile.intents[0] : null
-    const badgeConfig = primaryIntent ? INTENT_BADGE_CONFIG[primaryIntent] : null
+    const badgeConfig = primaryIntent ? INTENT_CONFIG[primaryIntent as IntentType] : null
 
     return (
         <div className="relative mb-8">
@@ -85,11 +78,25 @@ export function ProfileHeader({
                         src={profile.cover_url}
                         alt="Cover"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-pointer"
-                        onClick={() => onPreviewImage(profile.cover_url!)}
+                        onClick={() => setPreviewImage(profile.cover_url!)}
                     />
                 ) : (
                     <div className="w-full h-full bg-yellow-400 flex items-center justify-center">
                         <div className="text-zinc-900/10 text-9xl font-black select-none">ATAS</div>
+                    </div>
+                )}
+
+                {/* Hover Overlay for Preview (Cover) */}
+                {profile.cover_url && (
+                    <div
+                        className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 cursor-pointer backdrop-blur-[1px]"
+                        onClick={() => setPreviewImage(profile.cover_url!)}
+                    >
+                        <div className="bg-black/40 p-3 rounded-full text-white backdrop-blur-md transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                        </div>
                     </div>
                 )}
 
@@ -123,7 +130,7 @@ export function ProfileHeader({
                     <div className="relative group">
                         <div
                             className={`h-32 w-32 sm:h-44 sm:w-44 rounded-[2rem] ring-8 ${tierStyle.ring} bg-white overflow-hidden ${tierStyle.shadow} cursor-pointer relative z-20 transition-all duration-500`}
-                            onClick={() => profile.avatar_url && onPreviewImage(profile.avatar_url)}
+                            onClick={() => profile.avatar_url && setPreviewImage(profile.avatar_url)}
                         >
                             {profile.avatar_url ? (
                                 <img
@@ -144,15 +151,26 @@ export function ProfileHeader({
                                 </div>
                             )}
 
+                            {/* Hover Overlay for Preview */}
+                            {profile.avatar_url && (
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-40 backdrop-blur-[1px]">
+                                    <svg className="w-8 h-8 text-white drop-shadow-md transform scale-75 group-hover:scale-100 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </div>
+                            )}
+
                             {/* Straight Intent Badge Banner */}
                             {badgeConfig && (
-                                <div 
-                                    className="absolute bottom-0 left-0 right-0 py-1.5 z-20 flex items-center justify-center"
-                                    style={{ backgroundColor: badgeConfig.bgColor }}
+                                <div
+                                    className={`absolute bottom-0 left-0 right-0 py-1.5 z-20 flex items-center justify-center gap-1 ${badgeConfig.bgColor}`}
                                 >
-                                    <span 
-                                        className="text-[10px] font-black tracking-widest uppercase truncate px-2"
-                                        style={{ color: badgeConfig.color }}
+                                    <div className={`w-3 h-3 ${badgeConfig.color}`}>
+                                        {badgeConfig.icon}
+                                    </div>
+                                    <span
+                                        className={`text-[10px] font-black tracking-widest uppercase truncate ${badgeConfig.color}`}
                                     >
                                         {badgeConfig.label}
                                     </span>
@@ -242,6 +260,11 @@ export function ProfileHeader({
                     </div>
                 </div>
             </div>
+            <ImagePreviewModal
+                isOpen={!!previewImage}
+                imageUrl={previewImage}
+                onClose={() => setPreviewImage(null)}
+            />
         </div>
     )
 }

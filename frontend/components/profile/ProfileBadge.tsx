@@ -10,12 +10,12 @@ export type IntentType =
 
 interface IntentConfig {
     label: string
-    icon: JSX.Element
+    icon: React.ReactElement
     color: string
     bgColor: string
 }
 
-const INTENT_CONFIG: Record<IntentType, IntentConfig> = {
+export const INTENT_CONFIG: Record<IntentType, IntentConfig> = {
     open_to_speak: {
         label: 'Speaker',
         color: 'text-blue-700',

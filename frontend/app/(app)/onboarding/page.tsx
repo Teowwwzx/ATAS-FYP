@@ -287,7 +287,7 @@ export default function OnboardingPage() {
       // Handle Other Intent
       // Note: Backend strictly validates intents against IntentType enum.
       // We need to map UI friendly strings to backend enum values.
-      
+
       const INTENT_MAPPING: Record<string, string> = {
         'Find Expert / Speaker': 'seeking_mentorship',
         'Find Sponsorship': 'looking_for_sponsor',
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
       }
 
       const finalIntents = new Set<string>()
-      
+
       // Process selected intents
       payload.intents?.forEach(intent => {
         if (intent === 'Other') {
@@ -633,19 +633,7 @@ export default function OnboardingPage() {
                                     checked={!!isSelected}
                                     onChange={() => toggleIntent(intent)}
                                   />
-                                  {isOther && isSelected ? (
-                                    <input
-                                      type="text"
-                                      autoFocus
-                                      placeholder="Please specify..."
-                                      value={otherIntent}
-                                      onChange={(e) => setOtherIntent(e.target.value)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="block w-full bg-transparent border-none p-0 text-sm text-black placeholder-zinc-400 focus:ring-0 outline-none"
-                                    />
-                                  ) : (
-                                    <span className="text-sm font-medium text-black">{intent}</span>
-                                  )}
+                                  <span className="text-sm font-medium text-black">{intent}</span>
                                 </label>
                               </div>
                             );

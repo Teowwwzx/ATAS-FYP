@@ -80,9 +80,8 @@ function ResetPasswordForm() {
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                 />
-                 <div>
+                <div>
                     <label htmlFor="code" className="block text-sm font-bold text-zinc-900 mb-2">
                         Verification Code
                     </label>
