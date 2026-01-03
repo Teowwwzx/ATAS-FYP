@@ -1,6 +1,6 @@
 # model/event_model.py
 
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Float, UniqueConstraint
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Float, UniqueConstraint, Table
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func, select
 from sqlalchemy.orm import relationship, column_property
@@ -254,6 +254,8 @@ class EventChecklistItem(Base):
     def assigned_user_ids(self):
         return [u.id for u in self.assigned_users]
 
+    files = relationship("EventProposal", secondary="event_checklist_item_files")
+
 class EventChecklistAssignment(Base):
     __tablename__ = "event_checklist_assignments"
     
@@ -283,6 +285,16 @@ class EventProposalComment(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+
+# Association table for checklist items and files (proposals)
+event_checklist_item_files = Table(
+    "event_checklist_item_files",
+    Base.metadata,
+    Column("checklist_item_id", UUID(as_uuid=True), ForeignKey("event_checklist_items.id", ondelete="CASCADE"), primary_key=True),
+    Column("proposal_id", UUID(as_uuid=True), ForeignKey("event_proposals.id", ondelete="CASCADE"), primary_key=True)
+)
 
 
 # Inject participant_count property to Event model

@@ -402,7 +402,7 @@ export default function EventDetailsPage() {
 
                 {/* 1. Breadcrumb / Back */}
                 <div className="flex items-center gap-2 mb-6 text-sm font-medium text-zinc-500">
-                    <Link href="/dashboard" className="hover:text-zinc-900 transition-colors">Events</Link>
+                    <Link href="/discover" className="hover:text-zinc-900 transition-colors">Events</Link>
                     <span>/</span>
                     <span className="text-zinc-900 truncate max-w-[200px]">{event.title}</span>
                 </div>
@@ -787,8 +787,8 @@ export default function EventDetailsPage() {
                                                                 onClick={() => fileInputRef.current?.click()}
                                                                 disabled={uploadingProof || paymentStatus === 'pending'}
                                                                 className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors w-full border ${paymentStatus === 'pending'
-                                                                        ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed'
-                                                                        : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200'
+                                                                    ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed'
+                                                                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200'
                                                                     }`}
                                                             >
                                                                 {uploadingProof ? 'Uploading...' : paymentStatus === 'pending' ? 'Proof Uploaded' : 'Upload Receipt'}
@@ -897,6 +897,22 @@ export default function EventDetailsPage() {
                                                                     </svg>
                                                                     Preview
                                                                 </button>
+                                                            )}
+                                                            {item.files && item.files.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {item.files.map(file => (
+                                                                        <a
+                                                                            key={file.id}
+                                                                            href={file.file_url || '#'}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="text-[10px] uppercase font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full hover:bg-amber-200 transition-colors flex items-center gap-1"
+                                                                        >
+                                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                                            {file.title || 'File'}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
                                                             )}
                                                         </div>
                                                         {item.description && (

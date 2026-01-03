@@ -91,3 +91,9 @@ def unfollow_target(target_id: uuid.UUID, db: Session = Depends(get_db), current
 def list_org_followers(org_id: uuid.UUID, db: Session = Depends(get_db)):
     items = db.query(Follow).filter(Follow.org_id == org_id).all()
     return items
+
+@router.get("/organizations/{org_id}/followers/me")
+def get_my_org_follow_status(org_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Check if I am following an organization"""
+    existing = db.query(Follow).filter(Follow.follower_id == current_user.id, Follow.org_id == org_id).first()
+    return {"is_following": existing is not None}

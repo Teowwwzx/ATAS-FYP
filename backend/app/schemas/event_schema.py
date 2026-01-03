@@ -449,6 +449,7 @@ class EventChecklistItemCreate(BaseModel):
     assigned_user_id: uuid.UUID | None = None
     assigned_user_ids: List[uuid.UUID] | None = None
     due_datetime: datetime | None = None
+    file_ids: List[uuid.UUID] | None = None
 
 class EventChecklistItemUpdate(BaseModel):
     title: str | None = None
@@ -461,6 +462,7 @@ class EventChecklistItemUpdate(BaseModel):
     assigned_user_ids: List[uuid.UUID] | None = None
     sort_order: int | None = None
     due_datetime: datetime | None = None
+    file_ids: List[uuid.UUID] | None = None
 
 class EventChecklistItemResponse(BaseModel):
     id: uuid.UUID
@@ -477,6 +479,7 @@ class EventChecklistItemResponse(BaseModel):
     created_at: datetime
     updated_at: datetime | None = None
     assigned_user_ids: List[uuid.UUID] = []
+    files: List[EventProposalResponse] = []
 
     model_config = {"from_attributes": True}
 
