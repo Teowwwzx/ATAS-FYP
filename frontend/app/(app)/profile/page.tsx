@@ -7,6 +7,7 @@ import {
     addMyJobExperience, deleteMyJobExperience, createTag,
     getPublicOrganizations, createOrganization, getOrganizationById
 } from '@/services/api'
+import Link from 'next/link'
 import {
     ProfileResponse, ProfileUpdate, UserMeResponse, MyEventItem,
     EducationCreate, EducationResponse, JobExperienceCreate, OrganizationResponse
@@ -339,20 +340,22 @@ export default function ProfilePage() {
                                         const person = viewFriends === 'followers' ? item.follower : item.followee
                                         if (!person) return null
                                         return (
-                                            <div key={item.id} className="flex items-center gap-4 p-3 hover:bg-zinc-50 rounded-2xl transition-colors group">
-                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
-                                                    {person.avatar_url ? (
-                                                        <img src={person.avatar_url} className="w-full h-full object-cover" alt={person.full_name} />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-yellow-100 text-yellow-600 font-bold text-lg">
-                                                            {person.full_name?.[0]?.toUpperCase() || '?'}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold text-zinc-900 truncate">{person.full_name}</div>
-                                                    <div className="text-xs text-zinc-400 font-medium truncate">User</div>
-                                                </div>
+                                            <div key={item.id} className="flex items-center gap-4 p-3 hover:bg-zinc-50 rounded-2xl transition-colors group text-left">
+                                                <Link href={`/profile/${person.id}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
+                                                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
+                                                        {person.avatar_url ? (
+                                                            <img src={person.avatar_url} className="w-full h-full object-cover" alt={person.full_name} />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center bg-yellow-100 text-yellow-600 font-bold text-lg">
+                                                                {person.full_name?.[0]?.toUpperCase() || '?'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-zinc-900 truncate">{person.full_name}</div>
+                                                        <div className="text-xs text-zinc-400 font-medium truncate">User</div>
+                                                    </div>
+                                                </Link>
                                                 {viewFriends === 'following' && (
                                                     confirmUnfollowId === person.id ? (
                                                         <div className="flex gap-2">

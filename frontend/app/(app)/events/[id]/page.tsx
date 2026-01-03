@@ -382,7 +382,7 @@ export default function EventDetailsPage() {
 
                 {/* 1. Breadcrumb / Back */}
                 <div className="flex items-center gap-2 mb-6 text-sm font-medium text-zinc-500">
-                    <Link href="/dashboard" className="hover:text-zinc-900 transition-colors">Events</Link>
+                    <Link href="/discover" className="hover:text-zinc-900 transition-colors">Events</Link>
                     <span>/</span>
                     <span className="text-zinc-900 truncate max-w-[200px]">{event.title}</span>
                 </div>
@@ -704,8 +704,8 @@ export default function EventDetailsPage() {
                                                                 onClick={() => fileInputRef.current?.click()}
                                                                 disabled={uploadingProof || paymentStatus === 'pending'}
                                                                 className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors w-full border ${paymentStatus === 'pending'
-                                                                        ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed'
-                                                                        : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200'
+                                                                    ? 'bg-zinc-100 text-zinc-400 border-zinc-200 cursor-not-allowed'
+                                                                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200'
                                                                     }`}
                                                             >
                                                                 {uploadingProof ? 'Uploading...' : paymentStatus === 'pending' ? 'Proof Uploaded' : 'Upload Receipt'}

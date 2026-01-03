@@ -263,6 +263,11 @@ export const getEventParticipants = async (eventId: string) => {
   return response.data
 }
 
+export const exportEventParticipants = async (eventId: string) => {
+  const response = await api.get(`/events/${eventId}/export-participants`, { responseType: 'blob' })
+  return response.data
+}
+
 export const inviteEventParticipants = async (eventId: string, items: EventParticipantCreate[]) => {
   const response = await api.post<EventParticipantDetails[]>(`/events/${eventId}/participants/bulk`, { items })
   return response.data
@@ -1031,6 +1036,29 @@ export const followUser = async (followeeId: string) => {
 
 export const unfollowUser = async (followeeId: string) => {
   const response = await api.delete(`/follows/${followeeId}`)
+  return response.data
+}
+
+export const followOrganization = async (orgId: string) => {
+  const response = await api.post('/follows', { org_id: orgId })
+  return response.data
+}
+
+export const unfollowOrganization = async (orgId: string) => {
+  const response = await api.delete(`/follows/${orgId}`)
+  return response.data
+}
+
+export const getOrganizationFollowers = async (orgId: string) => {
+  // Use generic followers endpoint or specific one if created
+  // In Step 1362 we saw list_org_followers at /organizations/{org_id}/followers
+  const response = await api.get<FollowDetails[]>(`/organizations/${orgId}/followers`)
+  return response.data
+}
+
+export const getMyOrganizationFollowStatus = async (orgId: string) => {
+  // In Step 1362 we added /organizations/{org_id}/followers/me
+  const response = await api.get<{ is_following: boolean }>(`/organizations/${orgId}/followers/me`)
   return response.data
 }
 

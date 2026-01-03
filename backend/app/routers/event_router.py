@@ -4018,3 +4018,57 @@ def create_proposal_comment(
             pass
 
     return comment
+
+
+@router.get("/events/{event_id}/export-participants")
+def export_event_participants(
+    event_id: uuid.UUID,
+    format: str = "csv",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Check permissions (organizer or committee)
+    if event.organizer_id != current_user.id:
+        my_participation = (
+            db.query(EventParticipant)
+            .filter(
+                EventParticipant.event_id == event.id,
+                EventParticipant.user_id == current_user.id,
+            )
+            .first()
+        )
+        if my_participation is None or my_participation.role != EventParticipantRole.committee:
+            raise HTTPException(status_code=403, detail="Not authorized to export participants")
+
+    # Fetch participants joined with User to get details
+    participants = (
+        db.query(EventParticipant, User)
+        .join(User, EventParticipant.user_id == User.id)
+        .filter(EventParticipant.event_id == event.id)
+        .all()
+    )
+
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Name", "Email", "Role", "Status", "Joined At"])
+        for p, u in participants:
+            writer.writerow([
+                u.full_name or "N/A",
+                u.email,
+                p.role.value,
+                p.status.value,
+                p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else ""
+            ])
+        output.seek(0)
+        return StreamingResponse(
+            io.BytesIO(output.getvalue().encode()),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=participants_{event_id}.csv"}
+        )
+    
+    raise HTTPException(status_code=400, detail="Unsupported format")
