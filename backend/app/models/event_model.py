@@ -1,6 +1,6 @@
 # model/event_model.py
 
-from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Float
+from sqlalchemy import Column, String, Boolean, Integer, ForeignKey, DateTime, Text, Enum, Float, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func, select
 from sqlalchemy.orm import relationship, column_property
@@ -196,6 +196,12 @@ class EventParticipant(Base):
     event = relationship("Event")
     proposal = relationship("EventProposal")
     walk_in_token = relationship("EventWalkInToken")
+
+    __table_args__ = (
+        # Ensure a user can only be a participant of an event ONCE
+        # This handles the "Prevent Duplicate Participants" requirement
+        UniqueConstraint('event_id', 'user_id', name='uq_event_participant_user'),
+    )
 
 class EventMailTemplate(Base):
     __tablename__ = "event_mail_templates"

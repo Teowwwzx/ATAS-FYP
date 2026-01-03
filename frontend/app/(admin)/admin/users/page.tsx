@@ -141,13 +141,40 @@ export default function UsersPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Users</h1>
                     <p className="text-gray-500 mt-1">Manage all registered users</p>
                 </div>
-                <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
-                >
-                    <PlusIcon className="w-4 h-4" />
-                    Create User
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={async () => {
+                            try {
+                                toast.loading('Exporting...', { id: 'export-users' })
+                                const blob = await adminService.exportUsers()
+                                const url = window.URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `users_export.csv`
+                                document.body.appendChild(a)
+                                a.click()
+                                window.URL.revokeObjectURL(url)
+                                toast.success('Exported successfully', { id: 'export-users' })
+                            } catch (e) {
+                                console.error(e)
+                                toast.error('Failed to export', { id: 'export-users' })
+                            }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-white text-zinc-900 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors text-sm font-medium shadow-sm"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export CSV
+                    </button>
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+                    >
+                        <PlusIcon className="w-4 h-4" />
+                        Create User
+                    </button>
+                </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">

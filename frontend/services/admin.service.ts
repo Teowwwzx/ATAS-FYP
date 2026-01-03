@@ -17,6 +17,22 @@ export interface AdminStats {
 }
 
 export const adminService = {
+    // --- Export ---
+    exportUsers: async () => {
+        const response = await api.get('/admin/export/users', { responseType: 'blob' })
+        return response.data as Blob
+    },
+
+    exportEvents: async () => {
+        const response = await api.get('/admin/export/events', { responseType: 'blob' })
+        return response.data as Blob
+    },
+
+    exportOrganizations: async () => {
+        const response = await api.get('/admin/export/organizations', { responseType: 'blob' })
+        return response.data as Blob
+    },
+
     // --- Stats ---
     getStats: async (): Promise<AdminStats> => {
         // Try dynamic roles; fallback to defaults if endpoint not available
