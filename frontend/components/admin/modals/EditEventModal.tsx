@@ -59,12 +59,23 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
 
     useEffect(() => {
         if (isOpen && event) {
+            // Helper to get local datetime string for input
+            const toLocalString = (dateStr: string) => {
+                if (!dateStr) return ''
+                const date = new Date(dateStr)
+                // Adjustment to get local time in ISO string format (which is always UTC)
+                // We create a new date shifted by the timezone offset
+                const tzOffset = date.getTimezoneOffset() * 60000
+                const localDate = new Date(date.getTime() - tzOffset)
+                return localDate.toISOString().slice(0, 16)
+            }
+
             setFormData({
                 organizer_id: event.organizer_id || '',
                 title: event.title || '',
                 description: event.description || '',
-                start_datetime: event.start_datetime ? new Date(event.start_datetime).toISOString().slice(0, 16) : '',
-                end_datetime: event.end_datetime ? new Date(event.end_datetime).toISOString().slice(0, 16) : '',
+                start_datetime: event.start_datetime ? toLocalString(event.start_datetime) : '',
+                end_datetime: event.end_datetime ? toLocalString(event.end_datetime) : '',
                 venue_remark: event.venue_remark || '',
                 venue_place_id: event.venue_place_id || '',
                 max_participant: event.max_participant || 0,
@@ -86,12 +97,21 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
         e.preventDefault()
         setIsLoading(true)
         try {
+            // Helper to convert datetime-local string to UTC ISO string
+            const toUTCString = (localDateTimeStr: string) => {
+                if (!localDateTimeStr) return undefined
+                // datetime-local format: "YYYY-MM-DDTHH:mm"
+                // We need to treat this as local time and convert to UTC
+                const date = new Date(localDateTimeStr)
+                return date.toISOString()
+            }
+
             await adminService.updateEvent(event.id, {
-                organizer_id: formData.organizer_id,
+                organizer_id: formData.organizer_id || null, // Sanitize empty string to null
                 title: formData.title,
                 description: formData.description,
-                start_datetime: new Date(formData.start_datetime).toISOString(),
-                end_datetime: new Date(formData.end_datetime).toISOString(),
+                start_datetime: toUTCString(formData.start_datetime),
+                end_datetime: toUTCString(formData.end_datetime),
                 venue_remark: formData.venue_remark,
                 venue_place_id: formData.venue_place_id,
                 max_participant: formData.max_participant,

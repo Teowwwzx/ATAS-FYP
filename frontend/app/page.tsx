@@ -20,17 +20,12 @@ export default function HomePage() {
     const [hasToken, setHasToken] = useState<boolean | null>(null)
     const shuttleRef = useRef<THREE.Sprite | null>(null)
 
-    // Token check logic (preserved from original)
+    // Token check logic - just track state, don't redirect
     useEffect(() => {
         try {
             if (typeof window !== 'undefined') {
                 const token = localStorage.getItem('atas_token')
-                if (token) {
-                    router.replace('/dashboard')
-                    setHasToken(true)
-                } else {
-                    setHasToken(false)
-                }
+                setHasToken(token ? true : false)
             }
         } catch {
             setHasToken(false)
@@ -250,9 +245,6 @@ export default function HomePage() {
         })
     }, [])
 
-    // Prevent rendering if redirecting
-    if (hasToken) return null
-
     return (
         <div className="landing-page-wrapper">
             {/* Visual Backgrounds */}
@@ -443,7 +435,12 @@ export default function HomePage() {
                         <span>LI</span>
                         <span>X</span>
                     </div>
-                    <p style={{ marginTop: '2rem', color: '#444', fontSize: '0.8rem' }}>© 2026 ATAS Platform. Designed for Excellence.</p>
+                    <div className="flex gap-4 justify-center mt-8 text-sm text-zinc-500">
+                        <Link href="/terms" className="hover:text-zinc-300 transition-colors">Terms of Service</Link>
+                        <span>•</span>
+                        <Link href="/privacy" className="hover:text-zinc-300 transition-colors">Privacy Policy</Link>
+                    </div>
+                    <p style={{ marginTop: '1rem', color: '#444', fontSize: '0.8rem' }}>© 2026 ATAS Platform. Designed for Excellence.</p>
                 </footer>
             </main>
         </div>

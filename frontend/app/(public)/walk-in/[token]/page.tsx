@@ -57,7 +57,7 @@ export default function WalkInTokenPage() {
             const reqData = {
                 name: formData.name,
                 email: formData.email,
-                payment_proof_url: '' 
+                payment_proof_url: ''
             }
 
             await registerWalkIn(token, reqData, file || undefined)
@@ -69,11 +69,11 @@ export default function WalkInTokenPage() {
             setSubmitting(false)
         }
     }
-    
+
     // ... (rest of component)
-    
+
     // I will write the component assuming the backend fix.
-    
+
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
             {/* Loading State */}
@@ -143,7 +143,7 @@ export default function WalkInTokenPage() {
                         </div>
 
                         {event.registration_type === 'paid' && (
-                             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
                                 <p className="text-sm text-yellow-800 font-medium flex items-center gap-2">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -198,6 +198,10 @@ export default function WalkInTokenPage() {
                             >
                                 {submitting ? 'Checking in...' : 'Check In'}
                             </button>
+
+                            <p className="text-xs text-center text-gray-400 font-bold mt-4">
+                                By checking in, you agree to our <Link href="/terms" className="underline hover:text-indigo-600">Terms</Link> and <Link href="/privacy" className="underline hover:text-indigo-600">Privacy Policy</Link>.
+                            </p>
                         </form>
                     </div>
                 </div>

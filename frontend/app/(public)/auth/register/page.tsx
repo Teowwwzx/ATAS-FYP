@@ -242,7 +242,7 @@ function RegisterPageContent() {
                         </div>
 
                         <div className="mt-4 text-center text-xs text-gray-500">
-                            By registering, you agree to our{' '}
+                            By clicking "Create account", you agree to our{' '}
                             <Link href="/terms" className="underline hover:text-indigo-600">
                                 Terms & Conditions
                             </Link>{' '}

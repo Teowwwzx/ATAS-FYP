@@ -253,7 +253,7 @@ function LoginPageContent() {
                     <div className="flex items-center gap-3 mb-12">
                         <div className="h-14 w-14 bg-zinc-900 rounded-full flex items-center justify-center text-yellow-400 font-bold text-2xl">
                             {/* ATAS */}
-                        <span className="text-3xl font-black text-white tracking-tight">ATAS</span>
+                            <span className="text-3xl font-black text-white tracking-tight">ATAS</span>
                         </div>
                     </div>
 
@@ -366,6 +366,17 @@ function LoginPageContent() {
 
 
                     </form>
+                    <div className="mt-8 text-center text-xs text-gray-400">
+                        By logging in, you agree to our{' '}
+                        <Link href="/terms" className="underline hover:text-zinc-900 transition-colors">
+                            Terms
+                        </Link>{' '}
+                        and{' '}
+                        <Link href="/privacy" className="underline hover:text-zinc-900 transition-colors">
+                            Privacy Policy
+                        </Link>
+                        .
+                    </div>
                 </div>
             </div>
         </div>
