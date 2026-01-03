@@ -19,8 +19,13 @@ interface DashboardEventListProps {
 export function DashboardEventList({ events, user, me, onSelect, onCreate, onProUpgrade, mode = 'all' }: DashboardEventListProps) {
     const [showProModal, setShowProModal] = useState(false)
     const [previewImage, setPreviewImage] = useState<string | null>(null)
+    const [subTab, setSubTab] = useState<'upcoming' | 'past'>('upcoming')
+
     const organizedEvents = events.filter(e => e.my_role && ['organizer', 'committee'].includes(e.my_role) && e.my_status === 'accepted')
     const joinedEvents = events.filter(e => e.my_role && !['organizer', 'committee'].includes(e.my_role))
+    
+    const upcomingJoinedEvents = joinedEvents.filter(e => new Date(e.end_datetime) > new Date())
+    const pastJoinedEvents = joinedEvents.filter(e => new Date(e.end_datetime) <= new Date())
 
     const handleCreateClick = () => {
         // Check if user needs Dashboard Pro
@@ -242,19 +247,52 @@ export function DashboardEventList({ events, user, me, onSelect, onCreate, onPro
             )}
 
             {/* Joined Events Section - "Upcoming Gigs" */}
-            {(mode === 'all' || mode === 'schedule') && joinedEvents.length > 0 && (
-                <CarouselSection
-                    title={mode === 'all' ? "Your Schedule" : ""}
-                    subTitle={mode === 'all' ? "Events you are participating in" : ""}
-                    items={joinedEvents}
-                />
-            )}
+            {mode === 'schedule' ? (
+                <div className="space-y-6">
+                    {/* Sub Tabs */}
+                    <div className="flex space-x-4 border-b border-zinc-100">
+                        <button
+                            onClick={() => setSubTab('upcoming')}
+                            className={`pb-3 text-sm font-bold transition-colors border-b-2 ${subTab === 'upcoming' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
+                        >
+                            Upcoming ({upcomingJoinedEvents.length})
+                        </button>
+                        <button
+                            onClick={() => setSubTab('past')}
+                            className={`pb-3 text-sm font-bold transition-colors border-b-2 ${subTab === 'past' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
+                        >
+                            Past ({pastJoinedEvents.length})
+                        </button>
+                    </div>
 
-            {mode === 'schedule' && joinedEvents.length === 0 && (
-                <div className="bg-zinc-50 rounded-2xl p-12 text-center border border-dashed border-zinc-200">
-                    <p className="text-zinc-500 font-medium">No upcoming gigs found.</p>
-                    <Link href="/events" className="text-blue-600 font-bold hover:underline mt-2 inline-block">Explore Events</Link>
+                    {subTab === 'upcoming' ? (
+                        upcomingJoinedEvents.length > 0 ? (
+                            <CarouselSection title="" subTitle="" items={upcomingJoinedEvents} />
+                        ) : (
+                            <div className="bg-zinc-50 rounded-2xl p-12 text-center border border-dashed border-zinc-200">
+                                <p className="text-zinc-500 font-medium">No upcoming gigs found.</p>
+                                <Link href="/events" className="text-blue-600 font-bold hover:underline mt-2 inline-block">Explore Events</Link>
+                            </div>
+                        )
+                    ) : (
+                        pastJoinedEvents.length > 0 ? (
+                            <CarouselSection title="" subTitle="" items={pastJoinedEvents} />
+                        ) : (
+                            <div className="bg-zinc-50 rounded-2xl p-12 text-center border border-dashed border-zinc-200">
+                                <p className="text-zinc-500 font-medium">No past gigs found.</p>
+                            </div>
+                        )
+                    )}
                 </div>
+            ) : (
+                // Fallback for mode='all'
+                joinedEvents.length > 0 && (
+                    <CarouselSection
+                        title={mode === 'all' ? "Your Schedule" : ""}
+                        subTitle={mode === 'all' ? "Events you are participating in" : ""}
+                        items={joinedEvents}
+                    />
+                )
             )}
 
             {/* Organized Section */}

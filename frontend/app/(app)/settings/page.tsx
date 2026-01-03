@@ -18,6 +18,28 @@ export default function SettingsPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [deleteConfirmText, setDeleteConfirmText] = useState('')
     const [deleting, setDeleting] = useState(false)
+    const [userEmail, setUserEmail] = useState('')
+
+    // Privacy state
+    const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('public')
+    const [savingPrivacy, setSavingPrivacy] = useState(false)
+
+    React.useEffect(() => {
+        const loadData = async () => {
+            try {
+                const { getMe, getMyProfile } = await import('@/services/api')
+                const [me, profile] = await Promise.all([
+                    getMe(),
+                    getMyProfile()
+                ])
+                setUserEmail(me.email)
+                setProfileVisibility(profile.visibility)
+            } catch (error) {
+                console.error('Failed to load settings data', error)
+            }
+        }
+        loadData()
+    }, [])
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -48,9 +70,22 @@ export default function SettingsPage() {
         }
     }
 
+    const handlePrivacySave = async () => {
+        setSavingPrivacy(true)
+        try {
+            const { updateProfile } = await import('@/services/api')
+            await updateProfile({ visibility: profileVisibility })
+            toast.success('Privacy settings saved')
+        } catch (error: any) {
+            toast.error(error?.response?.data?.detail || 'Failed to save privacy settings')
+        } finally {
+            setSavingPrivacy(false)
+        }
+    }
+
     const handleDeleteAccount = async () => {
-        if (deleteConfirmText !== 'DELETE') {
-            toast.error('Please type DELETE to confirm')
+        if (deleteConfirmText !== userEmail) {
+            toast.error(`Please type ${userEmail} to confirm`)
             return
         }
 
@@ -185,10 +220,23 @@ export default function SettingsPage() {
                                 <div className="space-y-4">
                                     <div className="p-4 bg-gray-50 rounded-xl">
                                         <label className="block text-sm font-bold text-zinc-900 mb-2">Profile Visibility</label>
-                                        <select className="text-gray-700 w-full max-w-xs rounded-xl bg-white border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium">
-                                            <option value="public">Public</option>
-                                            <option value="private">Private</option>
-                                        </select>
+                                        <div className="flex items-center gap-4">
+                                            <select
+                                                value={profileVisibility}
+                                                onChange={(e) => setProfileVisibility(e.target.value as 'public' | 'private')}
+                                                className="text-gray-700 w-full max-w-xs rounded-xl bg-white border-0 focus:ring-2 focus:ring-yellow-400 py-3 px-4 font-medium"
+                                            >
+                                                <option value="public">Public</option>
+                                                <option value="private">Private</option>
+                                            </select>
+                                            <button
+                                                onClick={handlePrivacySave}
+                                                disabled={savingPrivacy}
+                                                className="px-6 py-3 bg-zinc-900 text-yellow-400 rounded-xl font-bold hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+                                            >
+                                                {savingPrivacy ? 'Saving...' : 'Save Changes'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -226,13 +274,13 @@ export default function SettingsPage() {
                         </div>
                         <h3 className="text-xl font-black text-zinc-900 mb-2">Delete Account</h3>
                         <p className="text-zinc-600 font-medium mb-6">
-                            This action cannot be undone. Please type <span className="font-bold text-red-600">DELETE</span> to confirm.
+                            This action cannot be undone. Please type <span className="font-bold text-red-600">{userEmail}</span> to confirm.
                         </p>
                         <input
                             type="text"
                             value={deleteConfirmText}
                             onChange={(e) => setDeleteConfirmText(e.target.value)}
-                            placeholder="Type DELETE"
+                            placeholder={`Type ${userEmail}`}
                             className="text-gray-700 w-full rounded-xl bg-gray-50 border-0 focus:ring-2 focus:ring-red-400 py-3 px-4 font-bold mb-6"
                         />
                         <div className="flex gap-3">
@@ -247,7 +295,7 @@ export default function SettingsPage() {
                             </button>
                             <button
                                 onClick={handleDeleteAccount}
-                                disabled={deleting || deleteConfirmText !== 'DELETE'}
+                                disabled={deleting || deleteConfirmText !== userEmail}
                                 className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 disabled:opacity-50"
                             >
                                 {deleting ? 'Deleting...' : 'Delete Account'}

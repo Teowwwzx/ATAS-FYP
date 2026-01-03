@@ -132,7 +132,7 @@ export function EventReviewModal({ isOpen, onClose, eventId, eventTitle, organiz
                                         <textarea
                                             id="comment"
                                             rows={4}
-                                            className="w-full rounded-xl border-zinc-200 focus:border-blue-500 focus:ring-blue-500 bg-zinc-50"
+                                            className="text-gray-700 w-full rounded-xl border-zinc-200 focus:border-blue-500 focus:ring-blue-500 bg-zinc-50"
                                             placeholder="Share your experience..."
                                             value={comment}
                                             onChange={(e) => setComment(e.target.value)}

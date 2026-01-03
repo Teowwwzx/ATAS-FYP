@@ -20,3 +20,7 @@ class ReviewResponse(BaseModel):
     rating: int
     comment: str | None = None
     created_at: datetime
+    
+    reviewer_name: str | None = None
+    reviewer_avatar: str | None = None
+    is_anonymous: bool = False

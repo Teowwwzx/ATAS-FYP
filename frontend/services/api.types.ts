@@ -321,6 +321,13 @@ export interface EventParticipantDetails {
     payment_status?: string | null
     promo_link?: string | null
     promo_image_url?: string | null
+
+    // User details (joined)
+    user_avatar?: string | null
+    user_full_name?: string | null
+    user_title?: string | null
+    user_status?: string | null
+    user_visibility?: string | null
 }
 
 export interface EventParticipationSummary {
@@ -522,6 +529,9 @@ export interface ReviewResponse {
     event_id: string
     org_id?: string | null
     reviewer_id: string
+    reviewer_name?: string | null
+    reviewer_avatar?: string | null
+    is_anonymous?: boolean
     reviewee_id: string
     rating: number
     comment?: string | null

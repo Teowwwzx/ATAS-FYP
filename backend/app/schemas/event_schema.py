@@ -66,6 +66,8 @@ class EventParticipantDetails(BaseModel):
     user_avatar: str | None = None
     user_full_name: str | None = None
     user_title: str | None = None # Profile title
+    user_status: str | None = None
+    user_visibility: str | None = None
     
     # Proposal details
     proposal_id: uuid.UUID | None = None
@@ -203,6 +205,13 @@ class EventParticipantDetails(BaseModel):
     # Sponsor specific fields
     promo_link: str | None = None
     promo_image_url: str | None = None
+
+    # User details (joined)
+    user_avatar: str | None = None
+    user_full_name: str | None = None
+    user_title: str | None = None # Profile title
+    user_status: str | None = None
+    user_visibility: str | None = None
 
     model_config = {"from_attributes": True}
 

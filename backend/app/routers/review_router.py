@@ -7,25 +7,84 @@ from typing import List
 from app.database.database import get_db
 from app.dependencies import get_current_user, require_roles
 from app.services.audit_service import log_admin_action
-from app.models.user_model import User
+from app.models.user_model import User, UserStatus
 from app.models.event_model import Event, EventParticipant
 from app.models.review_model import Review
 from app.schemas.review_schema import ReviewCreate, ReviewResponse
 
 router = APIRouter()
 
+@router.delete("/reviews/{review_id}", status_code=204)
+def delete_review(
+    review_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    review = db.query(Review).filter(Review.id == review_id, Review.deleted_at.is_(None)).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    # Check permissions
+    # 1. Admin can delete
+    # 2. Reviewer can delete
+    # 3. Event Organizer can delete
+    
+    is_admin = any(r.name == "admin" for r in current_user.roles)
+    is_reviewer = review.reviewer_id == current_user.id
+    
+    is_organizer = False
+    if review.event_id:
+        event = db.query(Event).filter(Event.id == review.event_id).first()
+        if event and event.organizer_id == current_user.id:
+            is_organizer = True
+    elif review.org_id:
+        # For organization reviews, maybe org owner?
+        # Assuming similar logic if we had org owner check
+        pass
+
+    if not (is_admin or is_reviewer or is_organizer):
+        raise HTTPException(status_code=403, detail="Not authorized to delete this review")
+
+    review.deleted_at = func.now()
+    db.commit()
+    return None
+
 @router.get("/reviews/event/{event_id}", response_model=List[ReviewResponse])
 def list_event_reviews(
     event_id: uuid.UUID,
     db: Session = Depends(get_db),
 ):
-    items = (
-        db.query(Review)
-        .filter(Review.event_id == event_id, Review.deleted_at.is_(None))
+    from app.models.profile_model import Profile, ProfileVisibility
+    
+    results = (
+        db.query(Review, User, Profile)
+        .join(User, Review.reviewer_id == User.id)
+        .outerjoin(Profile, User.id == Profile.user_id)
+        .filter(
+            Review.event_id == event_id, 
+            Review.deleted_at.is_(None)
+        )
         .order_by(Review.created_at.desc())
         .all()
     )
-    return items
+    
+    response = []
+    for review, user, profile in results:
+        is_private = profile and profile.visibility == ProfileVisibility.private
+        is_inactive = user.status != UserStatus.active
+        
+        if is_private or is_inactive:
+            review.reviewer_name = "Anonymous"
+            review.reviewer_avatar = None
+            review.is_anonymous = True
+        else:
+            review.reviewer_name = profile.full_name if profile else (user.email.split("@")[0] if user.email else "User")
+            review.reviewer_avatar = profile.avatar_url if profile else None
+            review.is_anonymous = False
+            
+        response.append(review)
+        
+    return response
 
 @router.post("/reviews", response_model=ReviewResponse)
 def create_review(

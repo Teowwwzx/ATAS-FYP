@@ -258,8 +258,15 @@ export const getProfileByUserId = async (userId: string) => {
   return response.data
 }
 
-export const getEventParticipants = async (eventId: string) => {
-  const response = await api.get<EventParticipantDetails[]>(`/events/${eventId}/participants`)
+export const getEventParticipants = async (eventId: string, params?: { role?: string, status?: string[], user_status?: string[], user_visibility?: string[] }) => {
+  // Serialize arrays to query params
+  const queryParams = new URLSearchParams()
+  if (params?.role) queryParams.append('role', params.role)
+  if (params?.status) params.status.forEach(s => queryParams.append('status', s))
+  if (params?.user_status) params.user_status.forEach(s => queryParams.append('user_status', s))
+  if (params?.user_visibility) params.user_visibility.forEach(s => queryParams.append('user_visibility', s))
+
+  const response = await api.get<EventParticipantDetails[]>(`/events/${eventId}/participants`, { params: queryParams })
   return response.data
 }
 
@@ -471,8 +478,10 @@ export const runMyDueReminders = async (limit?: number) => {
   return response.data
 }
 
-export const getMyRequests = async () => {
-  const response = await api.get<import('./api.types').EventInvitationResponse[]>(`/events/me/requests`)
+export const getMyRequests = async (type: 'pending' | 'history' = 'pending') => {
+  const response = await api.get<import('./api.types').EventInvitationResponse[]>(`/events/me/requests`, {
+    params: { type }
+  })
   return response.data
 }
 
@@ -564,6 +573,10 @@ export const createReview = async (data: import('./api.types').ReviewCreate) => 
 export const getReviewsByEvent = async (eventId: string) => {
   const response = await api.get<import('./api.types').ReviewResponse[]>(`/reviews/event/${eventId}`)
   return response.data
+}
+
+export const deleteReview = async (reviewId: string) => {
+  await api.delete(`/reviews/${reviewId}`)
 }
 
 export const getMyReview = async (eventId: string) => {

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'react-hot-toast'
 import { DashboardEventList } from './DashboardEventList'
+import { DashboardTabOrganized } from './DashboardTabOrganized'
 import { DashboardInvitationList } from './DashboardInvitationList'
 import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
 
@@ -453,14 +454,13 @@ function DashboardPageInner() {
                                 </div>
                                 <h2 className="text-3xl font-black text-zinc-900">Organized Events</h2>
                             </div>
-                            <DashboardEventList
-                                events={events}
+                            <DashboardTabOrganized
+                                events={events.filter(e => e.my_role && ['organizer', 'committee'].includes(e.my_role) && e.my_status === 'accepted')}
                                 user={user}
                                 me={me}
                                 onSelect={handleEventSelect} // Use Navigation Handler
                                 onCreate={() => router.push('/events/create')}
                                 onProUpgrade={fetchData}
-                                mode="organized"
                             />
                         </div>
                     )}

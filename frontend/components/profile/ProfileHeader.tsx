@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ProfileResponse } from '@/services/api.types'
 import { SponsorBadge } from '../ui/SponsorBadge'
+import { SponsorInfoModal } from './SponsorInfoModal'
 
 import { ProfileBadge, IntentType, INTENT_CONFIG } from './ProfileBadge'
 import { ImagePreviewModal } from '../ui/ImagePreviewModal'
@@ -35,6 +36,8 @@ export function ProfileHeader({
     customActions
 }: ProfileHeaderProps) {
     const [previewImage, setPreviewImage] = useState<string | null>(null)
+    const [showSponsorModal, setShowSponsorModal] = useState(false)
+
     const getTierStyles = (tier: string | null | undefined) => {
         switch (tier) {
             case 'Gold':
@@ -217,10 +220,14 @@ export function ProfileHeader({
                                 {profile.full_name}
                             </h1>
                             {profile.sponsor_tier && (
-                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs sm:text-sm font-bold shadow-sm border ${tierStyle.badge} animate-fadeIn`}>
+                                <button
+                                    onClick={() => setShowSponsorModal(true)}
+                                    className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs sm:text-sm font-bold shadow-sm border ${tierStyle.badge} animate-fadeIn hover:scale-105 active:scale-95 transition-transform cursor-pointer`}
+                                    title="Click to see what this badge means"
+                                >
                                     <SponsorBadge tier={profile.sponsor_tier} size="sm" />
                                     <span>{profile.sponsor_tier} Sponsor</span>
-                                </div>
+                                </button>
                             )}
                         </div>
 
@@ -264,6 +271,10 @@ export function ProfileHeader({
                 isOpen={!!previewImage}
                 imageUrl={previewImage}
                 onClose={() => setPreviewImage(null)}
+            />
+            <SponsorInfoModal 
+                isOpen={showSponsorModal} 
+                onClose={() => setShowSponsorModal(false)} 
             />
         </div>
     )

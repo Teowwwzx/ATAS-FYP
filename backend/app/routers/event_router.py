@@ -15,6 +15,7 @@ from app.models.event_model import (
     Event,
     EventFormat,
     EventCategory,
+    EventCategory, # Ensure no dup
     Category,
     EventRegistrationType,
     EventParticipant,
@@ -30,6 +31,8 @@ from app.models.event_model import (
     EventPaymentStatus,
 )
 from app.models.event_model import ChecklistVisibility
+from app.models.user_model import User, UserStatus
+from app.models.profile_model import Profile, ProfileVisibility
 from app.models.organization_model import Organization, organization_members
 from app.models.notification_model import Notification, NotificationType
 from app.services.email_service import (
@@ -177,9 +180,9 @@ def count_events(
         query = query.filter(Event.status == status)
     else:
         # Default behavior: match get_all_events
-        # If searching for past events (end_before is set), allow completed/ended/closed events too
+        # If searching for past events (end_before is set), allow ended/closed events too
         if end_before is not None:
-             query = query.filter(Event.status.in_([EventStatus.published, EventStatus.completed, EventStatus.ended, EventStatus.closed]))
+             query = query.filter(Event.status.in_([EventStatus.published, EventStatus.ended, EventStatus.closed]))
         else:
              query = query.filter(Event.status == EventStatus.published)
 
@@ -271,9 +274,9 @@ def get_all_events(
     # Default: only published events, unless explicitly requesting otherwise
     if not include_all_status:
         if status is None:
-            # If searching for past events (end_before is set), allow completed/ended/closed events too
+            # If searching for past events (end_before is set), allow ended/closed events too
             if end_before is not None:
-                query = query.filter(Event.status.in_([EventStatus.published, EventStatus.completed, EventStatus.ended, EventStatus.closed]))
+                query = query.filter(Event.status.in_([EventStatus.published, EventStatus.ended, EventStatus.closed]))
             else:
                 query = query.filter(Event.status == EventStatus.published)
         else:
@@ -438,24 +441,39 @@ def get_my_event_history(
 
 @router.get("/events/me/requests", response_model=List[EventInvitationResponse])
 def get_my_requests(
+    type: str = Query("pending", enum=["pending", "history"]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    List pending invitations (bookings) for the current user.
+    List invitations (bookings) for the current user.
+    type='pending': Pending invitations for future events.
+    type='history': Rejected invitations or expired pending invitations.
     """
-    participants = (
-        db.query(EventParticipant)
-        .filter(
+    now = datetime.now(timezone.utc)
+    
+    query = db.query(EventParticipant).join(Event, EventParticipant.event_id == Event.id)
+    
+    if type == "pending":
+        # Pending and event not ended
+        query = query.filter(
             EventParticipant.user_id == current_user.id,
             EventParticipant.status == EventParticipantStatus.pending,
             EventParticipant.join_method == "invited",
+            Event.end_datetime > now
         )
-        .order_by(EventParticipant.created_at.desc())
-        .all()
-    )
-    
+    else:
+        # History: Rejected OR (Pending and event ended)
+        # We assume 'accepted' goes to 'My Schedule' (Joined Events)
+        query = query.filter(
+            EventParticipant.user_id == current_user.id,
+            EventParticipant.join_method == "invited",
+            (EventParticipant.status == EventParticipantStatus.rejected) |
+            ((EventParticipant.status == EventParticipantStatus.pending) & (Event.end_datetime <= now))
+        )
 
+    participants = query.order_by(EventParticipant.created_at.desc()).all()
+    
     return participants
 
 
@@ -1171,12 +1189,14 @@ def get_event_details(
     
     event.participant_count = (
         db.query(EventParticipant)
+        .join(User, EventParticipant.user_id == User.id)
         .filter(
             EventParticipant.event_id == event.id,
             EventParticipant.status.in_([
                 EventParticipantStatus.accepted,
                 EventParticipantStatus.attended,
-            ])
+            ]),
+            User.status == UserStatus.active
         )
         .count()
     )
@@ -1215,6 +1235,9 @@ def get_my_participation_summary(
 def list_event_participants(
     event_id: uuid.UUID,
     role: str | None = Query(None),
+    status: List[EventParticipantStatus] | None = Query(None),
+    user_status: List[str] | None = Query(None),
+    user_visibility: List[str] | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
@@ -1237,15 +1260,43 @@ def list_event_participants(
             if participant is None:
                 raise HTTPException(status_code=403, detail="This event is private")
 
-    q = db.query(EventParticipant).filter(EventParticipant.event_id == event.id)
+    q = db.query(EventParticipant, User, Profile).\
+        outerjoin(User, EventParticipant.user_id == User.id).\
+        outerjoin(Profile, EventParticipant.user_id == Profile.user_id).\
+        filter(EventParticipant.event_id == event.id)
+
     if role is not None:
         try:
             role_enum = EventParticipantRole(role)
             q = q.filter(EventParticipant.role == role_enum)
         except ValueError:
             return []
-    participants = q.all()
-    return participants
+            
+    if status:
+        q = q.filter(EventParticipant.status.in_(status))
+
+    if user_status:
+        q = q.filter(User.status.in_(user_status))
+    
+    if user_visibility:
+        q = q.filter(Profile.visibility.in_(user_visibility))
+
+    results = q.all()
+    
+    output = []
+    for p, u, prof in results:
+        details = EventParticipantDetails.model_validate(p)
+        if u:
+            details.user_status = u.status
+        if prof:
+            details.user_visibility = prof.visibility
+            details.user_avatar = prof.avatar_url
+            details.user_full_name = prof.full_name
+            details.user_title = prof.title
+            
+        output.append(details)
+
+    return output
 
 
 @router.post("/events/{event_id}/join", response_model=EventParticipantDetails)

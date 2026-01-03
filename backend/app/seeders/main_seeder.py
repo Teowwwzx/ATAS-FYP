@@ -189,7 +189,7 @@ def seed_main_data(db: Session):
         end_datetime=now - timedelta(days=30, hours=4),
         format=EventFormat.panel_discussion,
         type=EventType.hybrid,
-        status=EventStatus.completed,
+        status=EventStatus.ended,
         registration_status=EventRegistrationStatus.closed,
         registration_type=EventRegistrationType.paid,
         price=50.0,

@@ -9,13 +9,14 @@ from app.models.event_model import (
     EventWalkInToken, EventChecklistItem, EventChecklistAssignment, EventPicture, EventReminder,
     EventProposalComment
 )
-from app.models.profile_model import Profile, JobExperience, Education, Tag, profile_tags, profile_skills
+from app.models.profile_model import Profile, ProfileVisibility, JobExperience, Education, Tag, profile_tags, profile_skills
 from app.models.review_model import Review
 from app.models.follows_model import Follow
 from app.core.security import get_password_hash
 from app.models.chat_model import Message, Conversation, ConversationParticipant
 from app.models.onboarding_model import UserOnboarding
 import random
+import uuid
 
 def seed_presentation_data(db: Session):
     print("Cleaning database (Presentation Mode)...")
@@ -85,14 +86,19 @@ def seed_presentation_data(db: Session):
         ("student", "student@gmail.com", "Student User", role_objs["student"]),
         ("expert", "expert@gmail.com", "Dr. Expert", role_objs["expert"]),
         ("sponsor", "sponsor@gmail.com", "Sponsor Rep", role_objs["sponsor"]),
+        ("inactive", "inactive@gmail.com", "Inactive User", role_objs["student"]),
     ]
     
     users = {}
     for key, email, name, role in user_data:
+        status = UserStatus.active
+        if key == "inactive":
+            status = UserStatus.inactive
+
         u = User(
             email=email,
             password=password,
-            status=UserStatus.active,
+            status=status,
             roles=[role],
             referral_code=f"REF-{key.upper()}"
         )
@@ -100,12 +106,18 @@ def seed_presentation_data(db: Session):
         db.commit()
         db.refresh(u)
         
+        # Determine visibility based on user type for testing
+        visibility = ProfileVisibility.public
+        if key == "student":
+            visibility = ProfileVisibility.private  # Student is private to test anonymous reviews
+            
         p = Profile(
             user_id=u.id,
             full_name=name,
             is_onboarded=True,
             avatar_url=random.choice(available_images),
-            cover_url=random.choice(available_images)
+            cover_url=random.choice(available_images),
+            visibility=visibility
         )
         db.add(p)
         db.commit()
@@ -128,68 +140,132 @@ def seed_presentation_data(db: Session):
     db.refresh(apu)
 
     # 5. Seeding Events
-    print("Seeding events (1 Online, 1 Physical, 1 Past)...")
+    print("Seeding events...")
     now = datetime.now(timezone.utc)
     events = []
     
-    # Online Event
-    online = Event(
+    # --- Event 1: Past, Paid, Sponsor, Reviews (Mixed Private/Public) ---
+    past_paid = Event(
+        organizer_id=users["admin"].id,
+        organization_id=apu.id,
+        title="Tech Entrepreneurship Summit 2024",
+        description="A past summit focusing on tech startups. (Paid, Sponsored, Reviewed)",
+        start_datetime=now - timedelta(days=60),
+        end_datetime=now - timedelta(days=60, hours=8),
+        format=EventFormat.seminar,
+        type=EventType.physical,
+        status=EventStatus.ended,
+        registration_status=EventRegistrationStatus.closed,
+        registration_type=EventRegistrationType.paid,
+        price=50.0,
+        visibility=EventVisibility.public,
+        venue_remark="Grand Hall",
+        cover_url=random.choice(available_images),
+        logo_url=random.choice(available_images)
+    )
+    events.append(past_paid)
+    
+    # --- Event 2: Past, Free, No Sponsor, No Reviews ---
+    past_free = Event(
+        organizer_id=users["admin"].id,
+        organization_id=apu.id,
+        title="Intro to Coding Workshop",
+        description="A beginner friendly workshop. (Free, No Sponsor, No Reviews)",
+        start_datetime=now - timedelta(days=30),
+        end_datetime=now - timedelta(days=30, hours=4),
+        format=EventFormat.workshop,
+        type=EventType.physical,
+        status=EventStatus.ended,
+        registration_status=EventRegistrationStatus.closed,
+        registration_type=EventRegistrationType.free,
+        visibility=EventVisibility.public,
+        venue_remark="Lab 1",
+        cover_url=random.choice(available_images),
+        logo_url=random.choice(available_images)
+    )
+    events.append(past_free)
+
+    # --- Event 3: Past, Paid, No Sponsor, Reviews ---
+    past_paid_ns = Event(
         organizer_id=users["expert"].id,
         organization_id=apu.id,
-        title="Future of AI (Online Webinar)",
-        description="Deep dive into AI trends.",
-        start_datetime=now + timedelta(days=5),
-        end_datetime=now + timedelta(days=5, hours=2),
-        format=EventFormat.webinar,
+        title="Advanced Python Patterns",
+        description="Deep dive into Python. (Paid, No Sponsor, Reviewed)",
+        start_datetime=now - timedelta(days=15),
+        end_datetime=now - timedelta(days=15, hours=6),
+        format=EventFormat.seminar,
+        type=EventType.online,
+        status=EventStatus.ended,
+        registration_status=EventRegistrationStatus.closed,
+        registration_type=EventRegistrationType.paid,
+        price=75.0,
+        visibility=EventVisibility.public,
+        meeting_url="https://zoom.us/test",
+        cover_url=random.choice(available_images),
+        logo_url=random.choice(available_images)
+    )
+    events.append(past_paid_ns)
+
+    # --- Event 4: Past, Free, Sponsor, No Reviews ---
+    past_free_s = Event(
+        organizer_id=users["admin"].id,
+        organization_id=apu.id,
+        title="Career Fair 2023",
+        description="Meet top employers. (Free, Sponsored, No Reviews)",
+        start_datetime=now - timedelta(days=90),
+        end_datetime=now - timedelta(days=90, hours=8),
+        format=EventFormat.other,
+        type=EventType.physical,
+        status=EventStatus.ended,
+        registration_status=EventRegistrationStatus.closed,
+        registration_type=EventRegistrationType.free,
+        visibility=EventVisibility.public,
+        venue_remark="Campus Hall",
+        cover_url=random.choice(available_images),
+        logo_url=random.choice(available_images)
+    )
+    events.append(past_free_s)
+    
+    # --- Event 5: Future, Paid, Sponsor ---
+    future_paid = Event(
+        organizer_id=users["expert"].id,
+        organization_id=apu.id,
+        title="Advanced AI Masterclass",
+        description="Upcoming deep dive into LLMs. (Paid, Sponsored)",
+        start_datetime=now + timedelta(days=20),
+        end_datetime=now + timedelta(days=20, hours=6),
+        format=EventFormat.workshop,
         type=EventType.online,
         status=EventStatus.published,
         registration_status=EventRegistrationStatus.opened,
-        registration_type=EventRegistrationType.free,
+        registration_type=EventRegistrationType.paid,
+        price=100.0,
         visibility=EventVisibility.public,
+        meeting_url="https://zoom.us/j/123456789",
         cover_url=random.choice(available_images),
         logo_url=random.choice(available_images)
     )
-    events.append(online)
+    events.append(future_paid)
     
-    # Physical Event
-    physical = Event(
+    # --- Event 4: Ongoing, Free ---
+    ongoing_free = Event(
         organizer_id=users["admin"].id,
         organization_id=apu.id,
-        title="Campus Hackathon 2025",
-        description="24-hour coding challenge.",
-        start_datetime=now + timedelta(days=15),
-        end_datetime=now + timedelta(days=16),
-        format=EventFormat.workshop,
+        title="Campus Open Day",
+        description="Happening right now! Come visit us.",
+        start_datetime=now - timedelta(hours=2),
+        end_datetime=now + timedelta(hours=6),
+        format=EventFormat.club_event,
         type=EventType.physical,
-        status=EventStatus.published,
+        status=EventStatus.opened,
         registration_status=EventRegistrationStatus.opened,
         registration_type=EventRegistrationType.free,
         visibility=EventVisibility.public,
-        venue_remark="APU Atrium",
+        venue_remark="Campus Grounds",
         cover_url=random.choice(available_images),
         logo_url=random.choice(available_images)
     )
-    events.append(physical)
-    
-    # Past Event
-    past = Event(
-        organizer_id=users["admin"].id,
-        organization_id=apu.id,
-        title="Startup Showcase 2024",
-        description="Previous year's showcase.",
-        start_datetime=now - timedelta(days=60),
-        end_datetime=now - timedelta(days=60, hours=5),
-        format=EventFormat.seminar,
-        type=EventType.physical,
-        status=EventStatus.completed,
-        registration_status=EventRegistrationStatus.closed,
-        registration_type=EventRegistrationType.paid,
-        price=10.0,
-        visibility=EventVisibility.public,
-        cover_url=random.choice(available_images),
-        logo_url=random.choice(available_images)
-    )
-    events.append(past)
+    events.append(ongoing_free)
     
     db.add_all(events)
     db.commit()
@@ -198,20 +274,21 @@ def seed_presentation_data(db: Session):
         db.refresh(e)
         
     # Assign categories
-    # Online: AI (2)
-    db.add(EventCategory(event_id=online.id, category_id=cat_objs[2].id))
-    # Physical: General IT (0), Software Engineer (1)
-    db.add(EventCategory(event_id=physical.id, category_id=cat_objs[0].id))
-    db.add(EventCategory(event_id=physical.id, category_id=cat_objs[1].id))
-    # Past: Business (5)
-    db.add(EventCategory(event_id=past.id, category_id=cat_objs[5].id))
+    db.add(EventCategory(event_id=past_paid.id, category_id=cat_objs[5].id)) # Business
+    db.add(EventCategory(event_id=past_free.id, category_id=cat_objs[0].id)) # General IT
+    db.add(EventCategory(event_id=past_paid_ns.id, category_id=cat_objs[1].id)) # Software Engineer
+    db.add(EventCategory(event_id=past_free_s.id, category_id=cat_objs[3].id)) # Blockchain
+    db.add(EventCategory(event_id=future_paid.id, category_id=cat_objs[2].id)) # AI
+    db.add(EventCategory(event_id=ongoing_free.id, category_id=cat_objs[4].id)) # Health/General
     db.commit()
 
-    # 6. Seeding Details (Sponsor, Review)
-    print("Seeding sponsor and review for past event...")
-    # Sponsor for Past Event
+    # 6. Seeding Details (Sponsor, Participants, Reviews)
+    print("Seeding details...")
+    
+    # --- For Past Paid Event (Sponsor, Reviews) ---
+    # Sponsor
     db.add(EventParticipant(
-        event_id=past.id,
+        event_id=past_paid.id,
         user_id=users["sponsor"].id,
         role=EventParticipantRole.sponsor,
         status=EventParticipantStatus.accepted,
@@ -219,13 +296,86 @@ def seed_presentation_data(db: Session):
         promo_image_url="https://placehold.co/600x400?text=Sponsor+Logo"
     ))
     
-    # Review for Past Event
+    # Participants
+    db.add(EventParticipant(
+        event_id=past_paid.id,
+        user_id=users["student"].id,
+        role=EventParticipantRole.student,
+        status=EventParticipantStatus.attended,
+    ))
+    db.add(EventParticipant(
+        event_id=past_paid.id,
+        user_id=users["expert"].id,
+        role=EventParticipantRole.speaker,
+        status=EventParticipantStatus.attended,
+    ))
+    db.commit()
+    
+    # Reviews
     db.add(Review(
-        event_id=past.id,
+        event_id=past_paid.id,
         reviewer_id=users["student"].id,
+        reviewee_id=users["admin"].id, 
+        rating=5,
+        comment="Amazing event! Learned so much."
+    ))
+    db.add(Review(
+        event_id=past_paid.id,
+        reviewer_id=users["expert"].id,
         reviewee_id=users["admin"].id,
         rating=4,
-        comment="Great exposure for startups!"
+        comment="Well organized, good turnout."
+    ))
+    
+    # --- For Past Paid No Sponsor (Reviews) ---
+    # Participant (Student)
+    db.add(EventParticipant(
+        event_id=past_paid_ns.id,
+        user_id=users["student"].id,
+        role=EventParticipantRole.student,
+        status=EventParticipantStatus.attended,
+    ))
+    db.commit()
+    
+    # Review from Student (Private -> Anonymous)
+    db.add(Review(
+        event_id=past_paid_ns.id,
+        reviewer_id=users["student"].id,
+        reviewee_id=users["expert"].id, # Reviewing Expert (Organizer)
+        rating=3,
+        comment="Good content but audio was a bit low."
+    ))
+
+    # Review from Inactive User (Inactive -> Anonymous)
+    db.add(Review(
+        event_id=past_paid_ns.id,
+        reviewer_id=users["inactive"].id,
+        reviewee_id=users["expert"].id,
+        rating=5,
+        comment="Excellent session! (This review is from an inactive user)"
+    ))
+    
+    # --- For Past Free Sponsor (No Reviews) ---
+    # Sponsor
+    db.add(EventParticipant(
+        event_id=past_free_s.id,
+        user_id=users["sponsor"].id,
+        role=EventParticipantRole.sponsor,
+        status=EventParticipantStatus.accepted,
+        promo_link="https://careerexpo.com",
+        promo_image_url="https://placehold.co/600x400?text=Career+Expo+Sponsor"
+    ))
+    db.commit()
+    
+    # --- For Future Paid Event ---
+    # Sponsor
+    db.add(EventParticipant(
+        event_id=future_paid.id,
+        user_id=users["sponsor"].id,
+        role=EventParticipantRole.sponsor,
+        status=EventParticipantStatus.accepted,
+        promo_link="https://techgiant.com",
+        promo_image_url="https://placehold.co/600x400?text=Tech+Giant"
     ))
     db.commit()
 

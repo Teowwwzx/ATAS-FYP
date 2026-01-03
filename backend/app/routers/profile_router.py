@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 import uuid
 from app.database.database import get_db
 from app.schemas.profile_schema import ProfileCreate, ProfileResponse, ProfileUpdate, OnboardingUpdate
-from app.models.user_model import User
+from app.models.user_model import User, UserStatus
 from app.services import profile_service, user_service
-from app.dependencies import get_current_user, get_current_user_optional
+from app.dependencies import get_current_user, get_current_user_optional, require_roles
 from typing import List
 from fastapi import File, UploadFile
 from sqlalchemy import or_, text, select, insert, update
@@ -90,6 +90,9 @@ def discover_profiles(
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
     
     q = q.join(User, User.id == Profile.user_id)
+
+    # Filter only active users
+    q = q.filter(User.status == UserStatus.active)
     
     # Exclude current user if logged in
     if current_user:
@@ -209,6 +212,9 @@ def discover_profiles_count(
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
         
     q = q.join(User, User.id == Profile.user_id)
+
+    # Filter only active users
+    q = q.filter(User.status == UserStatus.active)
     
     # Exclude admins from public discovery
     admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
@@ -333,6 +339,10 @@ def semantic_search_profiles(
 
     profiles_q = db.query(Profile)
     profiles_q = profiles_q.join(User, User.id == Profile.user_id)
+    
+    # Filter only active users
+    profiles_q = profiles_q.filter(User.status == UserStatus.active)
+    
     # profiles_q = profiles_q.join(user_roles, user_roles.c.user_id == User.id)
     # profiles_q = profiles_q.join(Role, Role.id == user_roles.c.role_id)
     
@@ -569,10 +579,6 @@ def search_profiles(
              .filter(or_(Skill.name.ilike(f"%{skill}%"), Tag.name.ilike(f"%{skill}%")))
 
     if role:
-        # Avoid double join if email already joined User
-        if not email:
-            q = q.join(User, User.id == Profile.user_id)
-        
         q = q.join(user_roles, user_roles.c.user_id == User.id)\
              .join(Role, Role.id == user_roles.c.role_id)\
              .filter(Role.name.ilike(f"%{role}%"))

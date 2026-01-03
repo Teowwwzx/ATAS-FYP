@@ -80,7 +80,7 @@ def seed_past_events_only(db: Session):
             end_datetime=end,
             format=random.choice(list(EventFormat)),
             type=random.choice(list(EventType)),
-            status=EventStatus.completed, # Past events are usually completed
+            status=EventStatus.ended, # Past events are usually ended
             registration_status=EventRegistrationStatus.closed,
             registration_type=random.choice(list(EventRegistrationType)),
             visibility=EventVisibility.public,
