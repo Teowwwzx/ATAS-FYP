@@ -4,7 +4,9 @@ import uuid
 import base64
 import hmac
 import hashlib
+import csv
 import io
+from fastapi.responses import Response, StreamingResponse
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func, select
@@ -689,6 +691,90 @@ def get_request_details(
             db.refresh(participant)
 
     return participant
+
+
+@router.get("/events/{event_id}/export-participants", response_class=StreamingResponse)
+def export_event_participants_csv(
+    event_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Export all participants of an event as a CSV file.
+    Only the organizer can export.
+    """
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if event.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can export participants")
+        
+    # Fetch participants with profile data
+    participants = (
+        db.query(EventParticipant, User, Profile)
+        .outerjoin(User, EventParticipant.user_id == User.id)
+        .outerjoin(Profile, User.id == Profile.user_id)
+        .filter(EventParticipant.event_id == event_id)
+        .order_by(EventParticipant.created_at.desc())
+        .all()
+    )
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Header
+    writer.writerow([
+        "Name", 
+        "Email", 
+        "Role", 
+        "Status", 
+        "Join Method", 
+        "Registration Date", 
+        "Check-in Status",
+        "Payment Status"
+    ])
+    
+    for participant, user, profile in participants:
+        # Determine display name
+        display_name = participant.name
+        if not display_name:
+            if profile and profile.full_name:
+                display_name = profile.full_name
+            elif user:
+                display_name = "User"
+            else:
+                display_name = "Unknown"
+                
+        # Determine email
+        email = participant.email
+        if not email and user:
+            email = user.email
+            
+        registration_date = participant.created_at.strftime("%Y-%m-%d %H:%M:%S") if participant.created_at else ""
+        
+        writer.writerow([
+            display_name,
+            email or "",
+            participant.role.value if participant.role else "",
+            participant.status.value if participant.status else "",
+            participant.join_method or "",
+            registration_date,
+            "Attended" if participant.status == EventParticipantStatus.attended else "Not Checked-in",
+            participant.payment_status.value if participant.payment_status else "N/A"
+        ])
+        
+    output.seek(0)
+    
+    filename = f"participants_{event.title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv"
+    
+    response = StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv"
+    )
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return response
 
 
 # --- Publish/Unpublish & Registration Management ---

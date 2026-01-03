@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Fragment } from 'react'
 import Link from 'next/link'
 import { EventDetails, EventParticipantDetails, ProfileResponse } from '@/services/api.types'
-import { getEventParticipants, getProfileByUserId, removeEventParticipant, verifyParticipantPayment } from '@/services/api'
+import { getEventParticipants, getProfileByUserId, removeEventParticipant, verifyParticipantPayment, exportEventParticipants } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { Dialog, Transition } from '@headlessui/react'
 import { StreamCommunicationLog } from '@/components/dashboard/StreamCommunicationLog'
@@ -23,10 +23,10 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
     const [chatParticipant, setChatParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
     const [receiptParticipant, setReceiptParticipant] = useState<(EventParticipantDetails & { profile?: ProfileResponse }) | null>(null)
     const [showWalkInModal, setShowWalkInModal] = useState(false)
-    
+
     // Modal state for verify
     const [verifyModalOpen, setVerifyModalOpen] = useState(false)
-    const [verifyAction, setVerifyAction] = useState<{id: string, status: 'accepted' | 'rejected'} | null>(null)
+    const [verifyAction, setVerifyAction] = useState<{ id: string, status: 'accepted' | 'rejected' } | null>(null)
 
     // Modal state for remove
     const [removeModalOpen, setRemoveModalOpen] = useState(false)
@@ -69,7 +69,7 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
     const handleVerifyParams = async () => {
         if (!verifyAction) return
         const { id, status } = verifyAction
-        
+
         try {
             await verifyParticipantPayment(event.id, id, status);
             toast.success(`Payment ${status}`)
@@ -99,7 +99,7 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
 
     const confirmRemove = async () => {
         if (!participantToRemove) return
-        
+
         setIsRemoving(true)
         try {
             await removeEventParticipant(event.id, participantToRemove)
@@ -139,6 +139,31 @@ export function DashboardTabPeople({ event, user, phase, onInvite }: DashboardTa
                 <div />
                 {onInvite && (
                     <div className="flex gap-2">
+                        <button
+                            onClick={async () => {
+                                try {
+                                    toast.loading('Exporting...', { id: 'export' })
+                                    const blob = await exportEventParticipants(event.id)
+                                    const url = window.URL.createObjectURL(blob)
+                                    const a = document.createElement('a')
+                                    a.href = url
+                                    a.download = `participants_${event.title.replace(' ', '_')}.csv`
+                                    document.body.appendChild(a)
+                                    a.click()
+                                    window.URL.revokeObjectURL(url)
+                                    toast.success('Exported successfully', { id: 'export' })
+                                } catch (e) {
+                                    console.error(e)
+                                    toast.error('Failed to export', { id: 'export' })
+                                }
+                            }}
+                            className="px-5 py-2.5 bg-white text-zinc-900 border border-zinc-200 rounded-xl font-bold text-sm hover:bg-zinc-50 transition-all shadow-sm flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export CSV
+                        </button>
                         {event.type === 'physical' && (
                             <button
                                 onClick={() => setShowWalkInModal(true)}

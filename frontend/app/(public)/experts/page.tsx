@@ -23,11 +23,15 @@ function ExpertsContent() {
     const [loading, setLoading] = useState(true)
     const [searchInput, setSearchInput] = useState(initialQuery)
     const [searchTerm, setSearchTerm] = useState(initialQuery)
+    const [showFilters, setShowFilters] = useState(false)
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [minRating, setMinRating] = useState<number>(0)
 
     // Refs for animation
     const heroRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLDivElement>(null)
     const navbarRef = useRef<HTMLElement>(null)
+    const filterRef = useRef<HTMLDivElement>(null)
 
     // Fetch Data
     useEffect(() => {
@@ -206,12 +210,85 @@ function ExpertsContent() {
                         onChange={(e) => setSearchInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className={`p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 ${showFilters ? 'bg-white/10' : ''}`}
+                        title="Advanced Filters"
+                    >
+                        <i className="fas fa-sliders-h text-gray-400 hover:text-white"></i>
+                    </button>
                     <div className="filter-group hidden md:flex">
                         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-xs font-bold uppercase tracking-wider">
                             <i className="fas fa-sparkles"></i> AI Powered
                         </div>
                     </div>
                 </div>
+
+                {/* Filter Dropdown */}
+                {showFilters && (
+                    <div
+                        ref={filterRef}
+                        className="mt-4 p-6 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 max-w-2xl mx-auto"
+                        style={{ animation: 'fadeIn 0.2s ease-out' }}
+                    >
+                        <h3 className="text-lg font-bold text-white mb-4">Filter Experts</h3>
+
+                        {/* Tags Filter */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Skills & Expertise</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['Python', 'JavaScript', 'React', 'Design', 'AI/ML', 'Marketing'].map(tag => (
+                                    <button
+                                        key={tag}
+                                        onClick={() => {
+                                            if (selectedTags.includes(tag)) {
+                                                setSelectedTags(selectedTags.filter(t => t !== tag))
+                                            } else {
+                                                setSelectedTags([...selectedTags, tag])
+                                            }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedTags.includes(tag)
+                                            ? 'bg-yellow-500 text-black'
+                                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                                            }`}
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Rating Filter */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">Minimum Rating</label>
+                            <div className="flex gap-2">
+                                {[0, 3, 4, 5].map(rating => (
+                                    <button
+                                        key={rating}
+                                        onClick={() => setMinRating(rating)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${minRating === rating
+                                            ? 'bg-yellow-500 text-black'
+                                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                                            }`}
+                                    >
+                                        {rating === 0 ? 'Any' : `${rating}+ ⭐`}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Clear All */}
+                        <button
+                            onClick={() => {
+                                setSelectedTags([])
+                                setMinRating(0)
+                            }}
+                            className="w-full mt-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-all"
+                        >
+                            Clear All Filters
+                        </button>
+                    </div>
+                )}
             </header>
 
             {/* Featured Section (Spotlight) */}
@@ -238,38 +315,82 @@ function ExpertsContent() {
                 </section>
             )}
 
-            {/* Directory Section (Grid) */}
+            {/* Expert Directory Grid */}
             <section className="directory-section">
                 <div className="section-header reveal">
                     <h2 className="section-title font-display">
-                        {searchTerm ? `Results for "${searchTerm}"` : 'Explore Experts'}
+                        {searchTerm ? 'Search Results' : 'Expert Directory'}
                     </h2>
+                    {experts.length > 0 && (
+                        <p className="section-sub">
+                            {(() => {
+                                const filtered = experts.filter(expert => {
+                                    if (selectedTags.length > 0) {
+                                        const expertTags = expert.skills || []
+                                        const hasTag = selectedTags.some(tag =>
+                                            expertTags.some((skill: any) => skill.name?.toLowerCase().includes(tag.toLowerCase()))
+                                        )
+                                        if (!hasTag) return false
+                                    }
+                                    if (minRating > 0) {
+                                        const rating = expert.average_rating || 0
+                                        if (rating < minRating) return false
+                                    }
+                                    return true
+                                })
+                                return `Showing ${filtered.length} of ${experts.length} experts`
+                            })()}
+                        </p>
+                    )}
                 </div>
 
-                {loading ? (
-                    <div className="text-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-                        <p className="text-gray-400">Loading experts...</p>
-                    </div>
-                ) : experts.length === 0 ? (
-                    <div className="text-center py-20 reveal">
-                        <div className="text-4xl mb-4">🔍</div>
-                        <h3 className="text-xl font-bold mb-2">No experts found</h3>
-                        <p className="text-gray-500">Try adjusting your search terms.</p>
-                    </div>
-                ) : (
-                    <div className="expert-grid">
-                        {experts.map((expert, index) => (
-                            <ExpertCardGlass
-                                key={expert.id}
-                                expert={expert}
-                                variant="grid"
-                                className="reveal"
-                                style={{ transitionDelay: `${(index % 4) * 0.05}s` }}
-                            />
-                        ))}
-                    </div>
-                )}
+                <div className="expert-grid reveal">
+                    {loading ? (
+                        <div className="col-span-full text-center py-20">
+                            <i className="fas fa-spinner fa-spin text-4xl text-yellow-500 mb-4"></i>
+                            <p className="text-gray-400">Finding the best experts for you...</p>
+                        </div>
+                    ) : (
+                        (() => {
+                            const filteredExperts = experts.filter(expert => {
+                                if (selectedTags.length > 0) {
+                                    const expertTags = expert.skills || []
+                                    const hasTag = selectedTags.some(tag =>
+                                        expertTags.some((skill: any) => skill.name?.toLowerCase().includes(tag.toLowerCase()))
+                                    )
+                                    if (!hasTag) return false
+                                }
+                                if (minRating > 0) {
+                                    const rating = expert.average_rating || 0
+                                    if (rating < minRating) return false
+                                }
+                                return true
+                            })
+
+                            if (filteredExperts.length === 0) {
+                                return (
+                                    <div className="col-span-full text-center py-20">
+                                        <i className="fas fa-search text-4xl text-gray-600 mb-4"></i>
+                                        <p className="text-gray-400 text-lg">No experts match your filters</p>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedTags([])
+                                                setMinRating(0)
+                                            }}
+                                            className="mt-4 px-6 py-2 bg-yellow-500 text-black rounded-full font-bold hover:bg-yellow-400"
+                                        >
+                                            Clear Filters
+                                        </button>
+                                    </div>
+                                )
+                            }
+
+                            return filteredExperts.map((expert) => (
+                                <ExpertCardGlass key={expert.id} expert={expert} variant="grid" />
+                            ))
+                        })()
+                    )}
+                </div>
             </section>
         </div>
     )

@@ -6,6 +6,7 @@ import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents, sem
 import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 import { SponsorBadge } from '@/components/ui/SponsorBadge'
+import { ProfileBadge, IntentType, INTENT_CONFIG } from '@/components/profile/ProfileBadge'
 // @ts-ignore
 import { debounce } from 'lodash'
 import { EventCard } from '@/components/ui/EventCard'
@@ -284,8 +285,8 @@ export default function DiscoverPage() {
                         </button>
                     </div>
 
-                    {/* Controls (Right) - RELATIVE for Absolute Filter Button */}
-                    <div className="flex items-center gap-3 flex-1 md:flex-none md:min-w-[400px] relative">
+                    {/* Controls (Right) - FLEX LAYOUT */}
+                    <div className="flex items-center gap-3 flex-1 md:flex-none md:min-w-[400px]">
                         {/* Search Input */}
                         <div className="relative flex-1 group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -295,7 +296,7 @@ export default function DiscoverPage() {
                             </div>
                             <input
                                 type="text"
-                                className="block w-full pl-10 pr-14 py-2.5 bg-zinc-50 border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all duration-200 text-sm font-medium"
+                                className="block w-full pl-10 pr-4 py-2.5 bg-zinc-50 border-transparent rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white transition-all duration-200 text-sm font-medium"
                                 placeholder={
                                     activeTab === 'events' ? "Search events..." :
                                         activeTab === 'organizations' ? "Search organizations..." :
@@ -314,17 +315,17 @@ export default function DiscoverPage() {
                             />
                         </div>
 
-                        {/* Filters Button & Dropdown - ABSOLUTE POSITIONED */}
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-50">
+                        {/* Filters Button & Dropdown - RELATIVE */}
+                        <div className="relative">
                             <button
                                 onClick={() => {
                                     if (activeTab === 'events') setEventFiltersOpen(!eventFiltersOpen)
                                     else if (activeTab === 'organizations') setOrgFiltersOpen(!orgFiltersOpen)
                                     else setPeopleFiltersOpen(!peopleFiltersOpen)
                                 }}
-                                className={`p-2 rounded-lg font-bold transition-all duration-200 flex items-center gap-2 text-sm mr-1.5 ${(activeTab === 'events' && eventFiltersOpen) || (activeTab === 'organizations' && orgFiltersOpen) || (activeTab === 'people' && peopleFiltersOpen)
-                                    ? 'text-yellow-600 bg-yellow-50'
-                                    : 'text-zinc-400 hover:text-zinc-600'
+                                className={`p-2.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-2 text-sm border ${(activeTab === 'events' && eventFiltersOpen) || (activeTab === 'organizations' && orgFiltersOpen) || (activeTab === 'people' && peopleFiltersOpen)
+                                    ? 'border-yellow-200 text-yellow-600 bg-yellow-50 shadow-sm ring-1 ring-yellow-100'
+                                    : 'border-transparent bg-zinc-50 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100'
                                     }`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
@@ -672,29 +673,33 @@ export default function DiscoverPage() {
                         <div className="grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
                             {people.map((profile) => (
                                 <Link key={profile.id} href={`/profile/${profile.user_id}`} className="block group">
-                                    <div className={`bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border ${profile.sponsor_tier === 'Gold' ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-zinc-100'} group-hover:-translate-y-1 h-full flex flex-col`}>
+                                    <div className={`bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300 border ${profile.sponsor_tier === 'Gold' ? 'border-yellow-200 ring-1 ring-yellow-100' : 'border-zinc-100'} group-hover:-translate-y-1 h-full flex flex-col overflow-hidden`}>
                                         <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 mb-2 md:mb-4 text-center md:text-left">
-                                            {profile.avatar_url ? (
-                                                <img 
-                                                    src={profile.avatar_url} 
-                                                    alt="" 
-                                                    className={`w-12 h-12 md:w-16 md:h-16 rounded-full object-cover ring-2 md:ring-4 ${
-                                                        profile.sponsor_tier === 'Gold' ? 'ring-yellow-400' :
+                                            {/* Avatar Wrapper with Badge Support */}
+                                            <div className="relative">
+                                                {profile.avatar_url ? (
+                                                    <img
+                                                        src={profile.avatar_url}
+                                                        alt=""
+                                                        className={`w-12 h-12 md:w-16 md:h-16 rounded-full object-cover ring-2 md:ring-4 ${profile.sponsor_tier === 'Gold' ? 'ring-yellow-400' :
+                                                            profile.sponsor_tier === 'Silver' ? 'ring-slate-300' :
+                                                                profile.sponsor_tier === 'Bronze' ? 'ring-amber-700' :
+                                                                    'ring-yellow-50 group-hover:ring-yellow-100'
+                                                            } transition-all`}
+                                                    />
+                                                ) : (
+                                                    <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-lg md:text-xl ring-2 md:ring-4 ${profile.sponsor_tier === 'Gold' ? 'ring-yellow-400' :
                                                         profile.sponsor_tier === 'Silver' ? 'ring-slate-300' :
-                                                        profile.sponsor_tier === 'Bronze' ? 'ring-amber-700' :
-                                                        'ring-yellow-50 group-hover:ring-yellow-100'
-                                                    } transition-all`} 
-                                                />
-                                            ) : (
-                                                <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-black text-lg md:text-xl ring-2 md:ring-4 ${
-                                                        profile.sponsor_tier === 'Gold' ? 'ring-yellow-400' :
-                                                        profile.sponsor_tier === 'Silver' ? 'ring-slate-300' :
-                                                        profile.sponsor_tier === 'Bronze' ? 'ring-amber-700' :
-                                                        'ring-yellow-50 group-hover:ring-yellow-100'
-                                                    } transition-all shrink-0`}>
-                                                    {profile.full_name?.charAt(0) || 'U'}
-                                                </div>
-                                            )}
+                                                            profile.sponsor_tier === 'Bronze' ? 'ring-amber-700' :
+                                                                'ring-yellow-50 group-hover:ring-yellow-100'
+                                                        } transition-all shrink-0`}>
+                                                        {profile.full_name?.charAt(0) || 'U'}
+                                                    </div>
+                                                )}
+
+
+                                            </div>
+
                                             <div className="min-w-0 flex-1 w-full">
                                                 <div className="flex items-center gap-1.5 justify-center md:justify-start">
                                                     <h3 className="text-sm md:text-lg font-black text-zinc-900 truncate group-hover:text-yellow-600 transition-colors">{profile.full_name}</h3>
@@ -736,28 +741,32 @@ export default function DiscoverPage() {
                                             </div>
                                         )}
 
-                                        {/* Availability / Intents */}
-                                        {(profile.availability || (profile.intents && profile.intents.length > 0)) && (
+                                        {/* Availability - REMOVED INTENT AS IT IS BADGE NOW */}
+                                        {profile.availability && (
                                             <div className="mb-0 md:mb-3 pt-2 md:pt-3 border-t border-zinc-100 mt-2 md:mt-auto">
-                                                {profile.availability && (
-                                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-500 mb-1 justify-center md:justify-start">
-                                                        <svg className="w-3 h-3 md:w-4 md:h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span className="truncate">{profile.availability}</span>
-                                                    </div>
-                                                )}
-                                                {profile.intents && profile.intents.length > 0 && (
-                                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-500 justify-center md:justify-start">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
-                                                        <span className="truncate max-w-full">{profile.intents[0]}</span>
-                                                    </div>
-                                                )}
+                                                <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-500 mb-1 justify-center md:justify-start">
+                                                    <svg className="w-3 h-3 md:w-4 md:h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span className="truncate">{profile.availability}</span>
+                                                </div>
                                             </div>
                                         )}
 
                                         {profile.bio && (
-                                            <p className="hidden md:block text-sm text-zinc-400 line-clamp-2">{profile.bio}</p>
+                                            <p className="hidden md:block text-sm text-zinc-400 line-clamp-2 mb-3">{profile.bio}</p>
+                                        )}
+
+                                        {/* Featured Intent Bar - Full Width Bottom Footer */}
+                                        {profile.intents && profile.intents.length > 0 && (
+                                            <div className={`mt-auto -mx-4 -mb-4 md:-mx-6 md:-mb-6 px-4 py-2 md:px-6 md:py-2.5 flex items-center justify-center gap-2 ${INTENT_CONFIG[profile.intents[0] as IntentType]?.bgColor || 'bg-gray-100'}`}>
+                                                <div className={`${INTENT_CONFIG[profile.intents[0] as IntentType]?.color || 'text-gray-600'}`}>
+                                                    {INTENT_CONFIG[profile.intents[0] as IntentType]?.icon}
+                                                </div>
+                                                <span className={`text-[10px] md:text-xs font-black uppercase tracking-widest truncate ${INTENT_CONFIG[profile.intents[0] as IntentType]?.color || 'text-gray-600'}`}>
+                                                    {INTENT_CONFIG[profile.intents[0] as IntentType]?.label}
+                                                </span>
+                                            </div>
                                         )}
                                     </div>
                                 </Link>

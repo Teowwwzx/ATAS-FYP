@@ -1,11 +1,16 @@
 "use client"
 import Link from 'next/link'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export function PublicNavbar() {
     const navbarRef = useRef<HTMLElement>(null)
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
 
     useEffect(() => {
+        // Check if user is logged in by checking for token
+        const token = localStorage.getItem('atas_token')
+        setIsLoggedIn(!!token)
+
         const handleScroll = () => {
             if (navbarRef.current) {
                 if (window.scrollY > 50) navbarRef.current.classList.add('scrolled')
@@ -17,33 +22,49 @@ export function PublicNavbar() {
     }, [])
 
     return (
-        <nav className="experts-navbar" ref={navbarRef} style={{ position: 'fixed', width: '100%', zIndex: 100, transition: '0.3s' }}>
+        <>
             <style jsx>{`
-                .experts-navbar.scrolled {
+                nav {
+                    position: fixed;
+                    top: 0;
+                    width: 100%;
+                    padding: 1.5rem 3rem;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    z-index: 100;
+                    transition: 0.3s;
+                }
+                
+                nav.scrolled {
                     background: rgba(5, 5, 5, 0.8);
                     backdrop-filter: blur(12px);
                     padding: 1rem 3rem;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.08); /* glass-border */
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
                 }
-                /* Mobile Padding Override if needed, though experts.css usually handles it */
             `}</style>
 
-            <Link href="/" className="brand font-display" style={{ textDecoration: 'none', color: 'white', fontSize: '1.8rem', fontWeight: 800 }}>
-                ATAS<span style={{ color: '#FFD700' }}>.</span>
-            </Link>
-
-            <div className="nav-links hidden md:flex" style={{ gap: '2rem' }}>
-                <Link href="/" className="nav-link text-gray-400 hover:text-white transition-colors font-medium">Home</Link>
-                <Link href="/experts" className="nav-link text-gray-400 hover:text-white transition-colors font-medium">Experts</Link>
-                <Link href="/events" className="nav-link text-gray-400 hover:text-white transition-colors font-medium">Events</Link>
-                <Link href="/about" className="nav-link text-gray-400 hover:text-white transition-colors font-medium">About</Link>
-            </div>
-
-            <div className="flex gap-4">
-                <Link href="/login" style={{ fontWeight: 700, color: '#FFD700', textDecoration: 'none' }}>
-                    Login
+            <nav ref={navbarRef}>
+                <Link href="/" style={{ textDecoration: 'none', color: 'white', fontSize: '1.8rem', fontWeight: 800, fontFamily: "'Space Grotesk', sans-serif" }}>
+                    ATAS<span style={{ color: '#FFD700' }}>.</span>
                 </Link>
-            </div>
-        </nav>
+
+                <div style={{ display: 'flex', gap: '2rem' }} className="hidden md:flex">
+                    <Link href="/experts" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500, transition: '0.3s' }} className="hover:text-white">Experts</Link>
+                    <Link href="/events" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500, transition: '0.3s' }} className="hover:text-white">Events</Link>
+                    <Link href="/about" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: 500, transition: '0.3s' }} className="hover:text-white">About</Link>
+                </div>
+
+                {isLoggedIn ? (
+                    <Link href="/dashboard" style={{ fontWeight: 700, color: '#FFD700', textDecoration: 'none' }}>
+                        Dashboard
+                    </Link>
+                ) : (
+                    <Link href="/login" style={{ fontWeight: 700, color: '#FFD700', textDecoration: 'none' }}>
+                        Login
+                    </Link>
+                )}
+            </nav>
+        </>
     )
 }

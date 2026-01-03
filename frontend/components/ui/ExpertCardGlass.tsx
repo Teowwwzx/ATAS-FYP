@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ProfileResponse } from '@/services/api.types'
 import { BookExpertModal } from '@/components/event/BookExpertModal'
 import { useUser } from '@/hooks/useUser'
+import { ProfileBadge, IntentType } from '@/components/profile/ProfileBadge'
 
 interface ExpertCardGlassProps {
     expert: ProfileResponse
@@ -28,6 +29,9 @@ export function ExpertCardGlass({ expert, variant = 'grid', style, className }: 
             setIsBookingOpen(true)
         }
     }
+
+    // Get primary intent for badge
+    const primaryIntent = expert.intents?.[0] as IntentType | undefined
 
     // Spotlight Variant (Horizontal)
     if (variant === 'spotlight') {
@@ -74,7 +78,7 @@ export function ExpertCardGlass({ expert, variant = 'grid', style, className }: 
                 className={`expert-card-glass ${className || ''}`}
                 style={style}
             >
-                <div className="avatar-wrapper">
+                <div className="avatar-wrapper" style={{ position: 'relative' }}>
                     {expert.avatar_url ? (
                         <img
                             src={expert.avatar_url}
@@ -86,6 +90,15 @@ export function ExpertCardGlass({ expert, variant = 'grid', style, className }: 
                             {expert.full_name.charAt(0)}
                         </div>
                     )}
+
+                    {/* Intent Badge Overlay */}
+                    {primaryIntent && (
+                        <div style={{ position: 'absolute', bottom: '-8px', right: '-8px' }}>
+                            <ProfileBadge intent={primaryIntent} size="sm" />
+                        </div>
+                    )}
+
+                    {/* Verified checkmark */}
                     <div className="verified-badge">
                         <i className="fas fa-check"></i>
                     </div>
@@ -95,10 +108,16 @@ export function ExpertCardGlass({ expert, variant = 'grid', style, className }: 
                 <div className="e-role">{expert.title || 'Expert Member'}</div>
 
                 <div className="e-tags">
-                    {expert.tags && expert.tags.slice(0, 3).map(tag => (
+                    {/* Show skills first, limit to 3 total */}
+                    {expert.skills && expert.skills.slice(0, 3).map(skill => (
+                        <span key={skill.id} className="e-tag">{skill.name}</span>
+                    ))}
+                    {/* If no skills, show tags (max 3) */}
+                    {(!expert.skills || expert.skills.length === 0) && expert.tags && expert.tags.slice(0, 3).map(tag => (
                         <span key={tag.id} className="e-tag">{tag.name}</span>
                     ))}
-                    {(!expert.tags || expert.tags.length === 0) && (
+                    {/* Fallback if neither exists */}
+                    {(!expert.skills || expert.skills.length === 0) && (!expert.tags || expert.tags.length === 0) && (
                         <span className="e-tag">Mentor</span>
                     )}
                 </div>
