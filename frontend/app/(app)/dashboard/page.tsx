@@ -267,6 +267,7 @@ function DashboardPageInner() {
                                     <DashboardInvitationList
                                         requests={requests.slice(0, 4)}
                                         layoutMode={layoutView}
+                                        showTabs={false}
                                     />
                                 </section>
                             )}

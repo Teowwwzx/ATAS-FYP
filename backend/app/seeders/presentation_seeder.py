@@ -22,7 +22,7 @@ def seed_presentation_data(db: Session):
     print("Cleaning database (Presentation Mode)...")
     
     # Define available images
-    available_images = ["/img/1.webp", "/img/2.png"]
+    available_images = ["/img/events/1.webp", "/img/events/2.png", "/img/events/3.png"]
     
     # Cleaning logic (Child before Parent)
     db.query(Message).delete()
@@ -110,13 +110,20 @@ def seed_presentation_data(db: Session):
         visibility = ProfileVisibility.public
         if key == "student":
             visibility = ProfileVisibility.private  # Student is private to test anonymous reviews
+        
+        avatar = random.choice(available_images)
+        cover = random.choice(available_images)
+        
+        if key == "sponsor":
+            avatar = "/img/sponsor/logo.jpg"
+            cover = "/img/sponsor/cover.jpg"
             
         p = Profile(
             user_id=u.id,
             full_name=name,
             is_onboarded=True,
-            avatar_url=random.choice(available_images),
-            cover_url=random.choice(available_images),
+            avatar_url=avatar,
+            cover_url=cover,
             visibility=visibility
         )
         db.add(p)
@@ -132,8 +139,8 @@ def seed_presentation_data(db: Session):
         type=OrganizationType.university,
         status=OrganizationStatus.approved,
         visibility=OrganizationVisibility.public,
-        logo_url=random.choice(available_images),
-        cover_url=random.choice(available_images)
+        logo_url="/img/apu/apu-logo.avif",
+        cover_url="/img/apu/apu-cover.jpg"
     )
     db.add(apu)
     db.commit()
@@ -293,7 +300,7 @@ def seed_presentation_data(db: Session):
         role=EventParticipantRole.sponsor,
         status=EventParticipantStatus.accepted,
         promo_link="https://sponsor.com",
-        promo_image_url="https://placehold.co/600x400?text=Sponsor+Logo"
+        promo_image_url="https:hs/laceh/ld.co/600x400?text=Spoplac+Lo6o00x400?text=Sponsor+Logo"
     ))
     
     # Participants
@@ -363,7 +370,7 @@ def seed_presentation_data(db: Session):
         role=EventParticipantRole.sponsor,
         status=EventParticipantStatus.accepted,
         promo_link="https://careerexpo.com",
-        promo_image_url="https://placehold.co/600x400?text=Career+Expo+Sponsor"
+        promo_image_url="/img/sponsor/cover.jpg"
     ))
     db.commit()
     
@@ -375,7 +382,7 @@ def seed_presentation_data(db: Session):
         role=EventParticipantRole.sponsor,
         status=EventParticipantStatus.accepted,
         promo_link="https://techgiant.com",
-        promo_image_url="https://placehold.co/600x400?text=Tech+Giant"
+        promo_image_url="/img/sponsor/cover.jpg"
     ))
     db.commit()
 

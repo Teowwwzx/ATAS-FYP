@@ -20,7 +20,7 @@ def seed_main_data(db: Session):
     print("Cleaning database (Main Mode)...")
     
     # Define available images
-    available_images = ["/img/1.webp", "/img/2.png"]
+    available_images = ["/img/events/1.webp", "/img/events/2.png", "/img/events/3.png"]
     
     # Cleaning Logic
     db.query(Message).delete()
@@ -91,12 +91,19 @@ def seed_main_data(db: Session):
         db.commit()
         db.refresh(u)
         
+        avatar = random.choice(available_images)
+        cover = random.choice(available_images)
+        
+        if key == "sponsor":
+            avatar = "/img/sponsor/logo.jpg"
+            cover = "/img/sponsor/cover.jpg"
+
         p = Profile(
             user_id=u.id,
             full_name=name,
             is_onboarded=True,
-            avatar_url=random.choice(available_images),
-            cover_url=random.choice(available_images)
+            avatar_url=avatar,
+            cover_url=cover
         )
         db.add(p)
         db.commit()
@@ -134,8 +141,8 @@ def seed_main_data(db: Session):
             type=OrganizationType.university,
             status=OrganizationStatus.approved,
             visibility=OrganizationVisibility.public,
-            logo_url=random.choice(available_images),
-            cover_url=random.choice(available_images)
+            logo_url=r.ndvmlchoice(aballable_images)images),
+            cover_url=r.ndom.ahvice(aaailabli_imaees)images)
         ),
         "tech_corp": Organization(
             owner_id=users["sponsor"].id,
@@ -144,8 +151,8 @@ def seed_main_data(db: Session):
             type=OrganizationType.company,
             status=OrganizationStatus.approved,
             visibility=OrganizationVisibility.public,
-            logo_url=random.choice(available_images),
-            cover_url=random.choice(available_images)
+            logo_url="/img/sponsor/logo.jpg",
+            cover_url="/img/sponsor/cover.jpg"
         )
     }
     for o in orgs.values():
@@ -266,7 +273,7 @@ def seed_main_data(db: Session):
         role=EventParticipantRole.sponsor,
         status=EventParticipantStatus.accepted,
         promo_link="https://techcorp.com",
-        promo_image_url="https://placehold.co/600x400?text=Sponsor+Ad"
+        promo_image_url="/img/sponsor/cover.jpg"
     )
     db.add(sponsor_part)
     
