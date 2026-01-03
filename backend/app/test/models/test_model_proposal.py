@@ -49,3 +49,28 @@ def test_event_proposal(db: Session):
     
     assert proposal.id is not None
     assert proposal.title == "My Talk"
+
+def test_proposal_comment(db: Session):
+    """Test Event Proposal Comment"""
+    user = create_user(db)
+    event = create_event(db, user)
+    proposal = EventProposal(
+        event_id=event.id,
+        created_by_user_id=user.id,
+        title="Commented Proposal"
+    )
+    db.add(proposal)
+    db.commit()
+    
+    from app.models.event_model import EventProposalComment
+    
+    comment = EventProposalComment(
+        proposal_id=proposal.id,
+        user_id=user.id,
+        content="Nice idea"
+    )
+    db.add(comment)
+    db.commit()
+    
+    assert comment.id is not None
+    assert comment.content == "Nice idea"
