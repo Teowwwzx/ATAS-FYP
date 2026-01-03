@@ -3437,6 +3437,10 @@ def create_event_checklist_item(
             raise HTTPException(status_code=400, detail="Assigned user not found")
         item.assigned_users = [assigned]
         
+    if body.file_ids is not None:
+        files = db.query(EventProposal).filter(EventProposal.id.in_(body.file_ids)).all()
+        item.files = files
+        
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -3528,6 +3532,10 @@ def update_event_checklist_item(
         if due > event_start:
             raise HTTPException(status_code=400, detail="Due date must be on or before event start time")
         item.due_datetime = due
+
+    if body.file_ids is not None:
+        files = db.query(EventProposal).filter(EventProposal.id.in_(body.file_ids)).all()
+        item.files = files
 
     db.add(item)
     db.commit()

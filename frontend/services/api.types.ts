@@ -490,6 +490,7 @@ export interface EventChecklistItemCreate {
     visibility?: 'internal' | 'external'
     audience_role?: EventParticipantRole | null
     link_url?: string | null
+    file_ids?: string[]
 }
 
 export interface EventChecklistItemUpdate {
@@ -503,6 +504,7 @@ export interface EventChecklistItemUpdate {
     visibility?: 'internal' | 'external' | null
     audience_role?: EventParticipantRole | null
     link_url?: string | null
+    file_ids?: string[]
 }
 
 // --- Review Types ---
@@ -542,6 +544,7 @@ export interface EventChecklistItemResponse {
     visibility: string
     audience_role?: EventParticipantRole | null
     link_url?: string | null
+    files?: EventProposalResponse[]
 }
 export interface UserMeResponse {
     id: string

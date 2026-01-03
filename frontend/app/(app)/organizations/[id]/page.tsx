@@ -7,6 +7,8 @@ import { getOrganizationById, getMe, updateOrganization, getPublicEvents, getRev
 import { OrganizationResponse, UserMeResponse, OrganizationUpdate, EventDetails } from '@/services/api.types'
 import { EventCard } from '@/components/ui/EventCard'
 import { toast } from 'react-hot-toast'
+import { Dialog, Transition } from '@headlessui/react'
+import { Fragment } from 'react'
 
 
 export default function OrganizationDetailPage() {
@@ -29,6 +31,9 @@ export default function OrganizationDetailPage() {
   // Follow state
   const [isFollowing, setIsFollowing] = useState(false)
   const [followersCount, setFollowersCount] = useState(0)
+  const [showFollowersModal, setShowFollowersModal] = useState(false)
+  const [followers, setFollowers] = useState<any[]>([])
+  const [followersLoading, setFollowersLoading] = useState(false)
 
   const [activeTab, setActiveTab] = useState('Overview')
 
@@ -205,6 +210,22 @@ export default function OrganizationDetailPage() {
     }
   }
 
+  // Load Followers
+  const loadFollowers = async () => {
+    if (!org) return
+    setFollowersLoading(true)
+    try {
+      const data = await getOrganizationFollowers(org.id)
+      setFollowers(data)
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to load followers')
+      setFollowers([])
+    } finally {
+      setFollowersLoading(false)
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto pb-20 px-4 sm:px-6">
       {/* Modern Header Design */}
@@ -246,7 +267,15 @@ export default function OrganizationDetailPage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-zinc-500 mt-2">
                 {org.type && <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 capitalize">{org.type}</span>}
                 {org.location && <span className="flex items-center gap-1"><svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>{org.location}</span>}
-                <span className="text-yellow-600 font-bold">{followersCount} followers</span>
+                <button
+                  onClick={() => {
+                    setShowFollowersModal(true)
+                    loadFollowers()
+                  }}
+                  className="text-yellow-600 font-bold hover:underline cursor-pointer"
+                >
+                  {followersCount} followers
+                </button>
               </div>
             </div>
 
@@ -500,6 +529,127 @@ export default function OrganizationDetailPage() {
           </div>
         </>
       )}
+
+      {/* Followers Modal */}
+      <Transition appear show={showFollowersModal} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setShowFollowersModal(false)}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white shadow-2xl transition-all">
+                  <div className="border-b border-zinc-100 px-6 py-5 flex items-center justify-between bg-zinc-50/50">
+                    <Dialog.Title as="h3" className="text-xl font-black text-zinc-900">
+                      Followers
+                    </Dialog.Title>
+                    <button
+                      onClick={() => setShowFollowersModal(false)}
+                      className="text-zinc-400 hover:text-zinc-600 transition-colors p-2 hover:bg-zinc-100 rounded-full"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+
+                  <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+                    {followersLoading ? (
+                      <div className="text-center py-12 text-zinc-400">Loading followers...</div>
+                    ) : followers.length === 0 ? (
+                      <div className="text-center py-12 text-zinc-400">No followers yet.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {followers.map((follower: any) => {
+                          const isOrg = !!follower.follower_organization_id
+                          const displayName = isOrg ? follower.follower_organization?.name : follower.follower_profile?.full_name
+                          const avatarUrl = isOrg ? follower.follower_organization?.logo_url : follower.follower_profile?.avatar_url
+                          const linkPath = isOrg ? `/organizations/${follower.follower_organization_id}` : `/profile/${follower.follower_user_id}`
+
+                          // Organization-specific data
+                          const orgLocation = isOrg ? follower.follower_organization?.location : null
+                          const orgWebsite = isOrg ? follower.follower_organization?.website_url : null
+                          const orgMembersCount = isOrg ? follower.follower_organization?.members_count : null
+
+                          return (
+                            <div key={follower.id} className="p-4 rounded-2xl border border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50/50 transition-all">
+                              <div className="flex items-start gap-4">
+                                <Link href={linkPath}>
+                                  {avatarUrl ? (
+                                    <img src={avatarUrl} alt={displayName || 'Avatar'} className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm" />
+                                  ) : (
+                                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-100 to-orange-100 flex items-center justify-center font-black text-zinc-700 text-lg border-2 border-white shadow-sm">
+                                      {(displayName || '?').charAt(0)}
+                                    </div>
+                                  )}
+                                </Link>
+
+                                <div className="flex-1 min-w-0">
+                                  <Link href={linkPath} className="font-bold text-zinc-900 hover:text-yellow-600 transition-colors text-base block">
+                                    {displayName || 'Unknown'}
+                                  </Link>
+
+                                  {isOrg && (
+                                    <div className="mt-2 space-y-1.5 text-sm">
+                                      {orgLocation && (
+                                        <div className="flex items-center gap-1.5 text-zinc-600">
+                                          <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                          </svg>
+                                          <span>{orgLocation}</span>
+                                        </div>
+                                      )}
+                                      {orgWebsite && (
+                                        <div className="flex items-center gap-1.5">
+                                          <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                          </svg>
+                                          <a href={orgWebsite} target="_blank" rel="noreferrer" className="text-yellow-600 hover:underline font-medium truncate">
+                                            {orgWebsite.replace(/^https?:\/\/(www\.)?/, '')}
+                                          </a>
+                                        </div>
+                                      )}
+                                      {orgMembersCount !== null && (
+                                        <div className="flex items-center gap-1.5 text-zinc-600">
+                                          <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                          </svg>
+                                          <span>{orgMembersCount} members</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   )
 }

@@ -811,6 +811,22 @@ export default function EventDetailsPage() {
                                                                     Preview
                                                                 </button>
                                                             )}
+                                                            {item.files && item.files.length > 0 && (
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {item.files.map(file => (
+                                                                        <a
+                                                                            key={file.id}
+                                                                            href={file.file_url || '#'}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="text-[10px] uppercase font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full hover:bg-amber-200 transition-colors flex items-center gap-1"
+                                                                        >
+                                                                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                                            {file.title || 'File'}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         {item.description && (
                                                             <p className="text-xs text-amber-800/80 mt-1 leading-relaxed">{item.description}</p>

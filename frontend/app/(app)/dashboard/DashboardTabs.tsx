@@ -53,7 +53,6 @@ export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: 
     const allTabs = [
         { name: 'Overview', id: 'overview' },
         { name: 'People', id: 'people', hidden: !(isOrganizer || isCommittee) },
-        { name: 'Files', id: 'files', hidden: !canViewProposals },
         { name: 'Checklist', id: 'checklist', hidden: !(isOrganizer || isCommittee) },
         { name: 'Settings', id: 'settings', hidden: !isOrganizer },
         { name: 'Reviews', id: 'reviews', hidden: !(isOrganizer || isCommittee) },
@@ -142,34 +141,25 @@ export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: 
                         )
                     }
 
-                    {/* 3. Files Tab */}
+                    {/* 3. Checklist Tab (Files integrated here) */}
                     {
                         !allTabs[2].hidden && (
-                            <Tab.Panel className="focus:outline-none">
-                                <DashboardTabProposals event={event} />
-                            </Tab.Panel>
-                        )
-                    }
-
-                    {/* 4. Checklist Tab */}
-                    {
-                        !allTabs[3].hidden && (
                             <Tab.Panel className="focus:outline-none">
                                 <DashboardTabChecklist event={event} />
                             </Tab.Panel>
                         )
                     }
 
-                    {/* 5. Settings Tab */}
+                    {/* 4. Settings Tab */}
                     {
-                        !allTabs[4].hidden && (
+                        !allTabs[3].hidden && (
                             <Tab.Panel className="focus:outline-none">
                                 <DashboardTabSettings event={event} onUpdate={onUpdate} onDelete={onDelete} />
                             </Tab.Panel>
                         )
                     }
 
-                    {/* 6. Reviews Tab */}
+                    {/* 5. Reviews Tab */}
                     {
                         !allTabs.find(t => t.id === 'reviews')?.hidden && (
                             <Tab.Panel className="focus:outline-none">
