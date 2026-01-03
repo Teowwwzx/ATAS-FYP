@@ -473,7 +473,7 @@ export default function DiscoverPage() {
             {activeTab === 'events' && (
                 <div className="animate-fadeIn space-y-12">
                     {/* Only show categories if NOT searching/filtering */}
-                    {!eventSearch && !filterRegStatus && !filterRegType && !filterEventType && (
+                    {!eventSearch && !filterRegStatus && !filterRegType && !filterEventType && filterTimeframe !== 'past' && (
                         <>
 
 

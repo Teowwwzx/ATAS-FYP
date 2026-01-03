@@ -25,6 +25,10 @@ export function getEventPhase(event: EventDetails | null): EventPhase {
     const end = new Date(event.end_datetime)
 
     // DRAFT = not published (team building, internal collaboration)
+    if (event.status === 'ended') {
+        return EventPhase.POST_EVENT
+    }
+
     if (event.status !== 'published') {
         return EventPhase.DRAFT
     }

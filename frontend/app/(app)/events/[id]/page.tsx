@@ -721,6 +721,10 @@ export default function EventDetailsPage() {
                                                 <div className="w-full py-4 bg-zinc-100 text-zinc-400 rounded-2xl font-bold text-center text-lg cursor-not-allowed border border-zinc-200">
                                                     Event Full
                                                 </div>
+                                            ) : currentPhase === EventPhase.POST_EVENT ? (
+                                                <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
+                                                    Event Ended
+                                                </div>
                                             ) : hasEventStarted ? (
                                                 <div className="space-y-3">
                                                     <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
@@ -776,7 +780,7 @@ export default function EventDetailsPage() {
                             </div>
 
                             {/* What to Prepare - Re-styled & Moved to Sidebar */}
-                            {isJoinedAccepted && (
+                            {isJoinedAccepted && currentPhase !== EventPhase.POST_EVENT && (
                                 <div className="bg-amber-50 rounded-3xl p-6 border border-amber-100 shadow-sm relative overflow-hidden group">
                                     <div className="absolute -top-4 -right-4 w-24 h-24 bg-amber-100 rounded-full blur-xl opacity-60 group-hover:scale-110 transition-transform"></div>
                                     <h3 className="text-sm font-black text-amber-900 uppercase tracking-wide mb-4 flex items-center gap-2 relative z-10">
@@ -847,7 +851,7 @@ export default function EventDetailsPage() {
                             )}
 
                             {/* Payment QR Box */}
-                            {isRegistered && event.payment_qr_url && participantStatus !== 'attended' && (
+                            {isRegistered && event.payment_qr_url && participantStatus !== 'attended' && currentPhase !== EventPhase.POST_EVENT && (
                                 <div className="bg-white rounded-3xl border border-zinc-200 p-6 shadow-sm">
                                     <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wide mb-4">Payment</h3>
                                     <div className="bg-zinc-50 p-4 rounded-xl flex flex-col items-center border border-zinc-100 group">

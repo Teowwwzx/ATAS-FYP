@@ -27,8 +27,8 @@ def _wrap_html(title: str, inner_html: str) -> str:
     return (
         "<div style=\"background:#f6f9fc;padding:24px;font-family:Arial,Helvetica,sans-serif;\">"
         "<div style=\"max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);\">"
-        "<div style=\"background:#0f172a;color:#ffffff;padding:16px 24px;\">"
-        f"<h2 style=\"margin:0;font-size:18px;\">{title}</h2>"
+        "<div style=\"background:#0f172a;padding:24px;\">"
+        f"<h2 style=\"margin:0;font-size:20px;font-weight:bold;color:#ffffff;text-align:center;\">{title}</h2>"
         "</div>"
         "<div style=\"padding:24px;color:#0f172a;\">"
         f"{inner_html}"
@@ -88,6 +88,7 @@ def _log_and_send(email: str, subject: str, html: str, metadata: dict = None):
 
 def send_verification_email(email: str, token: str):
     # token is now a 6-digit code
+    verify_link = f"{settings.FRONTEND_BASE_URL}/verify/{token}?email={email}"
     html = _wrap_html(
         "Verify your email",
         (
@@ -95,7 +96,10 @@ def send_verification_email(email: str, token: str):
             f"<div style=\"background:#f3f4f6;padding:16px;text-align:center;border-radius:8px;margin:16px 0;\">"
             f"<span style=\"font-size:24px;font-weight:bold;letter-spacing:4px;color:#111827;\">{token}</span>"
             f"</div>"
-            f"<p style=\"margin:0;color:#6b7280;font-size:14px;text-align:center;\">Enter this code in the verification page.</p>"
+            f"<p style=\"margin:0 0 16px;color:#6b7280;font-size:14px;text-align:center;\">Enter this code in the verification page, or click the button below:</p>"
+            f"<div style=\"text-align:center;\">"
+            f"<a href=\"{verify_link}\" style=\"display:inline-block;background:#ca8a04;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:bold;\">Verify Email</a>"
+            f"</div>"
         ),
     )
     _log_and_send(email, "Verify your email address", html, {"type": "verification"})

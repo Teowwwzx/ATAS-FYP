@@ -222,6 +222,7 @@ function TagSelector({ selectedIds, onChange }: { selectedIds: string[], onChang
 export default function OnboardingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [otherIntent, setOtherIntent] = useState('')
   const [step, setStep] = useState(1)
 
   // Form State
@@ -620,8 +621,9 @@ export default function OnboardingPage() {
                       <div>
                         <label className="block text-sm font-bold text-black mb-3">Our goals...</label>
                         <div className="grid grid-cols-2 gap-4">
-                          {['Sponsor Event', 'Provide Drinks / Food', 'Hiring Talents'].map(intent => {
+                          {['Sponsor Event', 'Provide Drinks / Food', 'Hiring Talents', 'Other'].map(intent => {
                             const isSelected = form.intents?.includes(intent);
+                            const isOther = intent === 'Other';
 
                             return (
                               <div key={intent} className="h-full">

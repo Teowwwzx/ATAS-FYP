@@ -174,17 +174,12 @@ def count_events(
     if status:
         query = query.filter(Event.status == status)
     else:
-        # Default to published if not specified (matching get_all_events logic partially, 
-        # though get_all_events has include_all_status. Let's assume public count implies published usually? 
-        # But get_all_events defaults to published. count_events didn't. 
-        # Let's keep existing behavior of count_events regarding status default to avoid breaking changes, 
-        # OR match get_all_events. 
-        # get_all_events: if status is None -> filter(status == published).
-        # count_events original: if status: filter. Else nothing.
-        # This discrepancy might be why counts are sometimes off? 
-        # Let's stick to original count_events logic for status to be safe, or align it?
-        # The user didn't ask to fix counts, just add past events.
-        pass
+        # Default behavior: match get_all_events
+        # If searching for past events (end_before is set), allow completed/ended/closed events too
+        if end_before is not None:
+             query = query.filter(Event.status.in_([EventStatus.published, EventStatus.completed, EventStatus.ended, EventStatus.closed]))
+        else:
+             query = query.filter(Event.status == EventStatus.published)
 
     if type:
         query = query.filter(Event.type == type)
@@ -274,7 +269,11 @@ def get_all_events(
     # Default: only published events, unless explicitly requesting otherwise
     if not include_all_status:
         if status is None:
-            query = query.filter(Event.status == EventStatus.published)
+            # If searching for past events (end_before is set), allow completed/ended/closed events too
+            if end_before is not None:
+                query = query.filter(Event.status.in_([EventStatus.published, EventStatus.completed, EventStatus.ended, EventStatus.closed]))
+            else:
+                query = query.filter(Event.status == EventStatus.published)
         else:
             query = query.filter(Event.status == status)
     

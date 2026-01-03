@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 
@@ -13,14 +13,16 @@ import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 export default function VerifyEmailPage() {
     const router = useRouter()
     const params = useParams()
+    const searchParams = useSearchParams()
     const { token } = params
+    const email = searchParams.get('email')
     const [message, setMessage] = useState('Verifying your email...')
 
     useEffect(() => {
-        if (token) {
+        if (token && email) {
             const doVerification = async () => {
                 try {
-                    await verifyEmail(token as string)
+                    await verifyEmail(email, token as string)
                     toast.success('Email verified! You may now log in.')
                     setMessage('Verification successful! Redirecting to login...')
                     try { localStorage.setItem('email_verified', '1') } catch {}
@@ -38,8 +40,11 @@ export default function VerifyEmailPage() {
                 }
             }
             doVerification()
+        } else if (!email) {
+            setMessage('Invalid verification link (missing email).')
+            toast.error('Invalid verification link.')
         }
-    }, [token, router])
+    }, [token, email, router])
 
     return (
         <>

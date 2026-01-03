@@ -2,21 +2,24 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { verifyEmail } from '@/services/api'
 
 export default function VerifyEmailPage() {
     const params = useParams()
+    const searchParams = useSearchParams()
     const token = params.token as string
-    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>(token ? 'verifying' : 'error')
-    const [message, setMessage] = useState(token ? '' : 'Invalid verification link.')
+    const email = searchParams.get('email')
+
+    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>(token && email ? 'verifying' : 'error')
+    const [message, setMessage] = useState(token && email ? '' : 'Invalid verification link.')
 
     useEffect(() => {
-        if (!token) return
+        if (!token || !email) return
 
         const verify = async () => {
             try {
-                const data = await verifyEmail(token)
+                const data = await verifyEmail(email, token)
                 setStatus('success')
 
                 // Auto-login if token is returned

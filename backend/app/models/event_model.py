@@ -294,3 +294,28 @@ Event.participant_count = column_property(
     .scalar_subquery()
 )
 
+# Late import to avoid circular dependency
+from app.models.review_model import Review
+
+Event.reviews_count = column_property(
+    select(func.count(Review.id))
+    .where(Review.event_id == Event.id)
+    .where(Review.deleted_at.is_(None))
+    .correlate_except(Review)
+    .scalar_subquery()
+)
+
+Event.average_rating = column_property(
+    select(func.coalesce(func.avg(Review.rating), 0.0))
+    .where(Review.event_id == Event.id)
+    .where(Review.deleted_at.is_(None))
+    .correlate_except(Review)
+    .scalar_subquery()
+)
+
+Event.sponsors = relationship(
+    "EventParticipant",
+    primaryjoin="and_(EventParticipant.event_id==Event.id, EventParticipant.role=='sponsor', EventParticipant.status=='accepted')",
+    viewonly=True
+)
+

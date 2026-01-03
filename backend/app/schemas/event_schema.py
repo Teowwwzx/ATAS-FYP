@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List
 from datetime import datetime
 import uuid
@@ -89,8 +89,20 @@ class EventCreate(BaseModel):
     price: float | None = 0.0
     currency: str | None = "MYR"
     payment_qr_url: str | None = None
+    cover_url: str | None = None
+    logo_url: str | None = None
     organization_id: uuid.UUID | None = None
     categories: List[uuid.UUID] = []
+
+    @field_validator('title')
+    @classmethod
+    def validate_title_word_count(cls, v: str) -> str:
+        if not v:
+            return v
+        word_count = len(v.strip().split())
+        if word_count > 15:
+            raise ValueError(f"Title must be 15 words or fewer (current: {word_count})")
+        return v
 
 class EventUpdate(BaseModel):
     title: str | None = None
@@ -157,6 +169,9 @@ class EventDetails(BaseModel):
     
     # Computed
     participant_count: int = 0
+    reviews_count: int = 0
+    average_rating: float = 0.0
+    sponsors: List[EventParticipantDetails] = []
     
     model_config = {"from_attributes": True}
 

@@ -9,6 +9,7 @@ export function FormInput({
     placeholder,
     value,
     onChange,
+    required,
 }: {
     label: string
     id: string
@@ -16,6 +17,7 @@ export function FormInput({
     placeholder: string
     value?: string
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+    required?: boolean
 }) {
     return (
         <div className="group">
@@ -26,7 +28,7 @@ export function FormInput({
                 id={id}
                 name={id}
                 type={type}
-                required
+                required={required}
                 placeholder={placeholder}
                 value={value}
                 onChange={onChange}

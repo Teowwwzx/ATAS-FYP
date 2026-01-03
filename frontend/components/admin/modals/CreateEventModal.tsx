@@ -53,6 +53,14 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
         e.preventDefault()
         setIsLoading(true)
         try {
+            // Validate title word count
+            const wordCount = formData.title.trim().split(/\s+/).length
+            if (wordCount > 15) {
+                toast.error(`Title cannot exceed 15 words (current: ${wordCount})`)
+                setIsLoading(false)
+                return
+            }
+
             // Validate dates
             const start = new Date(formData.start_datetime)
             const end = new Date(formData.end_datetime)

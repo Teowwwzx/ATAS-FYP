@@ -274,6 +274,9 @@ export interface EventDetails extends EventCreate {
     organizer_name?: string | null
     organizer_avatar?: string | null
     participant_count?: number
+    reviews_count?: number
+    average_rating?: number
+    sponsors?: EventParticipantDetails[]
     meeting_url?: string | null
     currency?: string
     organization_name?: string

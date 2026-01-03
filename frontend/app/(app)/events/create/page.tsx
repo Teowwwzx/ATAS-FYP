@@ -117,6 +117,21 @@ export default function CreateEventPage() {
         setError('')
         setLoading(true)
 
+        // Validation
+        if (!formData.title || !formData.start_datetime || !formData.end_datetime) {
+            setError('Please fill in all required fields')
+            setLoading(false)
+            return
+        }
+
+        // Word count validation
+        const wordCount = formData.title.trim().split(/\s+/).length
+        if (wordCount > 15) {
+            setError(`Title cannot exceed 15 words (current: ${wordCount})`)
+            setLoading(false)
+            return
+        }
+
         try {
             if (new Date(formData.end_datetime) <= new Date(formData.start_datetime)) {
                 toast.error('End date must be after start date')

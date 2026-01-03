@@ -10,7 +10,7 @@ export type IntentType =
 
 interface IntentConfig {
     label: string
-    icon: JSX.Element
+    icon: React.ReactNode
     color: string
     bgColor: string
 }
