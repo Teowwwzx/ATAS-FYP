@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
 
@@ -16,10 +16,19 @@ export default function RegisterPage() {
     const [confirmPassword, setConfirmPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
+    const searchParams = useSearchParams()
+
+    useEffect(() => {
+        const redirect = searchParams.get('redirect')
+        if (redirect) {
+            localStorage.setItem('pending_redirect', redirect)
+        }
+    }, [searchParams])
 
     useEffect(() => {
         const token = localStorage.getItem('atas_token')
         if (token) {
+            localStorage.removeItem('pending_redirect')
             router.replace('/dashboard')
         }
     }, [router])

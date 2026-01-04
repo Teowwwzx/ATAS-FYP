@@ -246,7 +246,7 @@ export default function BookingPage() {
         try {
             const newEvent = await createEvent({
                 title: title,
-                description: message, // Initial description
+                description: undefined, // Don't use proposal message as public description
                 start_datetime: startDateTime.toISOString(),
                 end_datetime: endDateTime.toISOString(),
                 venue_place_id: venuePlaceId || null,

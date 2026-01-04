@@ -3,6 +3,9 @@ import uuid
 import os
 import sys
 from datetime import datetime, timedelta, timezone
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add path to sys to ensure imports work if run directly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -11,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.database.database import SessionLocal
 from app.models.user_model import User
 from app.models.organization_model import Organization
-from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipant, EventParticipantRole, EventParticipantStatus
+from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipant, EventParticipantRole, EventParticipantStatus, Category, EventCategory
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +31,12 @@ def seed_extra_past_events():
         admin_user = db.query(User).filter(User.email == "admin@gmail.com").first()
         apu_org = db.query(Organization).filter(Organization.name == "Asia Pacific University").first()
         
+        # Fetch Categories
+        tech_cat = db.query(Category).filter(Category.name == "Technology").first()
+        biz_cat = db.query(Category).filter(Category.name == "Business").first()
+        marketing_cat = db.query(Category).filter(Category.name == "Marketing").first()
+        health_cat = db.query(Category).filter(Category.name == "Health & Wellness").first()
+
         if not admin_user or not apu_org:
              logger.error("Admin or APU Org not found. Run basic seeders first.")
              return
@@ -54,7 +63,8 @@ def seed_extra_past_events():
                 "days_ago": 200,
                 "format": EventFormat.panel_discussion,
                 "expert_email": "expert_fintech@gmail.com",
-                "sponsor_email": "sponsor_gold@gmail.com"
+                "sponsor_email": "sponsor_gold@gmail.com",
+                "cat_id": biz_cat.id if biz_cat else None
             },
             {
                 "title": "AI in Healthcare Conference",
@@ -62,7 +72,8 @@ def seed_extra_past_events():
                 "days_ago": 150,
                 "format": EventFormat.webinar,
                 "expert_email": "expert_ai@gmail.com",
-                "sponsor_email": "sponsor_silver@gmail.com"
+                "sponsor_email": "sponsor_silver@gmail.com",
+                "cat_id": health_cat.id if health_cat else (tech_cat.id if tech_cat else None)
             },
             {
                 "title": "Growth Hacking Bootcamp",
@@ -70,7 +81,8 @@ def seed_extra_past_events():
                 "days_ago": 100,
                 "format": EventFormat.workshop,
                 "expert_email": "expert_marketing@gmail.com",
-                "sponsor_email": "sponsor_bronze@gmail.com"
+                "sponsor_email": "sponsor_bronze@gmail.com",
+                "cat_id": marketing_cat.id if marketing_cat else (biz_cat.id if biz_cat else None)
             }
         ]
 
@@ -93,6 +105,11 @@ def seed_extra_past_events():
                 )
                 db.add(event)
                 db.flush() # Get ID
+                
+                if data["cat_id"]:
+                    ec = EventCategory(event_id=event.id, category_id=data["cat_id"])
+                    db.add(ec)
+
                 logger.info(f"Created event: {data['title']}")
 
                 # Add Expert as Speaker

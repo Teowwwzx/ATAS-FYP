@@ -24,6 +24,13 @@ function LoginPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
 
+    useEffect(() => {
+        const redirect = searchParams.get('redirect')
+        if (redirect) {
+            localStorage.setItem('pending_redirect', redirect)
+        }
+    }, [searchParams])
+
     // Check for redirect URL from params, or look for booking draft in localStorage
     const getRedirectUrl = () => {
         const paramRedirect = searchParams.get('redirect')
@@ -50,6 +57,7 @@ function LoginPageContent() {
     React.useEffect(() => {
         const token = localStorage.getItem('atas_token')
         if (token) {
+            localStorage.removeItem('pending_redirect')
             router.replace(redirectUrl)
         }
         try {
@@ -95,6 +103,7 @@ function LoginPageContent() {
                                     router.push(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`)
                                 } else {
                                     toast.success('Welcome back!')
+                                    localStorage.removeItem('pending_redirect')
                                     router.push(redirectUrl)
                                 }
                             } catch (err: any) {
@@ -154,6 +163,7 @@ function LoginPageContent() {
                     router.push(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`)
                 } else {
                     toast.success('Welcome back!')
+                    localStorage.removeItem('pending_redirect')
                     router.push(redirectUrl)
                 }
             } catch (profileError) {

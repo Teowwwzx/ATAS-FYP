@@ -86,6 +86,7 @@ interface ProfileBadgeProps {
 
 export function ProfileBadge({ intent, position = 'top-right', size = 'sm' }: ProfileBadgeProps) {
     const config = INTENT_CONFIG[intent]
+    if (!config) return null
 
     const positionClasses = {
         'top-right': 'top-0 right-0',

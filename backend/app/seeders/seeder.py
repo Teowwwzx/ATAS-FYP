@@ -38,6 +38,7 @@ def seed_all():
         clean_database()
         seed_users()
         seed_orgs()
+        seed_categories()
         seed_events()
         seed_follows()
         # seed_extra_experts()
@@ -48,7 +49,6 @@ def seed_all():
         seed_notifications()
         seed_email_templates()
         seed_bookings()
-        seed_categories()
         seed_profile_details()
         
         logger.info("Database seeding completed successfully.")

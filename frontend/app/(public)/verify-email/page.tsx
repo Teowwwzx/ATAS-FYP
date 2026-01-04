@@ -15,6 +15,12 @@ function VerifyEmailContent() {
     const paramRedirect = searchParams.get('redirect')
     if (paramRedirect) return paramRedirect
 
+    // Check localStorage for pending redirect (Lazy Login)
+    try {
+      const pending = localStorage.getItem('pending_redirect')
+      if (pending) return pending
+    } catch (e) { }
+
     // Check localStorage for any booking drafts
     try {
       const keys = Object.keys(localStorage)
@@ -100,6 +106,7 @@ function VerifyEmailContent() {
       if (res.access_token) {
         localStorage.setItem('atas_token', res.access_token)
         localStorage.removeItem('pending_login_email')
+        localStorage.removeItem('pending_redirect') // Clear pending redirect after consumption
 
         try {
           // Check onboarding status

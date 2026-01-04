@@ -1,11 +1,15 @@
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from sqlalchemy.orm import Session
 from app.database.database import SessionLocal
 from app.models.user_model import User
 from app.models.organization_model import Organization
-from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility
+from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, Category, EventCategory
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +26,7 @@ def seed_events():
         # 1. Find Organizer (Admin) and Org (APU)
         admin_user = db.query(User).filter(User.email == "admin@gmail.com").first()
         apu_org = db.query(Organization).filter(Organization.name == "Asia Pacific University").first()
+        tech_cat = db.query(Category).filter(Category.name == "Technology").first()
 
         if not admin_user or not apu_org:
             logger.error("Admin user or APU organization not found. Please seed users and organizations first.")
@@ -46,6 +51,12 @@ def seed_events():
             cover_url="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWklMjB3ZWJpbmFyfGVufDB8fDB8fHww"
         )
         db.add(event1)
+        db.flush()
+
+        if tech_cat:
+            ec1 = EventCategory(event_id=event1.id, category_id=tech_cat.id)
+            db.add(ec1)
+
         logger.info("Created event: Introduction to AI (Online Free)")
 
         # 3. Create Physical Paid Event
@@ -68,6 +79,12 @@ def seed_events():
             cover_url="https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8cm9ib3RpY3N8ZW58MHx8MHx8fDA%3D"
         )
         db.add(event2)
+        db.flush()
+
+        if tech_cat:
+            ec2 = EventCategory(event_id=event2.id, category_id=tech_cat.id)
+            db.add(ec2)
+
         logger.info("Created event: Advanced Robotics Workshop (Physical Paid)")
 
         db.commit()

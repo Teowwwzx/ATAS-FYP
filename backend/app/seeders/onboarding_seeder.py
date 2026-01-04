@@ -29,36 +29,50 @@ def seed_onboarding():
         onboarding_data = {
             "admin@gmail.com": {
                 "bio": "System Administrator and Community Manager at APU.",
-                "intents": ["community_building", "organizing_events"],
+                "intents": ["open_to_collaborate", "organizing_events"],
                 "availability": "Weekdays 9am-5pm",
                 "city": "Kuala Lumpur",
-                "country": "Malaysia"
+                "country": "Malaysia",
+                "origin_country": "Malaysia",
+                "avatar_url": "/img/avatars/1.jpg",
+                "average_rating": 5.0,
+                "title": "Community Manager"
             },
             "student@gmail.com": {
                 "bio": "Computer Science student eager to learn about AI and Fintech.",
-                "intents": ["learning", "networking", "seeking_mentorship"],
+                "intents": ["seeking_mentorship", "open_to_collaborate"],
                 "availability": "Weekends and Evenings",
                 "city": "Kuala Lumpur",
                 "country": "Malaysia",
+                "origin_country": "Malaysia",
+                "avatar_url": "/img/avatars/tim.webp",
+                "average_rating": 0.0,
+                "title": "CS Student",
                 "linkedin_url": "https://linkedin.com/in/student-user",
                 "github_url": "https://github.com/student-user"
             },
             "expert@gmail.com": {
                 "bio": "Senior Researcher specializing in Artificial Intelligence and Machine Learning.",
-                "intents": ["speaking", "mentoring", "consulting"],
+                "intents": ["open_to_speak", "offering_mentorship", "open_to_collaborate"],
                 "availability": "Flexible, by appointment",
                 "city": "Singapore",
                 "country": "Singapore",
+                "origin_country": "Singapore",
+                "avatar_url": "/img/avatars/lee.jpg",
+                "average_rating": 4.9,
                 "can_be_speaker": True,
                 "title": "Senior AI Researcher",
                 "role": "expert" # Tag for embedding generation
             },
             "sponsor@gmail.com": {
                 "bio": "Representing corporate interests in tech education and innovation.",
-                "intents": ["hiring", "brand_awareness", "sponsoring_events"],
+                "intents": ["hiring_talent", "open_to_collaborate"],
                 "availability": "Weekdays 10am-4pm",
                 "city": "Petaling Jaya",
                 "country": "Malaysia",
+                "origin_country": "Malaysia",
+                "avatar_url": "/img/avatars/strategy.jpg",
+                "average_rating": 4.5,
                 "title": "Corporate Relations Manager"
             }
         }
@@ -84,6 +98,12 @@ def seed_onboarding():
                     profile.can_be_speaker = data["can_be_speaker"]
                 if "title" in data:
                     profile.title = data["title"]
+                if "origin_country" in data:
+                    profile.origin_country = data["origin_country"]
+                if "avatar_url" in data:
+                    profile.avatar_url = data["avatar_url"]
+                if "average_rating" in data:
+                    profile.average_rating = data["average_rating"]
                 
                 logger.info(f"Updated profile data for {email}")
 

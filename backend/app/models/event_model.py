@@ -106,6 +106,7 @@ class Event(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     organizer = relationship("User", foreign_keys=[organizer_id])
+    categories = relationship("EventCategory", back_populates="event")
 
     @property
     def organizer_name(self):
@@ -122,6 +123,13 @@ class EventCategory(Base):
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    event = relationship("Event", back_populates="categories")
+    category = relationship("Category")
+
+    @property
+    def name(self):
+        return self.category.name if self.category else None
 
 class Category(Base):
     __tablename__ = "categories"

@@ -116,6 +116,11 @@ def discover_profiles(
 
     q = q.filter(Profile.visibility == ProfileVisibility.public)
     
+    # Filter by tags if needed (handled below)
+
+    # Sort by rating (Top Voices)
+    q = q.order_by(Profile.average_rating.desc().nullslast())
+
     if tag_ids:
         q = q.join(profile_tags, profile_tags.c.profile_id == Profile.id)
         q = q.filter(profile_tags.c.tag_id.in_(tag_ids))

@@ -330,6 +330,15 @@ export default function OnboardingPage() {
       const params = new URLSearchParams(window.location.search)
       let redirectUrl = params.get('redirect') || '/dashboard'
 
+      // Check localStorage for pending redirect (Lazy Login)
+      if (redirectUrl === '/dashboard') {
+        const pending = localStorage.getItem('pending_redirect')
+        if (pending) {
+          redirectUrl = pending
+          localStorage.removeItem('pending_redirect')
+        }
+      }
+
       // Fallback: check localStorage for booking drafts if no explicit redirect
       if (redirectUrl === '/dashboard') {
         try {
