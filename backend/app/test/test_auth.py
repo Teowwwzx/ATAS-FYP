@@ -61,3 +61,5 @@ def test_email_verification_flow(client: TestClient, db: Session):
     data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+
+    

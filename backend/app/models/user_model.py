@@ -44,7 +44,7 @@ class User(Base):
     
     # Relationships
     roles = relationship("Role", secondary=user_roles, back_populates="users")
-    profile = relationship("Profile", back_populates="user", uselist=False)
+    profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     organizations = relationship("Organization", secondary="organization_members", back_populates="members")
     educations = relationship("Education", back_populates="user", cascade="all, delete-orphan")
     job_experiences = relationship("JobExperience", back_populates="user", cascade="all, delete-orphan")
