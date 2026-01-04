@@ -10,6 +10,7 @@ class FollowerSummary(BaseModel):
     id: uuid.UUID
     full_name: str | None = None
     avatar_url: str | None = None
+    visibility: str | None = None
     
     model_config = {"from_attributes": True}
 

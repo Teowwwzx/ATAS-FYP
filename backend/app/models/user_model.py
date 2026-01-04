@@ -57,6 +57,11 @@ class User(Base):
     def avatar_url(self):
         return self.profile.avatar_url if self.profile else None
 
+    @property
+    def visibility(self):
+        # Return string value of enum if possible, or just the enum
+        return self.profile.visibility if self.profile else None
+
 class Role(Base):
     __tablename__ = "roles"
     

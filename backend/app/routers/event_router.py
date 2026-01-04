@@ -619,15 +619,22 @@ def create_event(
         db.commit()
     
     # Add organizer as an 'organizer' participant
-    organizer_participant = EventParticipant(
-        event_id=db_event.id,
-        user_id=current_user.id,
-        role=EventParticipantRole.organizer,
-        status=EventParticipantStatus.accepted
-    )
-    db.add(organizer_participant)
+    # Check if participant entry already exists (unlikely for new event, but safe)
+    existing_participant = db.query(EventParticipant).filter(
+        EventParticipant.event_id == db_event.id,
+        EventParticipant.user_id == current_user.id
+    ).first()
+
+    if not existing_participant:
+        organizer_participant = EventParticipant(
+            event_id=db_event.id,
+            user_id=current_user.id,
+            role=EventParticipantRole.organizer,
+            status=EventParticipantStatus.accepted
+        )
+        db.add(organizer_participant)
+        db.commit()
     
-    db.commit()
     db.refresh(db_event)
     
     # Attach categories if provided
@@ -668,11 +675,14 @@ def get_request_details(
     Get detailed information about a specific invitation/request.
     Also ensures a Conversation exists for this request.
     """
+    print(f"DEBUG: get_request_details called with ID: {participant_id}, User: {current_user.id}")
     participant = db.query(EventParticipant).filter(EventParticipant.id == participant_id).first()
     if participant is None:
+        print(f"DEBUG: Invitation {participant_id} NOT FOUND in DB")
         raise HTTPException(status_code=404, detail="Invitation not found")
 
     if participant.user_id != current_user.id:
+        print(f"DEBUG: User {current_user.id} not authorized for invitation {participant_id} (owner: {participant.user_id})")
         raise HTTPException(status_code=403, detail="Not authorized to view this invitation")
     
     # --- Chat Logic: Ensure Conversation Exists ---
@@ -1176,8 +1186,9 @@ def get_event_details(
         
     # Security Check: Unpublished events (Draft) should NOT be visible to public
     # Only Organizer, Admin, or Committee (if implemented) can see drafts
+    # Invited participants (e.g. speakers) should also see it to accept invitations
     if event.status != EventStatus.published:
-        if event.status == EventStatus.draft and not (is_organizer or is_admin):
+        if event.status == EventStatus.draft and not (is_organizer or is_admin or is_participant):
              raise HTTPException(status_code=404, detail="Event not found")
 
     # Hide payment QR unless organizer, participant, or admin

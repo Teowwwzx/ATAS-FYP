@@ -786,13 +786,22 @@ export interface FollowerSummary {
     id: string
     full_name: string | null
     avatar_url: string | null
+    visibility?: string | null
+}
+
+export interface OrganizationSummary {
+    id: string
+    name: string
+    logo_url?: string | null
 }
 
 export interface FollowDetails {
     id: string
     follower_id: string
-    followee_id: string
+    followee_id?: string | null
+    org_id?: string | null
     created_at?: string
     follower?: FollowerSummary | null
     followee?: FollowerSummary | null
+    organization?: OrganizationSummary | null
 }

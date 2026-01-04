@@ -101,6 +101,8 @@ export default function RequestDetailsPage() {
     const daysAgo = Math.floor(hoursAgo / 24)
     const timeString = daysAgo > 0 ? `${daysAgo} days ago` : `${hoursAgo} hours ago`
 
+    const displayedProposal = request.proposal || proposal
+
     return (
         <div className="max-w-6xl mx-auto px-6 py-12 animate-fadeIn space-y-8">
             {/* Breadcrumb */}
@@ -223,7 +225,7 @@ export default function RequestDetailsPage() {
                                 <div>
                                     <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Venue</div>
                                     <div className="font-bold text-zinc-900 flex items-center gap-2 text-lg">
-                                        📍 {request.event.venue_name || 'Online / TBD'}
+                                        📍 {request.event.venue_name || request.event.location || (request.event.meeting_url ? 'Online Meeting' : 'Online / TBD')}
                                     </div>
                                 </div>
 
@@ -272,7 +274,7 @@ export default function RequestDetailsPage() {
                         </div>
 
                         {/* Proposal Section */}
-                        {request.proposal && (
+                        {displayedProposal && (
                             <div className="bg-white rounded-2xl p-6 border border-zinc-200 shadow-sm mt-6">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
@@ -284,19 +286,19 @@ export default function RequestDetailsPage() {
                                     </div>
                                 </div>
                                 
-                                {request.proposal.title && (
-                                    <h5 className="font-bold text-zinc-900 mb-2">{request.proposal.title}</h5>
+                                {displayedProposal.title && (
+                                    <h5 className="font-bold text-zinc-900 mb-2">{displayedProposal.title}</h5>
                                 )}
                                 
-                                {request.proposal.description && (
+                                {displayedProposal.description && displayedProposal.description !== request.description && (
                                     <p className="text-zinc-600 mb-4 whitespace-pre-wrap text-sm border-l-4 border-indigo-100 pl-4 py-1">
-                                        {request.proposal.description}
+                                        {displayedProposal.description}
                                     </p>
                                 )}
 
-                                {request.proposal.file_url && (
+                                {displayedProposal.file_url && (
                                     <a 
-                                        href={request.proposal.file_url} 
+                                        href={displayedProposal.file_url} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors text-sm font-medium"
