@@ -9,6 +9,28 @@ import { toast } from 'react-hot-toast'
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
   const initialEmail = searchParams.get('email') || ''
+
+  // Check for redirect URL from query params, or check localStorage for booking draft
+  const getRedirectUrl = () => {
+    const paramRedirect = searchParams.get('redirect')
+    if (paramRedirect) return paramRedirect
+
+    // Check localStorage for any booking drafts
+    try {
+      const keys = Object.keys(localStorage)
+      const draftKey = keys.find(key => key.startsWith('booking_draft_'))
+      if (draftKey) {
+        const expertId = draftKey.replace('booking_draft_', '')
+        return `/book/${expertId}`
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+
+    return '/dashboard'
+  }
+
+  const redirectUrl = getRedirectUrl()
   const [email, setEmail] = useState(initialEmail)
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -85,7 +107,7 @@ function VerifyEmailContent() {
           if (!profile.is_onboarded) {
             toast('Please complete your onboarding!', { icon: '👋' })
             setTimeout(() => {
-              window.location.href = '/onboarding'
+              window.location.href = `/onboarding?redirect=${encodeURIComponent(redirectUrl)}`
             }, 2000)
           } else {
             setTimeout(() => {
@@ -100,7 +122,7 @@ function VerifyEmailContent() {
         }
       } else {
         setTimeout(() => {
-          window.location.href = '/login'
+          window.location.href = redirectUrl !== '/dashboard' ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'
         }, 2000)
       }
     } catch (err: unknown) {
@@ -170,7 +192,7 @@ function VerifyEmailContent() {
         <h3 className="text-2xl font-black text-zinc-900 mb-2">Email Verified</h3>
         <p className="text-zinc-500 font-medium mb-8">{message}</p>
         <Link
-          href="/login"
+          href={redirectUrl !== '/dashboard' ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'}
           className="w-full flex justify-center py-4 px-6 border border-transparent rounded-full shadow-lg text-base font-bold text-zinc-900 bg-yellow-400 hover:bg-yellow-300 hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400"
         >
           Go to Login
@@ -280,7 +302,7 @@ function VerifyEmailContent() {
             </div>
 
             <div>
-              <Link href="/login" className="text-sm font-bold text-zinc-400 hover:text-zinc-600 transition-colors flex items-center justify-center gap-2">
+              <Link href={redirectUrl !== '/dashboard' ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'} className="text-sm font-bold text-zinc-400 hover:text-zinc-600 transition-colors flex items-center justify-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>

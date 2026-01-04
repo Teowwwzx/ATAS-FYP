@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Body
 from app.schemas.ai_schema import ProposalRequest, ProposalResponse
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_user_optional
 from app.models.user_model import User
 from app.services.ai_service import generate_simple_content
 from pydantic import BaseModel
@@ -27,34 +27,45 @@ def generate_ai_text(
     return TextGenerationResponse(result=result)
 
 @router.post("/generate-proposal", response_model=ProposalResponse)
-def generate_proposal(req: ProposalRequest, current_user: User = Depends(get_current_user)):
+def generate_proposal(
+    req: ProposalRequest, 
+    current_user: User | None = Depends(get_current_user_optional)  # Allow unauthenticated access
+):
     """Generate AI-powered expert invitation proposal using Gemini"""
     
-    name = req.student_name or current_user.email
+    # Handle both authenticated and unauthenticated users
+    if current_user:
+        name = req.student_name or current_user.email
+    else:
+        name = req.student_name or "Event Organizer"
     
     # Use Gemini AI for intelligent proposal generation
-    prompt = f"""You are an expert academic event coordinator. Generate a professional and persuasive invitation email to invite an expert speaker.
+    prompt = f"""You are an expert academic event coordinator. Generate a concise, professional invitation email to invite an expert speaker.
 
 Expert Name: {req.expert_name}
 Topic: {req.topic}
-Student/Organizer Name: {name}
+Organizer Name: {name}
 
 Create a warm, professional invitation that:
-1. Introduces the event organizer
-2. Explains why this expert is specifically chosen
-3. Describes the topic and its importance
-4. Includes a tentative agenda (Introduction, Main Talk, Q&A)
-5. Expresses enthusiasm and respect for the expert's time
+1. Briefly introduces the organizer and purpose
+2. Explains why this expert is chosen for this specific topic
+3. Suggests a simple agenda: Introduction (5 min), Main Talk (40 min), Q&A (15 min)
+4. Expresses genuine interest in their participation
 
-Format the response as a complete email that can be sent directly.
-Keep it concise (200-300 words) but impactful."""
+IMPORTANT CONSTRAINTS:
+- Keep it CONCISE: 100-150 words maximum
+- Do NOT include placeholder text like [Institution Name], [Phone Number], [Date], etc.
+- Only mention information that is actually provided
+- Skip any tables, complex formatting, or unnecessary details
+- Write as a complete, ready-to-send email
+- Be genuine and respectful, not overly formal"""
 
     try:
         result = generate_simple_content(prompt)
         
         # Extract title from first line or generate one
         lines = result.split('\n')
-        title = f"Invitation: Speaking Opportunity on {req.topic}"
+        title = f"Invitation: {req.topic}"
         
         # If Gemini included a subject line, use it
         if lines and ('subject' in lines[0].lower() or 'invitation' in lines[0].lower()):

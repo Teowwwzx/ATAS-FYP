@@ -7,6 +7,7 @@ import { useUser } from '@/hooks/useUser'
 import { ProfileResponse } from '@/services/api.types'
 import * as api from '@/services/api'
 import { toast } from 'react-hot-toast'
+import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 
 interface BookExpertModalProps {
     isOpen: boolean
@@ -30,6 +31,8 @@ export function BookExpertModal({
     const [eventFormat, setEventFormat] = useState('panel_discussion')
     const [eventType, setEventType] = useState('online')
     const [message, setMessage] = useState('')
+    const [venueAddress, setVenueAddress] = useState('')
+    const [placeId, setPlaceId] = useState('')
     const [isGenerating, setIsGenerating] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -46,6 +49,8 @@ export function BookExpertModal({
                     setEventFormat(data.eventFormat || 'panel_discussion')
                     setEventType(data.eventType || 'online')
                     setMessage(data.message || '')
+                    setVenueAddress(data.venue_address || '')
+                    setPlaceId(data.place_id || '')
                     toast.success('Previous draft restored')
                     // Clear after restoring? Maybe keep until success.
                 } catch (e) {
@@ -70,6 +75,16 @@ export function BookExpertModal({
             // Backend returns {title, description}
             setMessage(res.description)
             toast.success('Proposal generated!')
+
+            // Show login hint for unauthenticated users
+            if (!user) {
+                setTimeout(() => {
+                    toast('💡 Login to auto-fill your info in proposals', {
+                        duration: 4000,
+                        icon: '👤'
+                    })
+                }, 800)
+            }
         } catch (error) {
             console.error(error)
             toast.error('Failed to generate proposal')
@@ -93,9 +108,22 @@ export function BookExpertModal({
                 duration,
                 eventFormat,
                 eventType,
-                message
+                message,
+                venue_address: venueAddress,
+                place_id: placeId
             }
-            // Use expert.user_id to match the booking page URL param
+
+            // Clean up any old booking drafts first
+            try {
+                const keys = Object.keys(localStorage)
+                keys.filter(k => k.startsWith('booking_draft_')).forEach(k => {
+                    localStorage.removeItem(k)
+                })
+            } catch (e) {
+                // localStorage not available
+            }
+
+            // Save new draft
             localStorage.setItem(`booking_draft_${expert.user_id}`, JSON.stringify(draft))
             toast.success('Draft saved! Redirecting to login...', { duration: 3000 })
             // Small delay to let user see the toast
@@ -253,6 +281,20 @@ export function BookExpertModal({
                                             </select>
                                         </div>
                                     </div>
+
+                                    {/* Venue field - only for physical/hybrid events */}
+                                    {(eventType === 'physical' || eventType === 'hybrid') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
+                                            <PlacesAutocomplete
+                                                onPlaceSelect={(place) => {
+                                                    setVenueAddress(place.label)
+                                                    setPlaceId(place.value.place_id)
+                                                }}
+                                                defaultValue={venueAddress}
+                                            />
+                                        </div>
+                                    )}
 
                                     <div>
                                         <div className="flex justify-between items-center mb-1">

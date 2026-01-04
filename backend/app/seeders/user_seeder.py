@@ -1,65 +1,111 @@
-from app.models.user_model import User, Role, UserStatus
-from app.core.hashing import Hasher
-from faker import Faker
+import logging
 import uuid
-import random
-import string
-from datetime import datetime
 from sqlalchemy.orm import Session
+from app.database.database import SessionLocal, engine
+from app.models.user_model import User, Role, UserStatus
+from app.models.profile_model import Profile, ProfileVisibility
+from app.core.security import get_password_hash
 
-import time
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-fake = Faker()
+def seed_users():
+    """
+    Seeds the database with initial roles and users.
+    """
+    db = SessionLocal()
+    try:
+        logger.info("Seeding users and roles...")
 
-def generate_referral_code(length=8):
-    """Generate a random referral code"""
-    letters = string.ascii_uppercase + string.digits
-    return ''.join(random.choice(letters) for i in range(length))
+        # 1. Create Roles
+        roles_data = ["admin", "student", "expert", "sponsor"]
+        roles = {}
+        
+        for role_name in roles_data:
+            role = db.query(Role).filter(Role.name == role_name).first()
+            if not role:
+                role = Role(name=role_name)
+                db.add(role)
+                db.flush() # Flush to get ID
+                logger.info(f"Created role: {role_name}")
+            roles[role_name] = role
 
-def seed_users(db: Session, num_students=10, num_experts=5, num_teachers=3, num_sponsors=2, num_admins=1):
-    """Seed users table with fake data"""
-    print(f"Seeding {num_students} students, {num_experts} experts, {num_teachers} teachers, {num_sponsors} sponsors, and {num_admins} admins...")
-    
-    # First, create roles if they don't exist
-    roles = ["student", "expert", "teacher", "sponsor", "admin"]
-    role_objects = {}
-    for role_name in roles:
-        role = db.query(Role).filter(Role.name == role_name).first()
-        if not role:
-            role = Role(name=role_name)
-            db.add(role)
-        role_objects[role_name] = role
-    
-    db.flush()  # Flush to get the role IDs
-    
-    # Create users for each role
-    user_creations = {
-        "student": num_students,
-        "expert": num_experts,
-        "teacher": num_teachers,
-        "sponsor": num_sponsors,
-        "admin": num_admins
-    }
-    
-    total_users = 0
-    for role_name, num_users in user_creations.items():
-        for i in range(num_users):
-            email = f"{role_name}{i+1}@gmail.com"
-            password = Hasher.get_password_hash("123123")
-            existing = db.query(User).filter(User.email == email).first()
-            if existing:
-                continue
-            user = User(
-                id=uuid.uuid4(),
-                email=email,
-                password=password,
-                is_verified=True,
-                status=UserStatus.active,
-                referral_code=generate_referral_code(),
-                referred_by=None
-            )
-            user.roles.append(role_objects[role_name])
-            db.add(user)
-            total_users += 1
-    
-    print(f"Successfully seeded {total_users} users")
+        # 2. Create Users
+        users_config = [
+            {
+                "email": "admin@gmail.com",
+                "password": "123123",
+                "role": "admin",
+                "full_name": "Admin User",
+                "is_active": True
+            },
+            {
+                "email": "student@gmail.com",
+                "password": "123123",
+                "role": "student",
+                "full_name": "Student User",
+                "is_active": True
+            },
+            {
+                "email": "expert@gmail.com",
+                "password": "123123",
+                "role": "expert",
+                "full_name": "Dr. Expert",
+                "is_active": True,
+                "title": "Senior Researcher"
+            },
+            {
+                "email": "sponsor@gmail.com",
+                "password": "123123",
+                "role": "sponsor",
+                "full_name": "Sponsor User",
+                "is_active": True
+            }
+        ]
+
+        for user_data in users_config:
+            user = db.query(User).filter(User.email == user_data["email"]).first()
+            if not user:
+                # Create User
+                user = User(
+                    email=user_data["email"],
+                    password=get_password_hash(user_data["password"]),
+                    is_verified=True,
+                    status=UserStatus.active if user_data["is_active"] else UserStatus.inactive,
+                    referral_code=str(uuid.uuid4())[:8] # Simple random referral code
+                )
+                
+                # Assign Role
+                role = roles.get(user_data["role"])
+                if role:
+                    user.roles.append(role)
+                
+                db.add(user)
+                db.flush() # Get User ID
+                
+                # Create Profile
+                profile = Profile(
+                    user_id=user.id,
+                    full_name=user_data["full_name"],
+                    visibility=ProfileVisibility.public,
+                    title=user_data.get("title"),
+                    is_onboarded=True
+                )
+                db.add(profile)
+                
+                logger.info(f"Created user: {user_data['email']} ({user_data['role']})")
+            else:
+                logger.info(f"User already exists: {user_data['email']}")
+
+        db.commit()
+        logger.info("Users seeded successfully.")
+
+    except Exception as e:
+        logger.error(f"Error seeding users: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    seed_users()

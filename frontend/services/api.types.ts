@@ -175,6 +175,7 @@ export interface ProfileResponse {
     website_url?: string
     visibility: 'public' | 'private'
     tags?: { id: string; name: string }[]
+    skills_list?: string[]
     educations?: EducationResponse[]
     job_experiences?: JobExperienceResponse[]
     average_rating?: number

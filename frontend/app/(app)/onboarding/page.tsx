@@ -321,10 +321,30 @@ export default function OnboardingPage() {
         payload.can_be_speaker = intents.includes('open_to_speak')
       }
 
+
       await completeOnboarding(payload)
       await getMyProfile()
       toast.success('Welcome to ATAS!')
-      window.location.href = '/dashboard'
+
+      // Check for redirect URL from query params (e.g., booking page with saved draft)
+      const params = new URLSearchParams(window.location.search)
+      let redirectUrl = params.get('redirect') || '/dashboard'
+
+      // Fallback: check localStorage for booking drafts if no explicit redirect
+      if (redirectUrl === '/dashboard') {
+        try {
+          const keys = Object.keys(localStorage)
+          const draftKey = keys.find(key => key.startsWith('booking_draft_'))
+          if (draftKey) {
+            const expertId = draftKey.replace('booking_draft_', '')
+            redirectUrl = `/book/${expertId}`
+          }
+        } catch (e) {
+          // localStorage not available
+        }
+      }
+
+      window.location.href = redirectUrl
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to complete onboarding')
     } finally {

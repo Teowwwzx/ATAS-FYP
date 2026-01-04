@@ -99,7 +99,7 @@ def discover_profiles(
         q = q.filter(Profile.user_id != current_user.id)
 
     # Exclude admins from public discovery
-    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    admin_subquery = select(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).where(Role.name == "admin")
     q = q.filter(Profile.user_id.notin_(admin_subquery))
 
     if role:
@@ -217,7 +217,7 @@ def discover_profiles_count(
     q = q.filter(User.status == UserStatus.active)
     
     # Exclude admins from public discovery
-    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    admin_subquery = select(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).where(Role.name == "admin")
     q = q.filter(Profile.user_id.notin_(admin_subquery))
 
     if role:
@@ -363,12 +363,29 @@ def semantic_search_profiles(
         order = {uid: idx for idx, uid in enumerate(user_ids)}
         items.sort(key=lambda p: order.get(p.user_id, 10**9))
         
+        # --- SMART RERANKING: Only use LLM for time-specific queries ---
+        # Detect if query mentions time/schedule
+        time_keywords = ['am', 'pm', 'morning', 'afternoon', 'evening', 'night', 
+                        'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+                        '星期', '周', '上午', '下午', '晚上', '早上', '时间']
+        
+        needs_reranking = False
+        if q_text:
+            q_lower = q_text.lower()
+            needs_reranking = any(keyword in q_lower for keyword in time_keywords)
+        
+        # Override if skip_rerank is explicitly set
+        if skip_rerank:
+            needs_reranking = False
+        
+        logger.info(f"DEBUG: Query='{q_text}', Needs time validation={needs_reranking}")
+        
         # --- LLM AGENTIC RERANKING (Reasoning Step) ---
         # This step uses Gemini to strictly validate if the profile matches the specific constraints (e.g. time, date)
         # which vector search might miss (e.g. 1pm vs 7pm).
         
-        # Only rerank if we have a text query, results, and skip_rerank is False
-        if q_text and items and not skip_rerank:
+        # Only rerank if we have a text query, results, and need it for time-specific queries
+        if q_text and items and needs_reranking:
             import google.generativeai as genai
             import concurrent.futures
             
@@ -572,7 +589,7 @@ def search_profiles(
     q = db.query(Profile).filter(Profile.visibility == ProfileVisibility.public)
     
     # Exclude admins
-    admin_subquery = db.query(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).filter(Role.name == "admin").subquery()
+    admin_subquery = select(user_roles.c.user_id).join(Role, Role.id == user_roles.c.role_id).where(Role.name == "admin")
     q = q.filter(Profile.user_id.notin_(admin_subquery))
 
     if email:

@@ -143,8 +143,8 @@ def generate_proposal(event: Dict[str, Any], expert: Optional[Dict[str, Any]], o
             return _stub_generate(event, expert, options)
         
         genai.configure(api_key=api_key)
-        # using gemini-1.5-flash as requested (fast, small, free-tier eligible)
-        model_name = settings.AI_MODEL or "gemini-1.5-flash"
+        # Use gemini-flash-latest (the ONLY model that works with google.generativeai)
+        model_name = "gemini-flash-latest"
         gemini_model = genai.GenerativeModel(model_name)
 
         prompt_text = (
@@ -183,14 +183,19 @@ def generate_simple_content(prompt: str) -> str:
     provider = settings.AI_PROVIDER.lower()
     
     if provider == "gemini":
-        import google.generativeai as genai
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            return "Error: google.generativeai not installed"
+            
         api_key = settings.GEMINI_API_KEY
         if not api_key:
             return "Error: No API Key"
         
         try:
             genai.configure(api_key=api_key)
-            model_name = "gemini-1.5-flash"
+            # Use gemini-flash-latest (same as semantic search - this is the ONLY model that works)
+            model_name = "gemini-flash-latest"
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(prompt)
             return response.text

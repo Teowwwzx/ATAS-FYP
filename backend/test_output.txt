@@ -1,0 +1,87 @@
+﻿
+================================================================================
+  AI PROPOSAL GENERATION TEST SUITE
+  Testing Gemini AI Integration
+  2026-01-04 16:19:15.652402
+================================================================================
+
+================================================================================
+  TEST 1: Unauthenticated Proposal Generation
+================================================================================
+
+Sending request to: http://127.0.0.2:8000/api/v1/ai/generate-proposal
+Payload: {
+  "expert_name": "Dr. Sarah Chen",
+  "topic": "Machine Learning in Healthcare",
+  "student_name": "Alex Johnson"
+}
+
+Status Code: 200
+
+Title: Invitation to Speak: Machine Learning in Healthcare Seminar
+
+Description:
+Dear Dr. Chen,
+
+I am Alex Johnson, an academic event coordinator organizing a focused seminar series on cutting-edge technological applications.
+
+Your pioneering research and published work in applying Machine Learning specifically within the healthcare sector are highly regarded and make you the ideal expert to address our audience on this critical topic.
+
+We would be honored if you could share your insights. We propose a 60-minute session structured as follows: a 5-minute introduction, a 40-minute main presentation, followed by a 15-minute Q&A session.
+
+Please let me know if this opportunity interests you. We genuinely look forward to your potential participation and contribution to our program.
+
+Sincerely,
+
+Alex Johnson
+Academic Event Coordinator
+
+SUCCESS: Response appears to be AI-generated (natural language)
+
+================================================================================
+  TEST 2: Authenticated Proposal Generation
+================================================================================
+
+Logging in as admin...
+
+Login failed: {"detail":"Incorrect username or password"}
+
+================================================================================
+  TEST 3: AI Variation Test (Multiple Topics)
+================================================================================
+
+
+Testing: Blockchain Technology in Finance
+   Generated (646 chars)
+
+Testing: Climate Change Mitigation Strategies
+   Generated (680 chars)
+
+Variation Analysis:
+
+   Result 1: Blockchain Technology in Finance
+   Length: 646 characters
+   Expert mentioned: NO
+   Topic mentioned: YES
+
+   Result 2: Climate Change Mitigation Strategies
+   Length: 680 characters
+   Expert mentioned: NO
+   Topic mentioned: YES
+
+SUCCESS: All responses are unique (AI is generating varied content)
+
+================================================================================
+  TEST SUMMARY
+================================================================================
+
+Unauthenticated Access:  PASS
+Authenticated Access:    FAIL
+AI Variation:            PASS
+
+Overall: 2/3 tests passed
+
+1 test(s) failed. Review output above for details.
+
+================================================================================
+

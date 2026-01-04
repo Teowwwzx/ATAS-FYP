@@ -20,6 +20,10 @@ function RegisterPageContent() {
     const [loading, setLoading] = useState(false)
     const [googleReady, setGoogleReady] = useState(false)
 
+    // Extract redirect URL from query params (e.g., /book/expertId for draft restoration)
+    const redirectUrl = searchParams?.get('redirect') || '/dashboard'
+
+
     useEffect(() => {
         const emailParam = searchParams?.get('email')
         if (emailParam) {
@@ -75,10 +79,10 @@ function RegisterPageContent() {
                                 const profile = await getMyProfile()
                                 if (!profile.is_onboarded) {
                                     toast('Please complete your onboarding!', { icon: '👋' })
-                                    router.push('/onboarding')
+                                    router.push(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`)
                                 } else {
                                     toast.success('Welcome back!')
-                                    router.push('/dashboard')
+                                    router.push(redirectUrl)
                                 }
                             } catch (err: any) {
                                 toast.error(getApiErrorMessage(err, 'Google sign-in failed'))
@@ -150,7 +154,7 @@ function RegisterPageContent() {
                         </p>
                         <div className="mt-6">
                             <Link
-                                href="/login"
+                                href={redirectUrl !== '/dashboard' ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'}
                                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                             >
                                 Go to Login
@@ -171,7 +175,7 @@ function RegisterPageContent() {
                 <p className="mt-2 text-center text-sm text-gray-600">
                     Already have an account?{' '}
                     <Link
-                        href="/login"
+                        href={redirectUrl !== '/dashboard' ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : '/login'}
                         className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
                     >
                         Sign in

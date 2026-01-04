@@ -23,7 +23,29 @@ function LoginPageContent() {
     const [googleReady, setGoogleReady] = useState(false)
     const router = useRouter()
     const searchParams = useSearchParams()
-    const redirectUrl = searchParams.get('redirect') || '/dashboard'
+
+    // Check for redirect URL from params, or look for booking draft in localStorage
+    const getRedirectUrl = () => {
+        const paramRedirect = searchParams.get('redirect')
+        if (paramRedirect) return paramRedirect
+
+        // Check localStorage for booking drafts
+        try {
+            const keys = Object.keys(localStorage)
+            const draftKey = keys.find(key => key.startsWith('booking_draft_'))
+            if (draftKey) {
+                const expertId = draftKey.replace('booking_draft_', '')
+                return `/book/${expertId}`
+            }
+        } catch (e) {
+            // localStorage not available
+        }
+
+        return '/dashboard'
+    }
+
+    const redirectUrl = getRedirectUrl()
+
 
     React.useEffect(() => {
         const token = localStorage.getItem('atas_token')
@@ -69,7 +91,8 @@ function LoginPageContent() {
                                 const profile = await getMyProfile()
                                 if (!profile.is_onboarded) {
                                     toast('Please complete your onboarding!', { icon: '👋' })
-                                    router.push('/onboarding')
+                                    // Pass redirect URL through onboarding so draft can be restored after completion
+                                    router.push(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`)
                                 } else {
                                     toast.success('Welcome back!')
                                     router.push(redirectUrl)
@@ -127,7 +150,8 @@ function LoginPageContent() {
                 // Check is_onboarded status
                 if (!profile.is_onboarded) {
                     toast('Please complete your onboarding!', { icon: '👋' })
-                    router.push('/onboarding')
+                    // Pass redirect URL through onboarding so draft can be restored after completion
+                    router.push(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`)
                 } else {
                     toast.success('Welcome back!')
                     router.push(redirectUrl)
@@ -136,7 +160,8 @@ function LoginPageContent() {
                 const err = profileError as AxiosError
                 if (err.response?.status === 404) {
                     toast.success('Please complete your profile.')
-                    router.push('/onboarding')
+                    // Pass redirect URL through onboarding
+                    router.push(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`)
                 } else {
                     throw profileError
                 }
@@ -292,7 +317,7 @@ function LoginPageContent() {
                             Hey, <br />Login Now!
                         </h2>
                         <p className="text-gray-500 font-medium">
-                            I Am A Old User / <Link href="/register" className="text-zinc-900 font-bold hover:underline decoration-yellow-400 decoration-4 underline-offset-2">Create New</Link>
+                            I Am A Old User / <Link href={`/register${redirectUrl !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`} className="text-zinc-900 font-bold hover:underline decoration-yellow-400 decoration-4 underline-offset-2">Create New</Link>
                         </p>
                     </div>
 

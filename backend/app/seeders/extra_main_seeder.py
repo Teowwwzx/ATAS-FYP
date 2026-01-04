@@ -8,11 +8,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.seeders.clean_db import clean_database
-from app.seeders.user_seeder import seed_users
-from app.seeders.org_seeder import seed_orgs
-from app.seeders.event_seeder import seed_events
-from app.seeders.follow_seeder import seed_follows
 from app.seeders.extra_expert_seeder import seed_extra_experts
 from app.seeders.extra_sponsor_seeder import seed_extra_sponsors
 from app.seeders.extra_past_events_seeder import seed_extra_past_events
@@ -28,33 +23,30 @@ from app.seeders.profile_details_seeder import seed_profile_details
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def seed_all():
+def seed_extra_all():
     """
-    Runs all basic seeders in the correct order.
+    Runs all EXTRA seeders.
+    Does NOT clean the database or run basic seeders.
+    Useful for appending data to an existing database.
     """
     try:
-        logger.info("Starting full database seed...")
+        logger.info("Starting extra database seed...")
         
-        clean_database()
-        seed_users()
-        seed_orgs()
-        seed_events()
-        seed_follows()
-        # seed_extra_experts()
-        # seed_extra_sponsors()
-        # seed_extra_past_events()
-        seed_tags()
+        seed_extra_experts()
+        seed_extra_sponsors()
+        seed_extra_past_events()
         seed_onboarding()
         seed_notifications()
         seed_email_templates()
         seed_bookings()
+        seed_tags()
         seed_categories()
         seed_profile_details()
         
-        logger.info("Database seeding completed successfully.")
+        logger.info("Extra database seeding completed successfully.")
         
     except Exception as e:
-        logger.error(f"Seeding failed: {e}")
+        logger.error(f"Extra seeding failed: {e}")
 
 if __name__ == "__main__":
-    seed_all()
+    seed_extra_all()

@@ -4,13 +4,13 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Toaster, toast } from 'react-hot-toast'
-import { 
-    getProfileByUserId, 
-    getMe, 
-    createEvent, 
-    createEventProposal, 
-    inviteEventParticipant, 
-    generateAiText 
+import {
+    getProfileByUserId,
+    getMe,
+    createEvent,
+    createEventProposal,
+    inviteEventParticipant,
+    generateAiText
 } from '@/services/api'
 import { ProfileResponse, UserMeResponse } from '@/services/api.types'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
@@ -26,15 +26,15 @@ export default function BookingPage() {
     const [currentUser, setCurrentUser] = useState<UserMeResponse | null>(null)
 
     const [title, setTitle] = useState('Guest Speaker / Keynote')
-    const [date, setDate] = useState('')
-    const [startTime, setStartTime] = useState('')
-    const [endTime, setEndTime] = useState('')
+    const [startDatetime, setStartDatetime] = useState('')
+    const [endDatetime, setEndDatetime] = useState('')
     const [meetingType, setMeetingType] = useState<'physical' | 'online'>('physical')
     const [venue, setVenue] = useState('')
     const [venuePlaceId, setVenuePlaceId] = useState('')
     const [message, setMessage] = useState('')
     const [maxParticipants, setMaxParticipants] = useState('50')
-    
+    const [phoneNumber, setPhoneNumber] = useState('')
+
     const [aiLoading, setAiLoading] = useState(false)
 
     useEffect(() => {
@@ -54,29 +54,64 @@ export default function BookingPage() {
                         const draft = JSON.parse(savedDraft)
                         if (draft.topic) setTitle(draft.topic)
                         if (draft.eventType) setMeetingType(draft.eventType as 'physical' | 'online')
-                        
+
                         if (draft.startDatetime) {
+                            // Convert to datetime-local format (YYYY-MM-DDTHH:mm)
                             const dt = new Date(draft.startDatetime)
-                            setDate(dt.toISOString().split('T')[0])
-                            setStartTime(dt.toTimeString().slice(0, 5))
-                            
-                            // Calculate end time based on duration
+                            const localDatetime = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+                                .toISOString()
+                                .slice(0, 16)
+                            setStartDatetime(localDatetime)
+
+                            // Calculate end datetime based on duration
                             if (draft.duration) {
                                 const endDt = new Date(dt.getTime() + parseInt(draft.duration) * 60000)
-                                setEndTime(endDt.toTimeString().slice(0, 5))
+                                const localEndDatetime = new Date(endDt.getTime() - endDt.getTimezoneOffset() * 60000)
+                                    .toISOString()
+                                    .slice(0, 16)
+                                setEndDatetime(localEndDatetime)
                             }
                         }
-                        if (draft.message) setMessage(draft.message)
-                        
+
+                        // Restore venue for physical/hybrid events
+                        if (draft.venue_address && (draft.eventType === 'physical' || draft.eventType === 'hybrid')) {
+                            setVenue(draft.venue_address)
+                            if (draft.place_id) setVenuePlaceId(draft.place_id)
+                        }
+
+                        // Restore message and inject user contact info
+                        if (draft.message) {
+                            let finalMessage = draft.message
+
+                            // Auto-inject user contact info if not already present
+                            if (me && !draft.message.includes('Contact Information:')) {
+                                finalMessage += `\n\n---\nContact Information:\nName: ${me.full_name || 'Not provided'}\nEmail: ${me.email || 'Not provided'}\nPhone: (Please fill in below)`
+                            }
+
+                            setMessage(finalMessage)
+                        }
+
                         toast.success('Restored your booking draft!')
+                        // Clear draft after successful restoration
+                        localStorage.removeItem(`booking_draft_${expertId}`)
                     } catch (e) {
                         console.error('Failed to parse draft', e)
                     }
                 }
 
-            } catch (error) {
+            } catch (error: any) {
                 console.error(error)
-                toast.error('Failed to load expert details')
+
+                // Handle 404 - expert doesn't exist (stale draft)
+                if (error.response?.status === 404) {
+                    toast.error('Expert not found. Cleaning up stale draft...')
+                    localStorage.removeItem(`booking_draft_${expertId}`)
+                    setTimeout(() => {
+                        window.location.href = '/dashboard'
+                    }, 2000)
+                } else {
+                    toast.error('Failed to load expert details')
+                }
             } finally {
                 setLoading(false)
             }
@@ -84,23 +119,67 @@ export default function BookingPage() {
         if (expertId) fetchData()
     }, [expertId])
 
-    const durationStr = useMemo(() => {
-        if (!startTime || !endTime) return ''
-        const start = new Date(`2000-01-01T${startTime}`)
-        const end = new Date(`2000-01-01T${endTime}`)
-        
-        // Handle crossing midnight (simple check: if end < start, assume next day +24h)
-        let diff = (end.getTime() - start.getTime()) / (1000 * 60)
-        if (diff < 0) {
-             diff += 24 * 60 // Add 24 hours
+    // Auto-update message with phone number in real-time
+    useEffect(() => {
+        if (message.includes('Contact Information:')) {
+            // Use regex to find and replace the Phone line
+            const phoneRegex = /Phone: .*/
+            const newPhoneText = phoneNumber ? phoneNumber : '(Please fill in below)'
+            const updatedMessage = message.replace(phoneRegex, `Phone: ${newPhoneText}`)
+
+            // Only update if changed to avoid infinite loop
+            if (updatedMessage !== message) {
+                setMessage(updatedMessage)
+            }
         }
-        
+    }, [phoneNumber])
+
+    // Auto-update organizer name in message
+    useEffect(() => {
+        if (currentUser?.full_name && message) {
+            // Replace "My name is X" pattern
+            const nameRegex = /My name is [^,]+,/
+            const updatedMessage = message.replace(nameRegex, `My name is ${currentUser.full_name},`)
+
+            if (updatedMessage !== message) {
+                setMessage(updatedMessage)
+            }
+        }
+    }, [currentUser?.full_name])
+
+    // Auto-update event title/topic in message
+    useEffect(() => {
+        if (title && message) {
+            // Replace topic pattern: the topic of "X" or regarding "X"
+            const topicRegex = /(the topic of|regarding) "[^"]+"/
+            const match = message.match(topicRegex)
+
+            if (match) {
+                const prefix = match[1] // "the topic of" or "regarding"
+                const updatedMessage = message.replace(topicRegex, `${prefix} "${title}"`)
+
+                if (updatedMessage !== message) {
+                    setMessage(updatedMessage)
+                }
+            }
+        }
+    }, [title])
+
+    const durationStr = useMemo(() => {
+        if (!startDatetime || !endDatetime) return ''
+        const start = new Date(startDatetime)
+        const end = new Date(endDatetime)
+
+        const diff = (end.getTime() - start.getTime()) / (1000 * 60) // minutes
+
+        if (diff <= 0) return 'Invalid duration'
+
         const hours = Math.floor(diff / 60)
         const mins = diff % 60
         if (hours > 0 && mins > 0) return `${hours}h ${mins}m`
         if (hours > 0) return `${hours}h`
         return `${mins}m`
-    }, [startTime, endTime])
+    }, [startDatetime, endDatetime])
 
     const handleAiRewrite = async () => {
         if (!message) {
@@ -109,14 +188,24 @@ export default function BookingPage() {
         }
         setAiLoading(true)
         try {
+            // Get user's name from currentUser or fallback to "Event Organizer"
+            const userName = currentUser?.full_name || currentUser?.email || "Event Organizer"
+
             const prompt = `
             Rewrite this booking request message to be professional, persuasive, and polite.
             It is for an expert speaker invitation.
             
             Context:
+            - Organizer Name: ${userName}
             - Expert Name: ${expert?.full_name}
             - Event Type: ${title}
             - User Draft: "${message}"
+            
+            Instructions:
+            - Use the organizer's name (${userName}) instead of placeholders
+            - Address the expert (${expert?.full_name}) professionally
+            - Make it warm and personalized
+            - Do NOT include any placeholder text like [Your Name], [Phone], [Date], etc.
             
             Output only the rewritten message.
             `
@@ -139,18 +228,19 @@ export default function BookingPage() {
         e.preventDefault()
         setSubmitting(true)
 
-        if (!date || !startTime || !endTime || !message || !title) {
+        if (!startDatetime || !endDatetime || !message || !title) {
             toast.error('Please fill in all fields')
             setSubmitting(false)
             return
         }
 
-        let startDateTime = new Date(`${date}T${startTime}`)
-        let endDateTime = new Date(`${date}T${endTime}`)
-        
+        const startDateTime = new Date(startDatetime)
+        const endDateTime = new Date(endDatetime)
+
         if (endDateTime <= startDateTime) {
-             // Assume next day
-             endDateTime.setDate(endDateTime.getDate() + 1)
+            toast.error('End time must be after start time')
+            setSubmitting(false)
+            return
         }
 
         try {
@@ -225,13 +315,27 @@ export default function BookingPage() {
                         <div>
                             <h3 className="text-xl font-bold text-slate-900">{expert.full_name}</h3>
                             <p className="text-slate-500">{expert.title || 'Expert'}</p>
+                            {expert?.skills_list && expert.skills_list.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {expert.skills_list.slice(0, 5).map((skill: string, idx: number) => (
+                                        <span key={idx} className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                                            {skill}
+                                        </span>
+                                    ))}
+                                    {expert.skills_list.length > 5 && (
+                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
+                                            +{expert.skills_list.length - 5}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Booking Form */}
                 <form onSubmit={handleBook} className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm space-y-8">
-                    
+
                     {/* Event Title */}
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Event Title</label>
@@ -273,37 +377,28 @@ export default function BookingPage() {
                         </div>
                     </div>
 
-                    {/* Date & Time */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Start & End DateTime */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Start DateTime</label>
                             <input
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
+                                type="datetime-local"
+                                value={startDatetime}
+                                onChange={(e) => setStartDatetime(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Start Time</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">End DateTime</label>
                             <input
-                                type="time"
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">End Time</label>
-                            <input
-                                type="time"
-                                value={endTime}
-                                onChange={(e) => setEndTime(e.target.value)}
+                                type="datetime-local"
+                                value={endDatetime}
+                                onChange={(e) => setEndDatetime(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
                             />
                         </div>
                     </div>
-                    
+
                     {/* Duration Display */}
                     {durationStr && (
                         <div className="flex items-center gap-2 text-sm text-slate-500 font-medium bg-slate-50 p-3 rounded-lg border border-slate-100">
@@ -349,6 +444,18 @@ export default function BookingPage() {
                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
                             />
                         </div>
+                    </div>
+
+                    {/* Phone Number */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                        <input
+                            type="tel"
+                            placeholder="e.g. +60 12-345 6789"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700 placeholder:text-slate-400"
+                        />
                     </div>
 
                     {/* Proposal Message */}
