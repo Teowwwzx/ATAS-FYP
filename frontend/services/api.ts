@@ -618,8 +618,26 @@ export const createOrganization = async (data: import('./api.types').Organizatio
   return response.data
 }
 
-export const updateOrganization = async (id: string, data: import('./api.types').OrganizationUpdate) => {
-  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${id}`, data)
+export const updateOrganization = async (orgId: string, data: import('./api.types').OrganizationUpdate) => {
+  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}`, data)
+  return response.data
+}
+
+export const updateOrganizationLogo = async (orgId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}/logo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export const updateOrganizationCover = async (orgId: string, file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}/cover`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return response.data
 }
 
@@ -643,24 +661,6 @@ export const leaveOrganization = async (id: string) => {
   return response.data
 }
 
-export const updateOrganizationLogo = async (orgId: string, file: File) => {
-  const fd = new FormData()
-  fd.append('file', file)
-  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}/images/logo`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return response.data
-}
-
-export const updateOrganizationCover = async (orgId: string, file: File) => {
-  const fd = new FormData()
-  fd.append('file', file)
-  const response = await api.put<import('./api.types').OrganizationResponse>(`/organizations/${orgId}/images/cover`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return response.data
-}
-
 // --- Proposals ---
 
 export const getEventProposals = async (eventId: string) => {
@@ -674,9 +674,7 @@ export const createEventProposalWithFile = async (eventId: string, data: EventPr
   if (data.description) fd.append('description', data.description)
   if (data.file_url) fd.append('file_url', data.file_url)
   if (file) fd.append('file', file)
-  const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, fd)
   return response.data
 }
 

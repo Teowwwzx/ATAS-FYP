@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getOrganizationById, getMe, updateOrganization, getPublicEvents, getReviewsByEvent, getOrganizationMembers, getMyOrganizationMembership, joinOrganization, leaveOrganization, followOrganization, unfollowOrganization, getMyOrganizationFollowStatus, getOrganizationFollowers } from '@/services/api'
+import { getOrganizationById, getMe, updateOrganization, updateOrganizationLogo, updateOrganizationCover, getPublicEvents, getReviewsByEvent, getOrganizationMembers, getMyOrganizationMembership, joinOrganization, leaveOrganization, followOrganization, unfollowOrganization, getMyOrganizationFollowStatus, getOrganizationFollowers } from '@/services/api'
 import { OrganizationResponse, UserMeResponse, OrganizationUpdate, EventDetails } from '@/services/api.types'
 import { EventCard } from '@/components/ui/EventCard'
 import { toast } from 'react-hot-toast'
@@ -20,7 +20,11 @@ export default function OrganizationDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [me, setMe] = useState<UserMeResponse | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+
   const [form, setForm] = useState<OrganizationUpdate>({})
+  const [files, setFiles] = useState<{ logo: File | null; cover: File | null }>({ logo: null, cover: null })
+  const logoRef = useRef<HTMLInputElement>(null)
+  const coverRef = useRef<HTMLInputElement>(null)
   const [relatedEvents, setRelatedEvents] = useState<EventDetails[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [eventReviews, setEventReviews] = useState<Record<string, { averageRating: number; reviewsCount: number; latestComment?: string }>>({})
@@ -178,13 +182,46 @@ export default function OrganizationDetailPage() {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'cover') => {
+    if (e.target.files && e.target.files[0]) {
+      setFiles(prev => ({ ...prev, [type]: e.target.files![0] }))
+    }
+  }
+
+  const handleClearFile = (type: 'logo' | 'cover') => {
+    setFiles(prev => ({ ...prev, [type]: null }))
+    if (type === 'logo' && logoRef.current) logoRef.current.value = ''
+    if (type === 'cover' && coverRef.current) coverRef.current.value = ''
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const updated = await updateOrganization(org.id, form)
-      setOrg(updated)
+
+      const uploadPromises = []
+      if (files.logo) {
+        uploadPromises.push(updateOrganizationLogo(org.id, files.logo)
+          .catch((e: any) => { console.error('Logo upload failed', e); toast.error('Logo upload failed'); }))
+      }
+      if (files.cover) {
+        uploadPromises.push(updateOrganizationCover(org.id, files.cover)
+          .catch((e: any) => { console.error('Cover upload failed', e); toast.error('Cover upload failed'); }))
+      }
+
+      // Wait for all uploads
+      // If uploads succeed, they return updated org. We should probably refresh org from the last successful one or just refetch or rely on `updated` if only images changed.
+      // But updateOrganization returns org too.
+      // We can take the result of the last successful promise as the final org state, or just merge/reload.
+      // Simplest: use results if available.
+      const results = await Promise.all(uploadPromises)
+      const lastResult = results.filter(Boolean).pop()
+
+      setOrg(lastResult || updated)
       toast.success('Organization updated')
       setIsEditing(false)
+      setFiles({ logo: null, cover: null })
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to update organization')
     }
@@ -326,6 +363,52 @@ export default function OrganizationDetailPage() {
             <button onClick={() => setIsEditing(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 hover:bg-zinc-200"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
           <form onSubmit={handleSave} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-zinc-900 mb-2">Update Logo</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={logoRef}
+                    onChange={e => handleFileChange(e, 'logo')}
+                    className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                  />
+                  {files.logo && (
+                    <button
+                      type="button"
+                      onClick={() => handleClearFile('logo')}
+                      className="text-red-500 hover:text-red-700 p-2"
+                      title="Remove file"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-zinc-900 mb-2">Update Cover</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={coverRef}
+                    onChange={e => handleFileChange(e, 'cover')}
+                    className="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
+                  />
+                  {files.cover && (
+                    <button
+                      type="button"
+                      onClick={() => handleClearFile('cover')}
+                      className="text-red-500 hover:text-red-700 p-2"
+                      title="Remove file"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-bold text-zinc-900 mb-2">Name</label>
               <input

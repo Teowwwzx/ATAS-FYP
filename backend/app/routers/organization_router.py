@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 import os
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, update, delete, insert
@@ -12,6 +12,7 @@ from app.schemas.organization_schema import OrganizationResponse, OrganizationCr
 from app.dependencies import get_current_user, get_current_user_optional, require_roles
 from app.models.user_model import User
 from app.services.audit_service import log_admin_action
+from app.services import cloudinary_service
 
 router = APIRouter()
 
@@ -407,3 +408,47 @@ def delete_organization(
     db.commit()
     log_admin_action(db, current_user.id, "organization.delete", "organization", org.id)
     return
+
+@router.put("/organizations/{org_id}/logo", response_model=OrganizationResponse)
+def update_organization_logo(
+    org_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    if org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to update this organization")
+
+    url = cloudinary_service.upload_file(file, "org_logos")
+    org.logo_url = url
+    db.commit()
+    db.refresh(org)
+    
+    log_admin_action(db, current_user.id, "organization.update_logo", "organization", org.id)
+    return org
+
+@router.put("/organizations/{org_id}/cover", response_model=OrganizationResponse)
+def update_organization_cover(
+    org_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    if org.owner_id != current_user.id and not _is_admin(db, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to update this organization")
+
+    url = cloudinary_service.upload_file(file, "org_covers")
+    org.cover_url = url
+    db.commit()
+    db.refresh(org)
+    
+    log_admin_action(db, current_user.id, "organization.update_cover", "organization", org.id)
+    return org
