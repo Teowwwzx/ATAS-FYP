@@ -9,9 +9,10 @@ import { toast } from 'react-hot-toast'
 interface DashboardInvitationListProps {
     requests: EventInvitationResponse[]
     layoutMode?: 'list' | 'grid'
+    showTabs?: boolean
 }
 
-export function DashboardInvitationList({ requests: initialRequests, layoutMode = 'list' }: DashboardInvitationListProps) {
+export function DashboardInvitationList({ requests: initialRequests, layoutMode = 'list', showTabs = true }: DashboardInvitationListProps) {
     const router = useRouter()
     const [subTab, setSubTab] = useState<'pending' | 'history'>('pending')
     const [historyRequests, setHistoryRequests] = useState<EventInvitationResponse[]>([])
@@ -46,20 +47,22 @@ export function DashboardInvitationList({ requests: initialRequests, layoutMode 
     return (
         <div className="space-y-6">
             {/* Sub Tabs */}
-            <div className="flex space-x-4 border-b border-zinc-100">
-                <button
-                    onClick={() => setSubTab('pending')}
-                    className={`pb-3 text-sm font-bold transition-colors border-b-2 ${subTab === 'pending' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
-                >
-                    Pending ({initialRequests.length})
-                </button>
-                <button
-                    onClick={() => setSubTab('history')}
-                    className={`pb-3 text-sm font-bold transition-colors border-b-2 ${subTab === 'history' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
-                >
-                    History
-                </button>
-            </div>
+            {showTabs && (
+                <div className="flex space-x-4 border-b border-zinc-100">
+                    <button
+                        onClick={() => setSubTab('pending')}
+                        className={`pb-3 text-sm font-bold transition-colors border-b-2 ${subTab === 'pending' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
+                    >
+                        Pending ({initialRequests.length})
+                    </button>
+                    <button
+                        onClick={() => setSubTab('history')}
+                        className={`pb-3 text-sm font-bold transition-colors border-b-2 ${subTab === 'history' ? 'border-yellow-400 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'}`}
+                    >
+                        History
+                    </button>
+                </div>
+            )}
 
             {loadingHistory && subTab === 'history' ? (
                 <div className="py-12 text-center text-zinc-500">Loading...</div>

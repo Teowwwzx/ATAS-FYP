@@ -270,6 +270,13 @@ export const getEventParticipants = async (eventId: string, params?: { role?: st
   return response.data
 }
 
+export const exportEventParticipants = async (eventId: string) => {
+  const response = await api.get(`/events/${eventId}/export-participants`, {
+    responseType: 'blob',
+  })
+  return response.data as Blob
+}
+
 export const inviteEventParticipants = async (eventId: string, items: EventParticipantCreate[]) => {
   const response = await api.post<EventParticipantDetails[]>(`/events/${eventId}/participants/bulk`, { items })
   return response.data
@@ -293,13 +300,6 @@ export const updateEventParticipantRole = async (eventId: string, participantId:
 export const removeEventParticipant = async (eventId: string, participantId: string) => {
   const response = await api.delete<{ detail: string }>(`/events/${eventId}/participants/${participantId}`)
   return response.data
-}
-
-export const exportEventParticipants = async (eventId: string) => {
-  const response = await api.get(`/events/${eventId}/export-participants`, {
-    responseType: 'blob',
-  })
-  return response.data as Blob
 }
 
 export const respondInvitationMe = async (eventId: string, body: EventParticipantResponseUpdate) => {
