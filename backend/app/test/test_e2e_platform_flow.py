@@ -45,6 +45,7 @@ def test_e2e_platform_flow(client: TestClient, db: Session):
     rp = client.post("/api/v1/auth/login", data={"username": participant.email, "password": "pw"})
     assert rp.status_code == 200
     headers_part = {"Authorization": f"Bearer {rp.json()['access_token']}"}
+    print("\n[ST-01] User Registration & Login: Pass")
 
     # Organizer creates event
     start = datetime.now(timezone.utc) + timedelta(days=2)
@@ -52,10 +53,13 @@ def test_e2e_platform_flow(client: TestClient, db: Session):
     body = {
         "title": "E2E Event",
         "format": "workshop",
+        "type": "online",
         "start_datetime": start.isoformat(),
         "end_datetime": end.isoformat(),
         "registration_type": "free",
         "visibility": "public",
+        "max_participant": 100,
+        "description": "Test description"
     }
     ce = client.post("/api/v1/events", json=body, headers=headers_org)
     assert ce.status_code == 200
@@ -64,12 +68,14 @@ def test_e2e_platform_flow(client: TestClient, db: Session):
     # Publish and open registration
     pub = client.put(f"/api/v1/events/{event_id}/publish", headers=headers_org)
     assert pub.status_code == 200
+    print("[ST-02] Expert Creates Event: Pass")
     op = client.put(f"/api/v1/events/{event_id}/registration/open", headers=headers_org)
     assert op.status_code == 200
 
     # Participant joins
     jn = client.post(f"/api/v1/events/{event_id}/join", headers=headers_part)
     assert jn.status_code == 200
+    print("[ST-03] Student Joins Event: Pass")
 
     # Participant sets reminder
     rm = client.post(f"/api/v1/events/{event_id}/reminders", json={"option": "one_day"}, headers=headers_part)
@@ -102,7 +108,7 @@ def test_e2e_platform_flow(client: TestClient, db: Session):
     cr = client.get("/api/v1/reviews/count", params={"reviewer_email": participant.email}, headers=headers_admin)
     assert cr.status_code == 200
     dr = client.delete(f"/api/v1/reviews/{rid}", headers=headers_admin)
-    assert dr.status_code == 200
+    assert dr.status_code == 204
 
     # Audit logs list
     al = client.get("/api/v1/admin/audit-logs", headers=headers_admin)
