@@ -79,18 +79,43 @@ def seed_presentation_data(db: Session):
     db.commit()
 
     # 3. Seeding Users
-    print("Seeding 4 main users...")
+    print("Seeding users with detailed expert profiles...")
     password = get_password_hash("123123")
     user_data = [
-        ("admin", "admin@gmail.com", "Admin User", role_objs["admin"]),
-        ("student", "student@gmail.com", "Student User", role_objs["student"]),
-        ("expert", "expert@gmail.com", "Dr. Expert", role_objs["expert"]),
-        ("sponsor", "sponsor@gmail.com", "Sponsor Rep", role_objs["sponsor"]),
-        ("inactive", "inactive@gmail.com", "Inactive User", role_objs["student"]),
+        ("admin", "admin@gmail.com", "Admin User", role_objs["admin"], None, None),
+        ("student", "student@gmail.com", "Student User", role_objs["student"], None, None),
+        ("expert", "expert@gmail.com", "Dr. Expert", role_objs["expert"], None, None),
+        ("sponsor", "sponsor@gmail.com", "Sponsor Rep", role_objs["sponsor"], None, None),
+        ("inactive", "inactive@gmail.com", "Inactive User", role_objs["student"], None, None),
+        
+        # New Experts with specific availability times for AI search demo
+        ("expert_python", "python.expert@gmail.com", "Dr. Sarah Chen", role_objs["expert"], 
+         "Available every Wednesday at 7pm and Friday mornings", 
+         "Python specialist with 10 years experience in web development and data science. Expert in Django, Flask, and machine learning libraries."),
+        
+        ("expert_ai", "ai.expert@gmail.com", "Prof. Michael Zhang", role_objs["expert"], 
+         "Free on weekdays after 6pm, weekends 1pm-5pm", 
+         "AI researcher specializing in natural language processing and computer vision. Published author in top ML conferences."),
+        
+        ("expert_doctor", "doctor.expert@gmail.com", "Dr. Emily Wong", role_objs["expert"], 
+         "Available Tuesday and Thursday afternoons, Saturday 9am-12pm", 
+         "Medical doctor with expertise in public health and telemedicine. Speaks English, Chinese, and Malay."),
+        
+        ("expert_blockchain", "blockchain.expert@gmail.com", "Alex Kumar", role_objs["expert"], 
+         "Monday to Friday 10am-3pm only", 
+         "Blockchain architect and cryptocurrency expert. Built DeFi platforms and smart contracts on Ethereum and Solana."),
+        
+        ("expert_web", "web.expert@gmail.com", "Jessica Lee", role_objs["expert"], 
+         "Weekends anytime, weekdays only before 9am", 
+         "Full-stack web developer. React, Next.js, Node.js expert. UI/UX enthusiast with design background."),
+        
+        ("expert_chinese", "chinese.expert@gmail.com", "李明", role_objs["expert"], 
+         "每周二、四下午2点到6点有空", 
+         "资深软件工程师，专注于人工智能和大数据分析。擅长Python、Java和机器学习算法。"),
     ]
     
     users = {}
-    for key, email, name, role in user_data:
+    for key, email, name, role, availability, bio in user_data:
         status = UserStatus.active
         if key == "inactive":
             status = UserStatus.inactive
@@ -100,16 +125,17 @@ def seed_presentation_data(db: Session):
             password=password,
             status=status,
             roles=[role],
-            referral_code=f"REF-{key.upper()}"
+            referral_code=f"REF-{key.upper()}",
+            is_verified=True  # Pre-verify experts
         )
         db.add(u)
         db.commit()
         db.refresh(u)
         
-        # Determine visibility based on user type for testing
+        # Determine visibility based on user type
         visibility = ProfileVisibility.public
         if key == "student":
-            visibility = ProfileVisibility.private  # Student is private to test anonymous reviews
+            visibility = ProfileVisibility.private
             
         p = Profile(
             user_id=u.id,
@@ -117,10 +143,43 @@ def seed_presentation_data(db: Session):
             is_onboarded=True,
             avatar_url=random.choice(available_images),
             cover_url=random.choice(available_images),
-            visibility=visibility
+            visibility=visibility,
+            bio=bio if bio else f"This is {name}",
+            availability=availability if availability else "Available anytime",
+            can_be_speaker=role.name == "expert"
         )
         db.add(p)
         db.commit()
+        db.refresh(p)
+        
+        # Create embeddings for expert users
+        if key.startswith("expert"):
+            try:
+                from app.services.ai_service import generate_text_embedding, _vec_to_pg
+                from sqlalchemy import text
+                
+                # Create rich source text for embedding
+                source_text = f"{name}\n{bio or ''}\navailability:{availability or ''}"
+                vec = generate_text_embedding(source_text, is_document=True)
+                
+                if vec:
+                    emb = _vec_to_pg(vec)
+                    sql = text("""
+                        INSERT INTO expert_embeddings(user_id, embedding, source_text)
+                        VALUES (:uid, CAST(:emb AS vector), :src)
+                        ON CONFLICT (user_id) DO UPDATE 
+                        SET embedding = EXCLUDED.embedding, source_text = EXCLUDED.source_text
+                    """)
+                    db.execute(sql, {"uid": u.id, "emb": emb, "src": source_text})
+                    db.commit()
+                    print(f"✓ Created embedding for {name}")
+                else:
+                    print(f"⚠ Failed to generate embedding for {name}")
+            except Exception as e:
+                print(f"⚠ Embedding error for {name}: {e}")
+                db.rollback()
+        
+        users[key] = u
         users[key] = u
 
     # 4. Seeding Organization

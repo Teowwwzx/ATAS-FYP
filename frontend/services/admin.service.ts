@@ -482,5 +482,25 @@ export const adminService = {
     resendCommunication: async (id: string) => {
         const response = await api.post<{ message: string; status: string }>(`/admin/communications/${id}/resend`)
         return response.data
+    },
+
+    // --- Skills Management ---
+    getSkills: async () => {
+        const response = await api.get<import('./api.types').SkillResponse[]>('/skills')
+        return response.data
+    },
+
+    createSkill: async (data: import('./api.types').SkillCreate) => {
+        const response = await api.post<import('./api.types').SkillResponse>('/skills', data)
+        return response.data
+    },
+
+    updateSkill: async (skillId: string, data: import('./api.types').SkillCreate) => {
+        const response = await api.put<import('./api.types').SkillResponse>(`/skills/${skillId}`, data)
+        return response.data
+    },
+
+    deleteSkill: async (skillId: string) => {
+        await api.delete(`/skills/${skillId}`)
     }
 }

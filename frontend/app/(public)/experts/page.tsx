@@ -3,7 +3,7 @@ import './experts.css'
 import React, { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { discoverProfiles, semanticSearchProfiles } from '@/services/api'
+import { discoverProfiles, semanticSearchProfiles, getSkills } from '@/services/api'
 import { ProfileResponse } from '@/services/api.types'
 import { ExpertCardGlass } from '@/components/ui/ExpertCardGlass'
 import { PublicNavbar } from '@/components/ui/PublicNavbar'
@@ -26,12 +26,26 @@ function ExpertsContent() {
     const [showFilters, setShowFilters] = useState(false)
     const [selectedTags, setSelectedTags] = useState<string[]>([])
     const [minRating, setMinRating] = useState<number>(0)
+    const [availableSkills, setAvailableSkills] = useState<{ id: string, name: string }[]>([])
 
     // Refs for animation
     const heroRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLDivElement>(null)
     const navbarRef = useRef<HTMLElement>(null)
     const filterRef = useRef<HTMLDivElement>(null)
+
+    // Fetch Available Skills
+    useEffect(() => {
+        const fetchSkills = async () => {
+            try {
+                const skills = await getSkills()
+                setAvailableSkills(skills)
+            } catch (error) {
+                console.error('Failed to load skills:', error)
+            }
+        }
+        fetchSkills()
+    }, [])
 
     // Fetch Data
     useEffect(() => {
@@ -237,22 +251,22 @@ function ExpertsContent() {
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-300 mb-2">Skills & Expertise</label>
                             <div className="flex flex-wrap gap-2">
-                                {['Python', 'JavaScript', 'React', 'Design', 'AI/ML', 'Marketing'].map(tag => (
+                                {availableSkills.map(skill => (
                                     <button
-                                        key={tag}
+                                        key={skill.id}
                                         onClick={() => {
-                                            if (selectedTags.includes(tag)) {
-                                                setSelectedTags(selectedTags.filter(t => t !== tag))
+                                            if (selectedTags.includes(skill.name)) {
+                                                setSelectedTags(selectedTags.filter(t => t !== skill.name))
                                             } else {
-                                                setSelectedTags([...selectedTags, tag])
+                                                setSelectedTags([...selectedTags, skill.name])
                                             }
                                         }}
-                                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedTags.includes(tag)
+                                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedTags.includes(skill.name)
                                             ? 'bg-yellow-500 text-black'
                                             : 'bg-white/5 text-gray-300 hover:bg-white/10'
                                             }`}
                                     >
-                                        {tag}
+                                        {skill.name}
                                     </button>
                                 ))}
                             </div>
@@ -262,7 +276,7 @@ function ExpertsContent() {
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-300 mb-2">Minimum Rating</label>
                             <div className="flex gap-2">
-                                {[0, 3, 4, 5].map(rating => (
+                                {[0, 1, 2, 3, 4, 5].map(rating => (
                                     <button
                                         key={rating}
                                         onClick={() => setMinRating(rating)}

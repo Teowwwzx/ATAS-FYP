@@ -253,6 +253,7 @@ def semantic_search_profiles(
     q_text: str | None = None,
     role: str | None = None,
     top_k: int = 20,
+    skip_rerank: bool = False,  # New parameter to skip LLM validation for speed
     db: Session = Depends(get_db),
 ):
     # Rate Limit Check
@@ -366,9 +367,10 @@ def semantic_search_profiles(
         # This step uses Gemini to strictly validate if the profile matches the specific constraints (e.g. time, date)
         # which vector search might miss (e.g. 1pm vs 7pm).
         
-        # Only rerank if we have a text query and results
-        if q_text and items:
+        # Only rerank if we have a text query, results, and skip_rerank is False
+        if q_text and items and not skip_rerank:
             import google.generativeai as genai
+            import concurrent.futures
             
             api_key = settings.GEMINI_API_KEY
             if api_key:
@@ -377,48 +379,57 @@ def semantic_search_profiles(
                     # Use 'gemini-flash-latest' as verified in tests
                     model = genai.GenerativeModel('gemini-flash-latest')
                     
-                    valid_items = []
                     logger.info(f"DEBUG: Starting LLM Reranking for {len(items)} candidates...")
                     
-                    for p in items:
-                        # Construct a rich context for the LLM
-                        profile_context = f"""
-                        Name: {p.full_name}
-                        Title: {p.title}
-                        Bio: {p.bio}
-                        Availability: {p.availability}
-                        """
-                        
-                        prompt = f"""
-                        You are a strict search result validator for an expert marketplace.
-                        
-                        User Query: "{q_text}"
-                        
-                        Candidate Profile:
-                        {profile_context}
-                        
-                        Task: Does this candidate REASONABLY satisfy the user's query? 
-                        - If the query specifies a time (e.g. "after 7pm"), REJECT candidates who are only available at conflicting times (e.g. "1pm").
-                        - If the query is broad (e.g. "Python expert"), accept relevant matches.
-                        - Be strict on constraints, lenient on broad topics.
-                        
-                        Answer only "YES" or "NO".
-                        """
-                        
+                    def validate_candidate(p):
+                        """Validate a single candidate profile"""
                         try:
+                            # Construct a rich context for the LLM
+                            profile_context = f"""
+                            Name: {p.full_name}
+                            Title: {p.title}
+                            Bio: {p.bio}
+                            Availability: {p.availability}
+                            """
+                            
+                            prompt = f"""
+                            You are a strict search result validator for an expert marketplace.
+                            
+                            User Query: "{q_text}"
+                            
+                            Candidate Profile:
+                            {profile_context}
+                            
+                            Task: Does this candidate REASONABLY satisfy the user's query? 
+                            - If the query specifies a time (e.g. "after 7pm"), REJECT candidates who are only available at conflicting times (e.g. "1pm").
+                            - If the query is broad (e.g. "Python expert"), accept relevant matches.
+                            - Be strict on constraints, lenient on broad topics.
+                            
+                            Answer only "YES" or "NO".
+                            """
+                            
                             # Generate response
                             response = model.generate_content(prompt)
                             decision = response.text.strip().upper()
                             logger.info(f"DEBUG: LLM Decision for {p.full_name}: {decision}")
                             
                             if "YES" in decision:
-                                valid_items.append(p)
+                                return (p, True)
                             else:
                                 logger.info(f"DEBUG: Filtered out {p.full_name} due to LLM decision")
+                                return (p, False)
                         except Exception as e:
                             logger.error(f"DEBUG: LLM Rerank Error for {p.full_name}: {e}")
                             # Fallback: keep item if LLM fails (don't punish network errors)
-                            valid_items.append(p)
+                            return (p, True)
+                    
+                    # Use ThreadPoolExecutor for concurrent API calls
+                    # Max 5 workers to avoid rate limiting
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                        results = list(executor.map(validate_candidate, items))
+                    
+                    # Filter to only validated items
+                    valid_items = [p for p, is_valid in results if is_valid]
                     
                     # Update items to only include validated ones
                     items = valid_items

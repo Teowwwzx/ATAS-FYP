@@ -14,7 +14,8 @@ import {
     PaperPlaneIcon,
     ExitIcon,
     ChevronLeftIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    TableIcon
 } from '@radix-ui/react-icons'
 import { useRouter } from 'next/navigation'
 
@@ -28,6 +29,7 @@ const menuItems = [
     { name: 'Organizations', href: '/admin/organizations', icon: BackpackIcon, roles: ['admin', 'customer_support'] },
     { name: 'Events', href: '/admin/events', icon: CalendarIcon, roles: ['admin', 'content_moderator'] },
     { name: 'Categories', href: '/admin/categories', icon: BookmarkIcon, roles: ['admin'] },
+    { name: 'Skills', href: '/admin/skills', icon: TableIcon, roles: ['admin'] },
     { name: 'Notifications', href: '/admin/notifications', icon: BellIcon, roles: ['admin'] },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: ClipboardIcon, roles: ['admin'] },
     { name: 'Email Templates', href: '/admin/email-templates', icon: EnvelopeClosedIcon, roles: ['admin'] },

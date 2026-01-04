@@ -98,6 +98,11 @@ export interface TagCreate {
     name: string
 }
 
+export interface SkillResponse {
+    id: string
+    name: string
+}
+
 export interface TagResponse {
     id: string
     name: string
@@ -107,10 +112,7 @@ export interface SkillCreate {
     name: string
 }
 
-export interface SkillResponse {
-    id: string
-    name: string
-}
+// Removed duplicate/incorrect EducationBase - it's defined properly later in the file
 
 // Based on your profile_schema.py -> ProfileResponse
 export interface EducationCreate {
@@ -686,12 +688,13 @@ export interface ProposalSuggestRequest {
 
 export interface ProposalSuggestResponse {
     title: string
-    short_intro: string
-    value_points: string[]
-    logistics: string
-    closing: string
-    email_subjects: string[]
-    raw_text: string
+    description: string
+}
+
+export interface ProposalSuggestRequest {
+    expert_name: string
+    topic: string
+    student_name?: string
 }
 
 export interface ProposalRequest {

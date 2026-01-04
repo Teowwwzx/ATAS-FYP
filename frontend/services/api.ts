@@ -1161,3 +1161,10 @@ export const sendDataMessage = async (conversationId: string, content: string): 
   const response = await api.post(`/chat/conversations/${conversationId}/messages`, { content });
   return response.data;
 }
+
+// --- Skills ---
+
+export const getSkills = async () => {
+  const response = await api.get<import('./api.types').SkillResponse[]>('/skills')
+  return response.data
+}
