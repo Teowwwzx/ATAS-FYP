@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
@@ -10,7 +10,7 @@ import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 import { register } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 
-export default function RegisterPage() {
+function RegisterContent() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -181,5 +181,13 @@ export default function RegisterPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-amber-50">Loading...</div>}>
+            <RegisterContent />
+        </Suspense>
     )
 }
