@@ -490,6 +490,54 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
                                         </div>
                                     )}
 
+                                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Auto-Accept Registration</label>
+                                                <p className="text-xs text-gray-500">Automatically approve participants upon registration</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        const newVal = !event.auto_accept_registration
+                                                        await adminService.updateEvent(event.id, { auto_accept_registration: newVal })
+                                                        toast.success(`Auto-accept ${newVal ? 'enabled' : 'disabled'}`)
+                                                        onSuccess()
+                                                    } catch (error) {
+                                                        toast.error('Failed to update')
+                                                    }
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${event.auto_accept_registration ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${event.auto_accept_registration ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">Attendance Tracking</label>
+                                                <p className="text-xs text-gray-500">Enable attendance taking features for this event</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        const newVal = !event.is_attendance_enabled
+                                                        await adminService.updateEvent(event.id, { is_attendance_enabled: newVal })
+                                                        toast.success(`Attendance tracking ${newVal ? 'enabled' : 'disabled'}`)
+                                                        onSuccess()
+                                                    } catch (error) {
+                                                        toast.error('Failed to update')
+                                                    }
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${event.is_attendance_enabled ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${event.is_attendance_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <div className="pt-6 border-t border-gray-100">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Event Organizer (Transfer Ownership)</label>
                                         <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">

@@ -125,6 +125,14 @@ def admin_update_event(
         event.currency = body.currency
     if body.status is not None:
         event.status = body.status
+    if body.organization_id is not None:
+        event.organization_id = body.organization_id
+    if body.payment_qr_url is not None:
+        event.payment_qr_url = body.payment_qr_url
+    if body.auto_accept_registration is not None:
+        event.auto_accept_registration = body.auto_accept_registration
+    if body.is_attendance_enabled is not None:
+        event.is_attendance_enabled = body.is_attendance_enabled
 
     if body.categories is not None:
         # Clear existing categories
@@ -155,134 +163,6 @@ def admin_update_event(
 
     return event
 
-@router.put("/events/{event_id}/publish", response_model=EventDetails)
-def admin_publish_event(
-    event_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
-):
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-        
-    event.status = EventStatus.published
-    # default registration to opened on publish if not set
-    if getattr(event, "registration_status", None) is None:
-        event.registration_status = EventRegistrationStatus.opened
-        
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    
-    try:
-        from app.services.ai_service import upsert_event_embedding
-        src = f"{event.title}\n{event.description or ''}\nformat:{event.format} type:{event.type}"
-        upsert_event_embedding(db, event.id, src)
-    except Exception:
-        db.rollback()
-        
-    log_admin_action(db, current_user.id, "event.publish", "event", event.id)
-    return event
-
-
-@router.put("/events/{event_id}/unpublish", response_model=EventDetails)
-def admin_unpublish_event(
-    event_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
-):
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-        
-    event.status = EventStatus.draft
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    
-    log_admin_action(db, current_user.id, "event.unpublish", "event", event.id)
-    return event
-
-@router.put("/events/{event_id}/registration/open", response_model=EventDetails)
-def admin_open_event_registration(
-    event_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
-):
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-        
-    event.registration_status = EventRegistrationStatus.opened
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    log_admin_action(db, current_user.id, "event.registration.open", "event", event.id)
-    return event
-
-@router.put("/events/{event_id}/registration/close", response_model=EventDetails)
-def admin_close_event_registration(
-    event_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
-):
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    event.registration_status = EventRegistrationStatus.closed
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    log_admin_action(db, current_user.id, "event.registration.close", "event", event.id)
-    return event
-
-@router.put("/events/{event_id}/images/logo", response_model=EventDetails)
-def admin_update_event_logo(
-    event_id: str,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
-):
-    try:
-        event_uuid = uuid.UUID(event_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid UUID format")
-
-    event = db.query(Event).filter(Event.id == event_uuid).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    url = upload_file(file, "event_logos")
-    event.logo_url = url
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    return event
-
-
-@router.put("/events/{event_id}/images/cover", response_model=EventDetails)
-def admin_update_event_cover(
-    event_id: str,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin"])),
-):
-    try:
-        event_uuid = uuid.UUID(event_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid UUID format")
-
-    event = db.query(Event).filter(Event.id == event_uuid).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    url = upload_file(file, "event_covers")
-    event.cover_url = url
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    return event
 
 @router.put("/events/{event_id}/images/payment-qr", response_model=EventDetails)
 def admin_update_event_payment_qr(
@@ -400,6 +280,7 @@ def admin_create_event(
     log_admin_action(db, current_user.id, "event.create", "event", event.id)
     db.refresh(event)
     return event
+
 
 
 @router.delete("/events/{event_id}")

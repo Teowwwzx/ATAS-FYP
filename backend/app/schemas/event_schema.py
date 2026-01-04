@@ -160,6 +160,7 @@ class EventDetails(BaseModel):
     remark: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
+    deleted_at: datetime | None = None
     price: float | None = None
     currency: str | None = None
     
