@@ -248,6 +248,7 @@ export interface EventCreate {
     end_datetime: string // ISO string
     registration_type: EventRegistrationType
     visibility: EventVisibility
+    auto_accept_registration?: boolean
     is_attendance_enabled?: boolean
     max_participant?: number | null
     venue_place_id?: string | null
@@ -268,6 +269,9 @@ export interface EventDetails extends EventCreate {
     categories?: any[]
     created_at: string
     updated_at?: string | null
+    deleted_at?: string | null
+    auto_accept_registration: boolean
+    is_attendance_enabled: boolean
     // View-specific fields (often joined)
     my_role?: EventParticipantRole | null
     my_status?: EventParticipantStatus | null

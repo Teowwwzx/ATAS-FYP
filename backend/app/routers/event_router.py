@@ -3646,6 +3646,7 @@ def list_event_external_checklist(
             .first()
         )
         participant_role = link.role if link else None
+
     if event.visibility == EventVisibility.private and participant_role is None and event.organizer_id != (current_user.id if current_user else None):
         raise HTTPException(status_code=403, detail="This event is private")
     items = (

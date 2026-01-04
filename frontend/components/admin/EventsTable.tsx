@@ -472,6 +472,29 @@ export function EventsTable({ events, onRefresh }: EventsTableProps) {
                                                             <p className="text-xs text-gray-400 mt-1">Venue Place ID: {event.venue_place_id}</p>
                                                         )}
                                                     </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900 mb-2">Settings</h4>
+                                                        <div className="space-y-1 text-sm text-gray-600">
+                                                            <div className="flex items-center gap-2">
+                                                                <span>Auto Accept:</span>
+                                                                <span className={event.auto_accept_registration ? "text-green-600 font-medium" : "text-gray-500"}>
+                                                                    {event.auto_accept_registration ? "Enabled" : "Disabled"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span>Attendance:</span>
+                                                                <span className={event.is_attendance_enabled ? "text-green-600 font-medium" : "text-gray-500"}>
+                                                                    {event.is_attendance_enabled ? "Enabled" : "Disabled"}
+                                                                </span>
+                                                            </div>
+                                                            {event.deleted_at && (
+                                                                <div className="flex items-center gap-2 text-red-600 font-medium">
+                                                                    <span>Deleted At:</span>
+                                                                    <span>{format(new Date(event.deleted_at), 'MMM d, yyyy HH:mm')}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                     {event.registration_type === 'paid' && event.payment_qr_url && (
                                                         <div>
                                                             <h4 className="font-semibold text-gray-900 mb-2">Payment QR</h4>

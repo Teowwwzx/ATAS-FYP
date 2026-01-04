@@ -115,6 +115,11 @@ class Event(Base):
     def organizer_avatar(self):
         return self.organizer.avatar_url if self.organizer else None
 
+    # Relationships
+    categories = relationship("EventCategory", backref="event", cascade="all, delete-orphan")
+    pictures = relationship("EventPicture", backref="event", cascade="all, delete-orphan")
+    participants = relationship("EventParticipant", back_populates="event", cascade="all, delete-orphan")
+
 class EventCategory(Base):
     __tablename__ = "event_categories"
     
@@ -122,6 +127,12 @@ class EventCategory(Base):
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    category = relationship("Category")
+
+    @property
+    def name(self):
+        return self.category.name if self.category else None
 
 class Category(Base):
     __tablename__ = "categories"
@@ -192,7 +203,7 @@ class EventParticipant(Base):
     proposal_id = Column(UUID(as_uuid=True), ForeignKey("event_proposals.id"), nullable=True)
     walk_in_token_id = Column(UUID(as_uuid=True), ForeignKey("event_walk_in_tokens.id"), nullable=True)
     
-    event = relationship("Event")
+    event = relationship("Event", back_populates="participants")
     proposal = relationship("EventProposal")
     walk_in_token = relationship("EventWalkInToken")
 
