@@ -118,13 +118,18 @@ def seed_presentation_data(db: Session):
             avatar = "/img/sponsor/logo.jpg"
             cover = "/img/sponsor/cover.jpg"
             
+        can_be_speaker = False
+        if key in ["expert", "sponsor"]:
+            can_be_speaker = True
+
         p = Profile(
             user_id=u.id,
             full_name=name,
             is_onboarded=True,
             avatar_url=avatar,
             cover_url=cover,
-            visibility=visibility
+            visibility=visibility,
+            can_be_speaker=can_be_speaker
         )
         db.add(p)
         db.commit()

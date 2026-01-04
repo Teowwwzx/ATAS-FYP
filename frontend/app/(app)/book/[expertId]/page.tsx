@@ -8,12 +8,12 @@ import {
     getProfileByUserId, 
     getMe, 
     createEvent, 
-    getMyEventHistory, 
     createEventProposal, 
     inviteEventParticipant, 
     generateAiText 
 } from '@/services/api'
-import { ProfileResponse, UserMeResponse, EventDetails } from '@/services/api.types'
+import { ProfileResponse, UserMeResponse } from '@/services/api.types'
+import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 
 export default function BookingPage() {
     const params = useParams()
@@ -25,30 +25,55 @@ export default function BookingPage() {
     const [submitting, setSubmitting] = useState(false)
     const [currentUser, setCurrentUser] = useState<UserMeResponse | null>(null)
 
-    // Form State
-    const [existingEvents, setExistingEvents] = useState<EventDetails[]>([])
-    const [selectedEventId, setSelectedEventId] = useState<string>('new') // 'new' or UUID
-    
-    const [eventType, setEventType] = useState('Guest Speaker / Keynote')
+    const [title, setTitle] = useState('Guest Speaker / Keynote')
     const [date, setDate] = useState('')
     const [startTime, setStartTime] = useState('')
     const [endTime, setEndTime] = useState('')
+    const [meetingType, setMeetingType] = useState<'physical' | 'online'>('physical')
     const [venue, setVenue] = useState('')
+    const [venuePlaceId, setVenuePlaceId] = useState('')
     const [message, setMessage] = useState('')
+    const [maxParticipants, setMaxParticipants] = useState('50')
     
     const [aiLoading, setAiLoading] = useState(false)
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [expProfile, me, myEvents] = await Promise.all([
+                const [expProfile, me] = await Promise.all([
                     getProfileByUserId(expertId),
-                    getMe(),
-                    getMyEventHistory('organized')
+                    getMe()
                 ])
                 setExpert(expProfile)
                 setCurrentUser(me)
-                setExistingEvents(myEvents || [])
+
+                // Check for saved draft from public profile modal
+                const savedDraft = localStorage.getItem(`booking_draft_${expertId}`)
+                if (savedDraft) {
+                    try {
+                        const draft = JSON.parse(savedDraft)
+                        if (draft.topic) setTitle(draft.topic)
+                        if (draft.eventType) setMeetingType(draft.eventType as 'physical' | 'online')
+                        
+                        if (draft.startDatetime) {
+                            const dt = new Date(draft.startDatetime)
+                            setDate(dt.toISOString().split('T')[0])
+                            setStartTime(dt.toTimeString().slice(0, 5))
+                            
+                            // Calculate end time based on duration
+                            if (draft.duration) {
+                                const endDt = new Date(dt.getTime() + parseInt(draft.duration) * 60000)
+                                setEndTime(endDt.toTimeString().slice(0, 5))
+                            }
+                        }
+                        if (draft.message) setMessage(draft.message)
+                        
+                        toast.success('Restored your booking draft!')
+                    } catch (e) {
+                        console.error('Failed to parse draft', e)
+                    }
+                }
+
             } catch (error) {
                 console.error(error)
                 toast.error('Failed to load expert details')
@@ -59,33 +84,16 @@ export default function BookingPage() {
         if (expertId) fetchData()
     }, [expertId])
 
-    // Effect to pre-fill form when existing event is selected
-    useEffect(() => {
-        if (selectedEventId !== 'new') {
-            const ev = existingEvents.find(e => e.id === selectedEventId)
-            if (ev) {
-                setEventType(ev.title) // Assuming title matches or is relevant
-                setVenue(ev.venue_remark || ev.venue_name || '')
-                if (ev.start_datetime) {
-                    const dt = new Date(ev.start_datetime)
-                    setDate(dt.toISOString().split('T')[0])
-                    setStartTime(dt.toTimeString().slice(0, 5))
-                }
-                if (ev.end_datetime) {
-                    const dt = new Date(ev.end_datetime)
-                    setEndTime(dt.toTimeString().slice(0, 5))
-                }
-            }
-        }
-    }, [selectedEventId, existingEvents])
-
     const durationStr = useMemo(() => {
         if (!startTime || !endTime) return ''
         const start = new Date(`2000-01-01T${startTime}`)
         const end = new Date(`2000-01-01T${endTime}`)
-        const diff = (end.getTime() - start.getTime()) / (1000 * 60)
         
-        if (diff <= 0) return 'Invalid time range'
+        // Handle crossing midnight (simple check: if end < start, assume next day +24h)
+        let diff = (end.getTime() - start.getTime()) / (1000 * 60)
+        if (diff < 0) {
+             diff += 24 * 60 // Add 24 hours
+        }
         
         const hours = Math.floor(diff / 60)
         const mins = diff % 60
@@ -107,7 +115,7 @@ export default function BookingPage() {
             
             Context:
             - Expert Name: ${expert?.full_name}
-            - Event Type: ${eventType}
+            - Event Type: ${title}
             - User Draft: "${message}"
             
             Output only the rewritten message.
@@ -131,57 +139,47 @@ export default function BookingPage() {
         e.preventDefault()
         setSubmitting(true)
 
-        if (!date || !startTime || !endTime || !message) {
+        if (!date || !startTime || !endTime || !message || !title) {
             toast.error('Please fill in all fields')
             setSubmitting(false)
             return
         }
 
-        const startDateTimeCheck = new Date(`${date}T${startTime}`)
-        const endDateTimeCheck = new Date(`${date}T${endTime}`)
-        if (endDateTimeCheck <= startDateTimeCheck) {
-            toast.error('End time must be after start time')
-            setSubmitting(false)
-            return
+        let startDateTime = new Date(`${date}T${startTime}`)
+        let endDateTime = new Date(`${date}T${endTime}`)
+        
+        if (endDateTime <= startDateTime) {
+             // Assume next day
+             endDateTime.setDate(endDateTime.getDate() + 1)
         }
 
         try {
-            let eventId = selectedEventId
-
-            // 1. Create Event if 'new'
-            if (eventId === 'new') {
-                const startDateTime = new Date(`${date}T${startTime}`)
-                const endDateTime = new Date(`${date}T${endTime}`)
-                
-                const newEvent = await createEvent({
-                    title: eventType,
-                    description: message, // Initial description
-                    start_datetime: startDateTime.toISOString(),
-                    end_datetime: endDateTime.toISOString(),
-                    venue_place_id: null,
-                    venue_remark: venue,
-                    type: 'physical',
-                    format: 'seminar',
-                    cover_url: undefined,
-                    logo_url: undefined,
-                    registration_type: 'free',
-                    visibility: 'private',
-                    max_participant: 50,
-                    remark: 'Created via Expert Booking',
-                })
-                eventId = newEvent.id
-            }
+            const newEvent = await createEvent({
+                title: title,
+                description: message, // Initial description
+                start_datetime: startDateTime.toISOString(),
+                end_datetime: endDateTime.toISOString(),
+                venue_place_id: venuePlaceId || null,
+                venue_remark: venue,
+                type: meetingType,
+                format: 'seminar',
+                cover_url: undefined,
+                logo_url: undefined,
+                registration_type: 'free',
+                visibility: 'private',
+                max_participant: parseInt(maxParticipants) || 50,
+                remark: 'Created via Expert Booking',
+            })
+            const eventId = newEvent.id
 
             // 2. Create Proposal (Inherit info)
-            // This links the specific booking intent to the event
             const proposal = await createEventProposal(eventId, {
-                title: `Invitation: ${eventType}`,
+                title: `Invitation: ${title}`,
                 description: message,
                 file_url: null
             })
 
             // 3. Invite Expert
-            // Link proposal_id so they see the details
             await inviteEventParticipant(eventId, {
                 user_id: expertId,
                 role: 'speaker',
@@ -203,7 +201,7 @@ export default function BookingPage() {
     if (!expert) return <div className="flex h-screen items-center justify-center">Expert not found</div>
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6 md:p-12 font-sans text-slate-800">
+        <div className="min-h-screen p-6 md:p-12 font-sans text-slate-800">
             <Toaster />
 
             <div className="max-w-3xl mx-auto space-y-8">
@@ -229,61 +227,51 @@ export default function BookingPage() {
                             <p className="text-slate-500">{expert.title || 'Expert'}</p>
                         </div>
                     </div>
-
-                    {/* Availability Banner */}
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-start gap-3">
-                        <div className="bg-emerald-100 p-1 rounded-full text-emerald-600 mt-0.5">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                        </div>
-                        <p className="text-emerald-800 text-sm font-medium leading-relaxed">
-                            <span className="font-bold">Good news!</span> {expert.full_name} is usually available on the days you selected based on her recent activity.
-                        </p>
-                    </div>
                 </div>
 
                 {/* Booking Form */}
                 <form onSubmit={handleBook} className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm space-y-8">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-slate-900">Event Details</h2>
-                        
-                        {/* Event Selection */}
-                        <div className="w-1/2">
-                             <select
-                                value={selectedEventId}
-                                onChange={(e) => setSelectedEventId(e.target.value)}
-                                className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:border-slate-500 text-sm"
-                            >
-                                <option value="new">+ Create New Event</option>
-                                {existingEvents.map(ev => (
-                                    <option key={ev.id} value={ev.id}>
-                                        {ev.title} ({new Date(ev.start_datetime).toLocaleDateString()})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                    
+                    {/* Event Title */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Event Title</label>
+                        <input
+                            type="text"
+                            placeholder="e.g. Keynote Speech at Tech Summit"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                        />
                     </div>
 
-                    {/* Event Type (Only show if New) */}
-                    {selectedEventId === 'new' && (
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Event Type / Title</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Keynote Speech at Tech Summit"
-                                value={eventType}
-                                onChange={(e) => setEventType(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                            />
+                    {/* Meeting Type */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Meeting Type</label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="meetingType"
+                                    value="physical"
+                                    checked={meetingType === 'physical'}
+                                    onChange={() => setMeetingType('physical')}
+                                    className="w-4 h-4 text-slate-900 focus:ring-slate-500"
+                                />
+                                <span className="text-slate-700 font-medium text-sm">Physical Venue</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+                                <input
+                                    type="radio"
+                                    name="meetingType"
+                                    value="online"
+                                    checked={meetingType === 'online'}
+                                    onChange={() => setMeetingType('online')}
+                                    className="w-4 h-4 text-slate-900 focus:ring-slate-500"
+                                />
+                                <span className="text-slate-700 font-medium text-sm">Online / Virtual</span>
+                            </label>
                         </div>
-                    )}
-                     {selectedEventId !== 'new' && (
-                        <div>
-                             <label className="block text-sm font-bold text-slate-700 mb-2">Event Title</label>
-                             <div className="px-4 py-3 bg-slate-100 rounded-xl text-slate-600 border border-slate-200">
-                                 {eventType}
-                             </div>
-                        </div>
-                     )}
+                    </div>
 
                     {/* Date & Time */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -324,17 +312,43 @@ export default function BookingPage() {
                         </div>
                     )}
 
-                    {/* Venue */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Venue / Platform</label>
-                        <input
-                            type="text"
-                            placeholder="e.g. APU Auditorium or Zoom Link"
-                            value={venue}
-                            onChange={(e) => setVenue(e.target.value)}
-                            disabled={selectedEventId !== 'new'}
-                            className={`w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700 placeholder:text-slate-400 ${selectedEventId !== 'new' ? 'bg-slate-100' : ''}`}
-                        />
+                    {/* Venue & Max Participants */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">
+                                {meetingType === 'physical' ? 'Venue Address' : 'Meeting Link / Platform'}
+                            </label>
+                            {meetingType === 'physical' ? (
+                                <PlacesAutocomplete
+                                    defaultValue={venue}
+                                    onPlaceSelect={(place) => {
+                                        setVenue(place.label)
+                                        setVenuePlaceId(place.value?.place_id || '')
+                                    }}
+                                />
+                            ) : (
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Zoom Link or Google Meet URL"
+                                    value={venue}
+                                    onChange={(e) => {
+                                        setVenue(e.target.value)
+                                        setVenuePlaceId('') // Clear place ID for online events
+                                    }}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700 placeholder:text-slate-400"
+                                />
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Est. Audience (Optional)</label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 50"
+                                value={maxParticipants}
+                                onChange={(e) => setMaxParticipants(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                            />
+                        </div>
                     </div>
 
                     {/* Proposal Message */}

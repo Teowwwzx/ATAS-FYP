@@ -1,7 +1,9 @@
 'use client'
 
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
+import { useRouter } from 'next/navigation'
+import { useUser } from '@/hooks/useUser'
 import { ProfileResponse } from '@/services/api.types'
 import * as api from '@/services/api'
 import { toast } from 'react-hot-toast'
@@ -19,6 +21,9 @@ export function BookExpertModal({
     expert,
     onSuccess,
 }: BookExpertModalProps) {
+    const router = useRouter()
+    const { user } = useUser()
+
     const [topic, setTopic] = useState('')
     const [startDatetime, setStartDatetime] = useState('')
     const [duration, setDuration] = useState('60') // minutes
@@ -27,6 +32,28 @@ export function BookExpertModal({
     const [message, setMessage] = useState('')
     const [isGenerating, setIsGenerating] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Restore draft if exists
+    useEffect(() => {
+        if (isOpen && expert) {
+            const saved = localStorage.getItem(`booking_draft_${expert.user_id}`)
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved)
+                    setTopic(data.topic || '')
+                    setStartDatetime(data.startDatetime || '')
+                    setDuration(data.duration || '60')
+                    setEventFormat(data.eventFormat || 'panel_discussion')
+                    setEventType(data.eventType || 'online')
+                    setMessage(data.message || '')
+                    toast.success('Previous draft restored')
+                    // Clear after restoring? Maybe keep until success.
+                } catch (e) {
+                    console.error('Failed to restore draft', e)
+                }
+            }
+        }
+    }, [isOpen, expert])
 
     const handleGenerate = async () => {
         if (!topic) {
@@ -57,6 +84,28 @@ export function BookExpertModal({
             toast.error('Please fill in all fields')
             return
         }
+
+        // Lazy Login Check
+        if (!user) {
+            const draft = {
+                topic,
+                startDatetime,
+                duration,
+                eventFormat,
+                eventType,
+                message
+            }
+            // Use expert.user_id to match the booking page URL param
+            localStorage.setItem(`booking_draft_${expert.user_id}`, JSON.stringify(draft))
+            toast.success('Draft saved! Redirecting to login...', { duration: 3000 })
+            // Small delay to let user see the toast
+            setTimeout(() => {
+                // NEW: Redirect directly to the dedicated booking page after login
+                router.push('/login?redirect=' + encodeURIComponent(`/book/${expert.user_id}`))
+            }, 1000)
+            return
+        }
+
         setIsSubmitting(true)
 
         try {
@@ -84,6 +133,7 @@ export function BookExpertModal({
                 description: message
             })
 
+            localStorage.removeItem(`booking_draft_${expert.id}`)
             toast.success('Invitation sent successfully!')
             onSuccess?.()
             onClose()

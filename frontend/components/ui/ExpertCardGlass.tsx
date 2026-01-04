@@ -22,12 +22,7 @@ export function ExpertCardGlass({ expert, variant = 'grid', style, className }: 
     const handleBookClick = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-
-        if (!user) {
-            router.push('/login?redirect=/experts')
-        } else {
-            setIsBookingOpen(true)
-        }
+        setIsBookingOpen(true)
     }
 
     // Get primary intent for badge
