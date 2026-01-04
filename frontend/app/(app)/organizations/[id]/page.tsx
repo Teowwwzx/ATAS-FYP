@@ -528,7 +528,7 @@ export default function OrganizationDetailPage() {
                       <div className="flex items-center justify-between">
                         <h3 className="font-bold text-zinc-900 text-lg">Upcoming Events</h3>
                       </div>
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {relatedEvents.slice(0, 2).map(event => (
                           <EventCard key={event.id} event={event} compact reviewsSummary={eventReviews[event.id]} />
                         ))}
@@ -542,7 +542,7 @@ export default function OrganizationDetailPage() {
               {activeTab === 'Events' && (
                 <div className="space-y-4">
                   <h3 className="font-bold text-zinc-900 text-lg">All Events</h3>
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {relatedEvents.map(event => (
                       <EventCard key={event.id} event={event} compact reviewsSummary={eventReviews[event.id]} />
                     ))}
