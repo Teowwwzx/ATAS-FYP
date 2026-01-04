@@ -10,9 +10,10 @@ import {
     createEvent,
     createEventProposal,
     inviteEventParticipant,
-    generateAiText
+    generateAiText,
+    getMyEventHistory
 } from '@/services/api'
-import { ProfileResponse, UserMeResponse } from '@/services/api.types'
+import { ProfileResponse, UserMeResponse, EventDetails } from '@/services/api.types'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 
 export default function BookingPage() {
@@ -25,6 +26,12 @@ export default function BookingPage() {
     const [submitting, setSubmitting] = useState(false)
     const [currentUser, setCurrentUser] = useState<UserMeResponse | null>(null)
 
+    // Booking Mode State
+    const [bookingMode, setBookingMode] = useState<'new' | 'existing'>('new')
+    const [myEvents, setMyEvents] = useState<EventDetails[]>([])
+    const [selectedEventId, setSelectedEventId] = useState('')
+
+    // New Event Form State
     const [title, setTitle] = useState('Guest Speaker / Keynote')
     const [startDatetime, setStartDatetime] = useState('')
     const [endDatetime, setEndDatetime] = useState('')
@@ -40,12 +47,14 @@ export default function BookingPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [expProfile, me] = await Promise.all([
+                const [expProfile, me, events] = await Promise.all([
                     getProfileByUserId(expertId),
-                    getMe()
+                    getMe(),
+                    getMyEventHistory('organized').catch(() => [])
                 ])
                 setExpert(expProfile)
                 setCurrentUser(me)
+                setMyEvents(events || [])
 
                 // Check for saved draft from public profile modal
                 const savedDraft = localStorage.getItem(`booking_draft_${expertId}`)
@@ -228,43 +237,71 @@ export default function BookingPage() {
         e.preventDefault()
         setSubmitting(true)
 
-        if (!startDatetime || !endDatetime || !message || !title) {
-            toast.error('Please fill in all fields')
+        if (!message) {
+            toast.error('Please write a message')
             setSubmitting(false)
             return
         }
 
-        const startDateTime = new Date(startDatetime)
-        const endDateTime = new Date(endDatetime)
+        let eventId = selectedEventId
+        let eventTitle = title
 
-        if (endDateTime <= startDateTime) {
-            toast.error('End time must be after start time')
-            setSubmitting(false)
-            return
+        if (bookingMode === 'new') {
+            if (!startDatetime || !endDatetime || !title) {
+                toast.error('Please fill in all fields')
+                setSubmitting(false)
+                return
+            }
+
+            const startDateTime = new Date(startDatetime)
+            const endDateTime = new Date(endDatetime)
+
+            if (endDateTime <= startDateTime) {
+                toast.error('End time must be after start time')
+                setSubmitting(false)
+                return
+            }
+
+            try {
+                const newEvent = await createEvent({
+                    title: title,
+                    description: undefined, // Don't use proposal message as public description
+                    start_datetime: startDateTime.toISOString(),
+                    end_datetime: endDateTime.toISOString(),
+                    venue_place_id: venuePlaceId || null,
+                    venue_remark: venue,
+                    type: meetingType,
+                    format: 'seminar',
+                    cover_url: undefined,
+                    logo_url: undefined,
+                    registration_type: 'free',
+                    visibility: 'private',
+                    max_participant: parseInt(maxParticipants) || 50,
+                    remark: 'Created via Expert Booking',
+                })
+                eventId = newEvent.id
+            } catch (error) {
+                console.error(error)
+                toast.error('Failed to create event')
+                setSubmitting(false)
+                return
+            }
+        } else {
+            if (!selectedEventId) {
+                toast.error('Please select an event')
+                setSubmitting(false)
+                return
+            }
+            const selectedEvent = myEvents.find(e => e.id === selectedEventId)
+            if (selectedEvent) {
+                eventTitle = selectedEvent.title
+            }
         }
 
         try {
-            const newEvent = await createEvent({
-                title: title,
-                description: undefined, // Don't use proposal message as public description
-                start_datetime: startDateTime.toISOString(),
-                end_datetime: endDateTime.toISOString(),
-                venue_place_id: venuePlaceId || null,
-                venue_remark: venue,
-                type: meetingType,
-                format: 'seminar',
-                cover_url: undefined,
-                logo_url: undefined,
-                registration_type: 'free',
-                visibility: 'private',
-                max_participant: parseInt(maxParticipants) || 50,
-                remark: 'Created via Expert Booking',
-            })
-            const eventId = newEvent.id
-
             // 2. Create Proposal (Inherit info)
             const proposal = await createEventProposal(eventId, {
-                title: `Invitation: ${title}`,
+                title: `Invitation: ${eventTitle}`,
                 description: message,
                 file_url: null
             })
@@ -336,115 +373,174 @@ export default function BookingPage() {
                 {/* Booking Form */}
                 <form onSubmit={handleBook} className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm space-y-8">
 
-                    {/* Event Title */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Event Title</label>
-                        <input
-                            type="text"
-                            placeholder="e.g. Keynote Speech at Tech Summit"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                        />
+                    {/* Mode Selection */}
+                    <div className="flex p-1 bg-slate-100 rounded-xl">
+                        <button
+                            type="button"
+                            onClick={() => setBookingMode('new')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${bookingMode === 'new' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Create New Event
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setBookingMode('existing')}
+                            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${bookingMode === 'existing' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Select Existing Event
+                        </button>
                     </div>
 
-                    {/* Meeting Type */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Meeting Type</label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
-                                <input
-                                    type="radio"
-                                    name="meetingType"
-                                    value="physical"
-                                    checked={meetingType === 'physical'}
-                                    onChange={() => setMeetingType('physical')}
-                                    className="w-4 h-4 text-slate-900 focus:ring-slate-500"
-                                />
-                                <span className="text-slate-700 font-medium text-sm">Physical Venue</span>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
-                                <input
-                                    type="radio"
-                                    name="meetingType"
-                                    value="online"
-                                    checked={meetingType === 'online'}
-                                    onChange={() => setMeetingType('online')}
-                                    className="w-4 h-4 text-slate-900 focus:ring-slate-500"
-                                />
-                                <span className="text-slate-700 font-medium text-sm">Online / Virtual</span>
-                            </label>
-                        </div>
-                    </div>
+                    {bookingMode === 'existing' ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Select Event</label>
+                                {myEvents.length === 0 ? (
+                                    <div className="text-sm text-slate-500 bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300">
+                                        You don't have any organized events yet. Please create a new event.
+                                    </div>
+                                ) : (
+                                    <select
+                                        value={selectedEventId}
+                                        onChange={(e) => setSelectedEventId(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                                    >
+                                        <option value="">-- Select an event --</option>
+                                        {myEvents.map(event => (
+                                            <option key={event.id} value={event.id}>
+                                                {event.title} ({new Date(event.start_datetime).toLocaleDateString()})
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
 
-                    {/* Start & End DateTime */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Start DateTime</label>
-                            <input
-                                type="datetime-local"
-                                value={startDatetime}
-                                onChange={(e) => setStartDatetime(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                            />
+                            {/* Selected Event Preview */}
+                            {selectedEventId && (() => {
+                                const evt = myEvents.find(e => e.id === selectedEventId)
+                                if (!evt) return null
+                                return (
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm space-y-2">
+                                        <p><span className="font-bold">Date:</span> {new Date(evt.start_datetime).toLocaleString()} - {new Date(evt.end_datetime).toLocaleString()}</p>
+                                        <p><span className="font-bold">Venue:</span> {evt.venue_remark || 'No venue specified'}</p>
+                                        <p><span className="font-bold">Status:</span> <span className="uppercase text-xs font-bold px-2 py-0.5 bg-slate-200 rounded">{evt.status}</span></p>
+                                    </div>
+                                )
+                            })()}
                         </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">End DateTime</label>
-                            <input
-                                type="datetime-local"
-                                value={endDatetime}
-                                onChange={(e) => setEndDatetime(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Duration Display */}
-                    {durationStr && (
-                        <div className="flex items-center gap-2 text-sm text-slate-500 font-medium bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Duration: <span className="text-slate-900 font-bold">{durationStr}</span>
-                        </div>
-                    )}
-
-                    {/* Venue & Max Participants */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-bold text-slate-700 mb-2">
-                                {meetingType === 'physical' ? 'Venue Address' : 'Meeting Link / Platform'}
-                            </label>
-                            {meetingType === 'physical' ? (
-                                <PlacesAutocomplete
-                                    defaultValue={venue}
-                                    onPlaceSelect={(place) => {
-                                        setVenue(place.label)
-                                        setVenuePlaceId(place.value?.place_id || '')
-                                    }}
-                                />
-                            ) : (
+                    ) : (
+                        <>
+                            {/* Event Title */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Event Title</label>
                                 <input
                                     type="text"
-                                    placeholder="e.g. Zoom Link or Google Meet URL"
-                                    value={venue}
-                                    onChange={(e) => {
-                                        setVenue(e.target.value)
-                                        setVenuePlaceId('') // Clear place ID for online events
-                                    }}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700 placeholder:text-slate-400"
+                                    placeholder="e.g. Keynote Speech at Tech Summit"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
                                 />
+                            </div>
+
+                            {/* Meeting Type */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Meeting Type</label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="meetingType"
+                                            value="physical"
+                                            checked={meetingType === 'physical'}
+                                            onChange={() => setMeetingType('physical')}
+                                            className="w-4 h-4 text-slate-900 focus:ring-slate-500"
+                                        />
+                                        <span className="text-slate-700 font-medium text-sm">Physical Venue</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="meetingType"
+                                            value="online"
+                                            checked={meetingType === 'online'}
+                                            onChange={() => setMeetingType('online')}
+                                            className="w-4 h-4 text-slate-900 focus:ring-slate-500"
+                                        />
+                                        <span className="text-slate-700 font-medium text-sm">Online / Virtual</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Start & End DateTime */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Start DateTime</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={startDatetime}
+                                        onChange={(e) => setStartDatetime(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">End DateTime</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={endDatetime}
+                                        onChange={(e) => setEndDatetime(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Duration Display */}
+                            {durationStr && (
+                                <div className="flex items-center gap-2 text-sm text-slate-500 font-medium bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Duration: <span className="text-slate-900 font-bold">{durationStr}</span>
+                                </div>
                             )}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Est. Audience (Optional)</label>
-                            <input
-                                type="number"
-                                placeholder="e.g. 50"
-                                value={maxParticipants}
-                                onChange={(e) => setMaxParticipants(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                            />
-                        </div>
-                    </div>
+
+                            {/* Venue & Max Participants */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                                        {meetingType === 'physical' ? 'Venue Address' : 'Meeting Link / Platform'}
+                                    </label>
+                                    {meetingType === 'physical' ? (
+                                        <PlacesAutocomplete
+                                            defaultValue={venue}
+                                            onPlaceSelect={(place) => {
+                                                setVenue(place.label)
+                                                setVenuePlaceId(place.value?.place_id || '')
+                                            }}
+                                        />
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Zoom Link or Google Meet URL"
+                                            value={venue}
+                                            onChange={(e) => {
+                                                setVenue(e.target.value)
+                                                setVenuePlaceId('') // Clear place ID for online events
+                                            }}
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                                        />
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Est. Participants</label>
+                                    <input
+                                        type="number"
+                                        placeholder="50"
+                                        value={maxParticipants}
+                                        onChange={(e) => setMaxParticipants(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     {/* Phone Number */}
                     <div>
