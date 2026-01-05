@@ -126,7 +126,7 @@ function RegisterContent() {
                                     name="email"
                                     type="email"
                                     required
-                                    placeholder="atas@gmail.comname@"
+                                    placeholder="atas@gmail.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="block w-full rounded-2xl bg-gray-100 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-900 font-medium py-4 px-5 transition-all duration-200 placeholder-gray-400"
