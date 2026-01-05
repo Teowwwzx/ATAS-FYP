@@ -94,6 +94,7 @@ class EventCreate(BaseModel):
     cover_url: str | None = None
     logo_url: str | None = None
     organization_id: uuid.UUID | None = None
+    status: str | None = "draft"  # Allow admin to set status on creation (e.g., "published")
     categories: List[uuid.UUID] = []
 
     @field_validator('title')
