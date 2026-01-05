@@ -1,87 +1,264 @@
-﻿
-================================================================================
-  AI PROPOSAL GENERATION TEST SUITE
-  Testing Gemini AI Integration
-  2026-01-04 16:19:15.652402
-================================================================================
+============================= test session starts =============================
+platform win32 -- Python 3.12.5, pytest-7.4.3, pluggy-1.5.0 -- C:\Users\teowz\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend
+configfile: pytest.ini
+plugins: anyio-4.4.0, Faker-37.12.0, asyncio-0.21.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 5 items
 
-================================================================================
-  TEST 1: Unauthenticated Proposal Generation
-================================================================================
+tests/test_comprehensive.py::test_read_main ERROR                        [ 20%]
+tests/test_comprehensive.py::test_auth_and_profile ERROR                 [ 40%]
+tests/test_comprehensive.py::test_organization_flow ERROR                [ 60%]
+tests/test_comprehensive.py::test_event_and_proposal_flow ERROR          [ 80%]
+tests/test_comprehensive.py::test_checklist_flow ERROR                   [100%]
 
-Sending request to: http://127.0.0.2:8000/api/v1/ai/generate-proposal
-Payload: {
-  "expert_name": "Dr. Sarah Chen",
-  "topic": "Machine Learning in Healthcare",
-  "student_name": "Alex Johnson"
-}
+=================================== ERRORS ====================================
+______________________ ERROR at setup of test_read_main _______________________
 
-Status Code: 200
+    @pytest.fixture(autouse=True)
+    def mock_upload_file():
+>       with patch("app.routers.event_router.upload_file", return_value="http://mock.url/file.jpg"), \
+             patch("app.routers.organization_router.upload_file", return_value="http://mock.url/logo.jpg"):
 
-Title: Invitation to Speak: Machine Learning in Healthcare Seminar
+tests\test_comprehensive.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1461: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-Description:
-Dear Dr. Chen,
+self = <unittest.mock._patch object at 0x000002873DBABF50>
 
-I am Alex Johnson, an academic event coordinator organizing a focused seminar series on cutting-edge technological applications.
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'app.routers.organization_router' from 'C:\\Users\\teowz\\OneDrive\\Documents\\GitHub\\ATAS_FYP_event\\backend\\app\\routers\\organization_router.py'> does not have the attribute 'upload_file'
 
-Your pioneering research and published work in applying Machine Learning specifically within the healthcare sector are highly regarded and make you the ideal expert to address our audience on this critical topic.
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1434: AttributeError
+___________________ ERROR at setup of test_auth_and_profile ___________________
 
-We would be honored if you could share your insights. We propose a 60-minute session structured as follows: a 5-minute introduction, a 40-minute main presentation, followed by a 15-minute Q&A session.
+    @pytest.fixture(autouse=True)
+    def mock_upload_file():
+>       with patch("app.routers.event_router.upload_file", return_value="http://mock.url/file.jpg"), \
+             patch("app.routers.organization_router.upload_file", return_value="http://mock.url/logo.jpg"):
 
-Please let me know if this opportunity interests you. We genuinely look forward to your potential participation and contribution to our program.
+tests\test_comprehensive.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1461: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-Sincerely,
+self = <unittest.mock._patch object at 0x000002873DBD8500>
 
-Alex Johnson
-Academic Event Coordinator
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'app.routers.organization_router' from 'C:\\Users\\teowz\\OneDrive\\Documents\\GitHub\\ATAS_FYP_event\\backend\\app\\routers\\organization_router.py'> does not have the attribute 'upload_file'
 
-SUCCESS: Response appears to be AI-generated (natural language)
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1434: AttributeError
+__________________ ERROR at setup of test_organization_flow ___________________
 
-================================================================================
-  TEST 2: Authenticated Proposal Generation
-================================================================================
+    @pytest.fixture(autouse=True)
+    def mock_upload_file():
+>       with patch("app.routers.event_router.upload_file", return_value="http://mock.url/file.jpg"), \
+             patch("app.routers.organization_router.upload_file", return_value="http://mock.url/logo.jpg"):
 
-Logging in as admin...
+tests\test_comprehensive.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1461: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-Login failed: {"detail":"Incorrect username or password"}
+self = <unittest.mock._patch object at 0x000002873DBD8DD0>
 
-================================================================================
-  TEST 3: AI Variation Test (Multiple Topics)
-================================================================================
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'app.routers.organization_router' from 'C:\\Users\\teowz\\OneDrive\\Documents\\GitHub\\ATAS_FYP_event\\backend\\app\\routers\\organization_router.py'> does not have the attribute 'upload_file'
 
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1434: AttributeError
+_______________ ERROR at setup of test_event_and_proposal_flow ________________
 
-Testing: Blockchain Technology in Finance
-   Generated (646 chars)
+    @pytest.fixture(autouse=True)
+    def mock_upload_file():
+>       with patch("app.routers.event_router.upload_file", return_value="http://mock.url/file.jpg"), \
+             patch("app.routers.organization_router.upload_file", return_value="http://mock.url/logo.jpg"):
 
-Testing: Climate Change Mitigation Strategies
-   Generated (680 chars)
+tests\test_comprehensive.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1461: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-Variation Analysis:
+self = <unittest.mock._patch object at 0x000002873DBDBCB0>
 
-   Result 1: Blockchain Technology in Finance
-   Length: 646 characters
-   Expert mentioned: NO
-   Topic mentioned: YES
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'app.routers.organization_router' from 'C:\\Users\\teowz\\OneDrive\\Documents\\GitHub\\ATAS_FYP_event\\backend\\app\\routers\\organization_router.py'> does not have the attribute 'upload_file'
 
-   Result 2: Climate Change Mitigation Strategies
-   Length: 680 characters
-   Expert mentioned: NO
-   Topic mentioned: YES
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1434: AttributeError
+____________________ ERROR at setup of test_checklist_flow ____________________
 
-SUCCESS: All responses are unique (AI is generating varied content)
+    @pytest.fixture(autouse=True)
+    def mock_upload_file():
+>       with patch("app.routers.event_router.upload_file", return_value="http://mock.url/file.jpg"), \
+             patch("app.routers.organization_router.upload_file", return_value="http://mock.url/logo.jpg"):
 
-================================================================================
-  TEST SUMMARY
-================================================================================
+tests\test_comprehensive.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1461: in __enter__
+    original, local = self.get_original()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-Unauthenticated Access:  PASS
-Authenticated Access:    FAIL
-AI Variation:            PASS
+self = <unittest.mock._patch object at 0x000002873DBD8FB0>
 
-Overall: 2/3 tests passed
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+    
+        original = DEFAULT
+        local = False
+    
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+    
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+    
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <module 'app.routers.organization_router' from 'C:\\Users\\teowz\\OneDrive\\Documents\\GitHub\\ATAS_FYP_event\\backend\\app\\routers\\organization_router.py'> does not have the attribute 'upload_file'
 
-1 test(s) failed. Review output above for details.
+C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\unittest\mock.py:1434: AttributeError
+============================== warnings summary ===============================
+app\main.py:24
+  C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend\app\main.py:24: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
 
-================================================================================
+..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:4495
+..\..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:4495
+  C:\Users\teowz\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
 
+app\main.py:28
+  C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend\app\main.py:28: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+app\schemas\communication_log_schema.py:16
+  C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend\app\schemas\communication_log_schema.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class CommunicationLogBase(BaseModel):
+
+app\schemas\chat_schema.py:15
+  C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend\app\schemas\chat_schema.py:15: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class MessageResponse(MessageBase):
+
+app\schemas\chat_schema.py:31
+  C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend\app\schemas\chat_schema.py:31: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ParticipantResponse(BaseModel):
+
+app\schemas\chat_schema.py:45
+  C:\Users\teowz\OneDrive\Documents\GitHub\ATAS_FYP_event\backend\app\schemas\chat_schema.py:45: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class ConversationResponse(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/test_comprehensive.py::test_read_main - AttributeError: <module '...
+ERROR tests/test_comprehensive.py::test_auth_and_profile - AttributeError: <m...
+ERROR tests/test_comprehensive.py::test_organization_flow - AttributeError: <...
+ERROR tests/test_comprehensive.py::test_event_and_proposal_flow - AttributeEr...
+ERROR tests/test_comprehensive.py::test_checklist_flow - AttributeError: <mod...
+======================== 8 warnings, 5 errors in 0.61s ========================
