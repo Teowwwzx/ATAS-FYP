@@ -168,6 +168,47 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
         }
     }
 
+    if (isOngoing) {
+        return (
+            <div className="space-y-12 animate-fadeIn max-w-6xl mx-auto">
+                <div className="p-4 bg-yellow-50 text-yellow-800 rounded-2xl text-sm font-medium border border-yellow-100 flex items-center gap-3">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Event is ongoing — only Registration Status is available.
+                </div>
+
+                {/* Registration Controls */}
+                <section>
+                    <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm flex items-center justify-between">
+                        <div>
+                            <h4 className="text-lg font-bold text-zinc-900 mb-1">
+                                Registration Status
+                            </h4>
+                            <p className="text-zinc-500 text-sm font-medium">
+                                {event.registration_status === 'opened'
+                                    ? 'Participants are currently allowed to register.'
+                                    : 'Registration is closed. No new participants can join.'}
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={toggleRegistration}
+                            disabled={loading}
+                            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 ${event.registration_status === 'opened' ? 'bg-green-500' : 'bg-zinc-200'
+                                }`}
+                        >
+                            <span
+                                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${event.registration_status === 'opened' ? 'translate-x-7' : 'translate-x-1'
+                                    }`}
+                            />
+                        </button>
+                    </div>
+                </section>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-12 animate-fadeIn max-w-6xl mx-auto">
 
