@@ -81,8 +81,8 @@ def test_admin_event_dashboard_completeness(client: TestClient, db: Session):
         "description": "Testing Dashboard Columns",
         "format": "seminar",
         "type": "physical",
-        "start_datetime": (datetime.utcnow() + timedelta(days=1)).isoformat(),
-        "end_datetime": (datetime.utcnow() + timedelta(days=2)).isoformat(),
+        "start_datetime": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "end_datetime": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
         "registration_type": "free",
         "visibility": "public",
         "categories": [str(cat.id)]

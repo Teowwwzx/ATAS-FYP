@@ -6,7 +6,7 @@ from app.models.organization_model import Organization, OrganizationType, Organi
 from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventVisibility
 from app.core.security import get_password_hash
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 def auth_headers(client: TestClient, email: str, password: str):
     response = client.post("/api/v1/auth/login", data={"username": email, "password": password})
@@ -67,12 +67,14 @@ def test_fintech_phase1_endpoints(client: TestClient, db: Session):
     assert resp.json()["bank_details"]["bank_name"] == "CIMB"
 
     # 4. Test Event Price & Currency (Create)
-    start_time = datetime.utcnow() + timedelta(days=1)
+    start_time = datetime.now(timezone.utc) + timedelta(days=1)
     end_time = start_time + timedelta(hours=2)
     
     event_data = {
         "title": "Paid Workshop",
         "format": "workshop",
+        "type": "physical",
+        "visibility": "public",
         "start_datetime": start_time.isoformat(),
         "end_datetime": end_time.isoformat(),
         "registration_type": "paid",
