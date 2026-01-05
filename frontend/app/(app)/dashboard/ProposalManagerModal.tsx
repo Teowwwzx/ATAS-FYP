@@ -255,7 +255,7 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                                                     required
                                                     value={uploadForm.title || ''}
                                                     onChange={e => setUploadForm({ ...uploadForm, title: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-zinc-200 rounded-xl focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all"
+                                                    className="text-gray-700 w-full px-4 py-2 border border-zinc-200 rounded-xl focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all"
                                                     placeholder="e.g. Sponsorship Package 2024"
                                                 />
                                             </div>
@@ -265,7 +265,7 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                                                 <textarea
                                                     value={uploadForm.description || ''}
                                                     onChange={e => setUploadForm({ ...uploadForm, description: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-zinc-200 rounded-xl focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all resize-none h-24"
+                                                    className="text-gray-700 w-full px-4 py-2 border border-zinc-200 rounded-xl focus:border-yellow-400 focus:ring-yellow-400 outline-none transition-all resize-none h-24"
                                                     placeholder="Brief description of this proposal..."
                                                 />
                                             </div>
@@ -277,7 +277,7 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                                                         type="file"
                                                         required
                                                         onChange={e => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        className="text-gray-700 absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                                         accept=".pdf,.doc,.docx"
                                                     />
                                                     <div className="pointer-events-none">

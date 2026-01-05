@@ -32,10 +32,9 @@ def seed_extra_past_events():
         apu_org = db.query(Organization).filter(Organization.name == "Asia Pacific University").first()
         
         # Fetch Categories
-        tech_cat = db.query(Category).filter(Category.name == "Technology").first()
-        biz_cat = db.query(Category).filter(Category.name == "Business").first()
-        marketing_cat = db.query(Category).filter(Category.name == "Marketing").first()
-        health_cat = db.query(Category).filter(Category.name == "Health & Wellness").first()
+        fintech_cat = db.query(Category).filter(Category.name == "Fintech").first()
+        ai_cat = db.query(Category).filter(Category.name == "Artificial Intelligence").first()
+        cyber_cat = db.query(Category).filter(Category.name == "Cybersecurity").first()
 
         if not admin_user or not apu_org:
              logger.error("Admin or APU Org not found. Run basic seeders first.")
@@ -43,7 +42,7 @@ def seed_extra_past_events():
 
         # Find Extra Experts
         experts = db.query(User).filter(User.email.in_([
-            "expert_fintech@gmail.com", "expert_ai@gmail.com", "expert_marketing@gmail.com"
+            "expert_fintech@gmail.com", "expert_ai@gmail.com", "expert_cyber@gmail.com"
         ])).all()
         
         # Find Extra Sponsors
@@ -64,7 +63,7 @@ def seed_extra_past_events():
                 "format": EventFormat.panel_discussion,
                 "expert_email": "expert_fintech@gmail.com",
                 "sponsor_email": "sponsor_gold@gmail.com",
-                "cat_id": biz_cat.id if biz_cat else None
+                "cat_id": fintech_cat.id if fintech_cat else None
             },
             {
                 "title": "AI in Healthcare Conference",
@@ -73,16 +72,16 @@ def seed_extra_past_events():
                 "format": EventFormat.webinar,
                 "expert_email": "expert_ai@gmail.com",
                 "sponsor_email": "sponsor_silver@gmail.com",
-                "cat_id": health_cat.id if health_cat else (tech_cat.id if tech_cat else None)
+                "cat_id": ai_cat.id if ai_cat else None
             },
             {
-                "title": "Growth Hacking Bootcamp",
-                "desc": "Intensive workshop for startup growth.",
+                "title": "Cybersecurity Bootcamp",
+                "desc": "Intensive workshop for network security.",
                 "days_ago": 100,
                 "format": EventFormat.workshop,
-                "expert_email": "expert_marketing@gmail.com",
+                "expert_email": "expert_cyber@gmail.com",
                 "sponsor_email": "sponsor_bronze@gmail.com",
-                "cat_id": marketing_cat.id if marketing_cat else (biz_cat.id if biz_cat else None)
+                "cat_id": cyber_cat.id if cyber_cat else None
             }
         ]
 

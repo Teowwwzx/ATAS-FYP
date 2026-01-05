@@ -415,7 +415,7 @@ export default function OrganizationDetailPage() {
                 name="name"
                 value={form.name || ''}
                 onChange={handleChange}
-                className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
+                className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
               />
             </div>
             <div>
@@ -425,7 +425,7 @@ export default function OrganizationDetailPage() {
                 value={form.description || ''}
                 onChange={handleChange}
                 rows={4}
-                className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
+                className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -435,7 +435,7 @@ export default function OrganizationDetailPage() {
                   name="type"
                   value={form.type || 'community'}
                   onChange={handleChange}
-                  className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
+                  className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
                 >
                   <option value="company">Company</option>
                   <option value="university">University</option>
@@ -450,7 +450,7 @@ export default function OrganizationDetailPage() {
                   name="visibility"
                   value={form.visibility || 'public'}
                   onChange={handleChange}
-                  className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
+                  className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
                 >
                   <option value="public">Public</option>
                   <option value="private">Private</option>
@@ -464,7 +464,7 @@ export default function OrganizationDetailPage() {
                   name="website_url"
                   value={form.website_url || ''}
                   onChange={handleChange}
-                  className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
+                  className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
                 />
               </div>
               <div>
@@ -473,7 +473,7 @@ export default function OrganizationDetailPage() {
                   name="location"
                   value={form.location || ''}
                   onChange={handleChange}
-                  className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
+                  className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-500 focus:ring-0 py-3.5 px-5 font-medium transition-all"
                 />
               </div>
             </div>

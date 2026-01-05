@@ -837,7 +837,7 @@ export default function EventDetailsPage() {
                                             )}
 
                                             {/* Expert / Sponsor Buttons */}
-                                            {user && !isRegistered && !isOrganizer && user.roles.some(r => ['expert', 'sponsor'].includes(r as string)) && (
+                                            {user && !isRegistered && !isOrganizer && myRole !== 'speaker' && myRole !== 'sponsor' && user.roles.some(r => ['expert', 'sponsor'].includes(r as string)) && (
                                                 <div className="flex gap-2 pt-2">
                                                     {user.roles.includes('expert') && (
                                                         <button
