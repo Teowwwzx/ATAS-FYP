@@ -1,7 +1,7 @@
 // frontend/app/(public)/verify/[token]/page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { AxiosError } from 'axios'
@@ -10,7 +10,7 @@ import { verifyEmail } from '@/services/api'
 import { ApiErrorResponse } from '@/services/api.types'
 import { LoadingBackdrop } from '@/components/ui/LoadingBackdrop'
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
     const router = useRouter()
     const params = useParams()
     const searchParams = useSearchParams()
@@ -53,5 +53,13 @@ export default function VerifyEmailPage() {
                 <h2 className="text-2xl font-bold text-gray-900">{message}</h2>
             </div>
         </>
+    )
+}
+
+export default function VerifyEmailPage() {
+    return (
+        <Suspense fallback={<LoadingBackdrop isLoading={true} />}>
+            <VerifyEmailContent />
+        </Suspense>
     )
 }

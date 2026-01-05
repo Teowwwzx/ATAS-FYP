@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { verifyEmail } from '@/services/api'
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
     const params = useParams()
     const searchParams = useSearchParams()
     const token = params.token as string
@@ -110,5 +110,26 @@ export default function VerifyEmailPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function VerifyEmailPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen flex-col justify-center bg-amber-50 py-12 sm:px-6 lg:px-8">
+                <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                    <div className="bg-white py-10 px-6 shadow-sm sm:rounded-[2.5rem] sm:px-12 border border-yellow-100 text-center">
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-yellow-100 animate-pulse mb-6">
+                            <svg className="h-10 w-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-2xl font-black text-zinc-900 mb-2">Loading...</h3>
+                    </div>
+                </div>
+            </div>
+        }>
+            <VerifyEmailContent />
+        </Suspense>
     )
 }

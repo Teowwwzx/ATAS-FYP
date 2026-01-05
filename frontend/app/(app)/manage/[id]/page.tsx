@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getEventById, getMe, getMyEvents, getMyProfile, publishEvent, unpublishEvent, getEventAttendanceStats, getMyReview } from '@/services/api'
 import { EventDetails, ProfileResponse, UserMeResponse, EventAttendanceStats } from '@/services/api.types'
@@ -15,7 +15,7 @@ import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { EventCheckInQRModal } from '../../dashboard/EventCheckInQRModal'
 
-export default function ManageEventPage() {
+function ManageEventContent() {
     const params = useParams()
     const router = useRouter()
     const id = params?.id as string
@@ -311,6 +311,7 @@ export default function ManageEventPage() {
         </div>
     )
 }
+
 function PublishModal({ open, onClose, onConfirm, loading }: { open: boolean; onClose: () => void; onConfirm: () => void; loading: boolean }) {
     return (
         <ConfirmationModal
@@ -337,5 +338,13 @@ function UnpublishModal({ open, onClose, onConfirm, loading }: { open: boolean; 
             variant="danger"
             isLoading={loading}
         />
+    )
+}
+
+export default function ManageEventPage() {
+    return (
+        <Suspense fallback={<div className="max-w-5xl mx-auto px-4 py-12"><Skeleton height="400px" className="rounded-[2.5rem]" /></div>}>
+            <ManageEventContent />
+        </Suspense>
     )
 }
