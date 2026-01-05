@@ -343,7 +343,7 @@ function DashboardPageInner() {
                                 ) : (
                                     <div className="bg-zinc-50 rounded-2xl p-8 border border-dashed border-zinc-200 text-center">
                                         <p className="text-zinc-400 font-medium">No upcoming events.</p>
-                                        <button onClick={() => router.push('/events')} className="text-sm font-bold text-zinc-900 mt-2 hover:underline">Browse Events</button>
+                                        <button onClick={() => router.push('/discover')} className="text-sm font-bold text-zinc-900 mt-2 hover:underline">Browse Events</button>
                                     </div>
                                 )}
                             </section>
