@@ -754,13 +754,15 @@ export default function EventDetailsPage() {
                                                                 {isAttendanceOpen && event.is_attendance_enabled ? 'Show Attendance QR' : !event.is_attendance_enabled ? 'Attendance Disabled' : 'QR Available 24h Before Event'}
                                                             </button>
                                                         )}
-                                                        <button
-                                                            onClick={handleLeaveClick}
-                                                            disabled={registering}
-                                                            className="w-full py-2 text-zinc-400 text-xs font-bold hover:text-red-500 transition-colors disabled:opacity-50"
-                                                        >
-                                                            {registering ? 'Processing...' : 'Cancel Registration'}
-                                                        </button>
+                                                        {currentPhase !== EventPhase.POST_EVENT && (
+                                                            <button
+                                                                onClick={handleLeaveClick}
+                                                                disabled={registering}
+                                                                className="w-full py-2 text-zinc-400 text-xs font-bold hover:text-red-500 transition-colors disabled:opacity-50"
+                                                            >
+                                                                {registering ? 'Processing...' : 'Cancel Registration'}
+                                                            </button>
+                                                        )}
                                                     </>
                                                 )
                                             ) : isRegistered && participantStatus === 'pending' ? (

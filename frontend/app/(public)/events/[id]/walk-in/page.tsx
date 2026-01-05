@@ -39,7 +39,8 @@ function WalkInRegistrationContent() {
             const enabled = !!data.is_attendance_enabled
             const windowOpen = phase === EventPhase.EVENT_DAY || phase === EventPhase.ONGOING
             const hasRef = !!ref
-            setAllowed(physical && enabled && windowOpen && hasRef)
+            const regOpen = data.registration_status === 'opened'
+            setAllowed(physical && enabled && windowOpen && hasRef && regOpen)
         } catch (error) {
             toast.error('Event not found or access denied')
         } finally {

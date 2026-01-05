@@ -34,7 +34,8 @@ from app.models.event_model import ChecklistVisibility
 from app.models.user_model import User, UserStatus
 from app.models.profile_model import Profile, ProfileVisibility
 from app.models.organization_model import Organization, organization_members
-from app.models.notification_model import Notification, NotificationType
+from app.models.notification_model import NotificationType
+from app.services.notification_service import NotificationService
 from app.services.email_service import (
     send_event_invitation_email,
     send_event_role_update_email,
@@ -873,6 +874,23 @@ def open_event_registration(
     db.commit()
     db.refresh(event)
     log_admin_action(db, current_user.id, "event.registration.open", "event", event.id)
+    try:
+        committees = db.query(EventParticipant).filter(
+            EventParticipant.event_id == event.id,
+            EventParticipant.role == EventParticipantRole.committee
+        ).all()
+        for link in committees:
+            if link.user_id:
+                NotificationService.create_notification(
+                    db=db,
+                    recipient_id=link.user_id,
+                    actor_id=current_user.id,
+                    type=NotificationType.event,
+                    content=f"Registration opened for '{event.title}'",
+                    link_url=f"/dashboard?eventId={event.id}&tab=settings"
+                )
+    except Exception:
+        pass
     return event
 
 
@@ -895,6 +913,23 @@ def close_event_registration(
     db.commit()
     db.refresh(event)
     log_admin_action(db, current_user.id, "event.registration.close", "event", event.id)
+    try:
+        committees = db.query(EventParticipant).filter(
+            EventParticipant.event_id == event.id,
+            EventParticipant.role == EventParticipantRole.committee
+        ).all()
+        for link in committees:
+            if link.user_id:
+                NotificationService.create_notification(
+                    db=db,
+                    recipient_id=link.user_id,
+                    actor_id=current_user.id,
+                    type=NotificationType.event,
+                    content=f"Registration closed for '{event.title}'",
+                    link_url=f"/dashboard?eventId={event.id}&tab=settings"
+                )
+    except Exception:
+        pass
     return event
 
 
@@ -1117,15 +1152,14 @@ def run_due_event_reminders(
             db.add(r)
             continue
 
-        # In-app notification
-        notif = Notification(
+        NotificationService.create_notification(
+            db=db,
             recipient_id=r.user_id,
             actor_id=r.user_id,
             type=NotificationType.event,
             content=f"Reminder: '{event.title}' starts at {event.start_datetime}",
             link_url=f"/main/events/{event.id}",
         )
-        db.add(notif)
 
         # Email best-effort
         user = db.query(User).filter(User.id == r.user_id).first()
@@ -1420,16 +1454,14 @@ def join_public_event(
     )
     db.add(participant)
 
-    # Notify organizer that someone joined
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=event.organizer_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"A participant joined your event '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
-
     db.commit()
     db.refresh(participant)
     # Email confirmation best-effort to the participant
@@ -1510,6 +1542,32 @@ def walk_in_attendance(
     db.add(participant)
     db.commit()
     db.refresh(participant)
+    
+    # Notify organizer about new walk-in registration
+    try:
+        NotificationService.create_notification(
+            db=db,
+            recipient_id=event.organizer_id,
+            actor_id=(user.id if user else event.organizer_id),
+            type=NotificationType.event,
+            content=f"New walk-in registration: {name} ({email}) for '{event.title}'",
+            link_url=f"/dashboard?eventId={event.id}&tab=people"
+        )
+    except Exception:
+        pass
+    try:
+        if user:
+            msg = "Walk-in registration submitted, pending confirmation" if status == EventParticipantStatus.pending else "Attendance recorded"
+            NotificationService.create_notification(
+                db=db,
+                recipient_id=user.id,
+                actor_id=(user.id),
+                type=NotificationType.event,
+                content=f"{msg} for '{event.title}'",
+                link_url=f"/main/events/{event.id}"
+            )
+    except Exception:
+        pass
     return participant
 
 
@@ -1541,14 +1599,14 @@ def leave_event(
     db.delete(participant)
 
     # Notify organizer
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=event.organizer_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"A participant left your event '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
     return Response(status_code=204)
 
@@ -1606,14 +1664,14 @@ def invite_event_participant(
                 
             db.add(existing)
 
-            notif = Notification(
+            NotificationService.create_notification(
+                db=db,
                 recipient_id=existing.user_id,
                 actor_id=current_user.id,
                 type=NotificationType.event,
                 content=f"Your role for '{event.title}' has been updated to {role_enum.value}",
                 link_url=f"/main/events/{event.id}",
             )
-            db.add(notif)
             db.commit()
             db.refresh(existing)
 
@@ -1642,15 +1700,14 @@ def invite_event_participant(
         proposal_id=body.proposal_id,
     )
     db.add(participant)
-    # Create in-app notification
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=body.user_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"You have been invited to '{event.title}' as {role_enum.value}",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
     db.refresh(participant)
     # Send email notification (best-effort)
@@ -1705,14 +1762,14 @@ def respond_event_invitation(
     db.add(participant)
     db.commit()
     db.refresh(participant)
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=event.organizer_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"A participant updated status to {body.status.value} for '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
     return participant
 
@@ -1764,14 +1821,14 @@ def upload_payment_proof(
     db.refresh(participant)
     
     # Notify organizer
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=event.organizer_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"Participant {current_user.full_name} uploaded payment proof for '{event.title}'",
         link_url=f"/main/events/{event.id}?tab=participants&filter=pending",
     )
-    db.add(notif)
     db.commit()
 
     return participant
@@ -1825,16 +1882,16 @@ def invite_event_participants_bulk(
                 if item.description is not None:
                     existing.description = item.description
                 db.add(existing)
-                notif = Notification(
+                NotificationService.create_notification(
+                    db=db,
                     recipient_id=item.user_id,
                     actor_id=current_user.id,
                     type=NotificationType.event,
                     content=f"Your role for '{event.title}' has been updated to {role_enum.value}",
                     link_url=f"/main/events/{event.id}",
                 )
-                db.add(notif)
                 created.append(existing)
-            continue
+                continue
 
         participant = EventParticipant(
             event_id=event.id,
@@ -1862,14 +1919,14 @@ def invite_event_participants_bulk(
 
         db.add(participant)
         # Create notification per invitee
-        notif = Notification(
+        NotificationService.create_notification(
+            db=db,
             recipient_id=item.user_id,
             actor_id=current_user.id,
             type=NotificationType.event,
             content=f"You have been invited to '{event.title}' as {role_enum.value}",
             link_url=f"/main/events/{event.id}",
         )
-        db.add(notif)
         created.append(participant)
 
     db.commit()
@@ -1919,16 +1976,14 @@ def update_event_participant_role(
     db.commit()
     db.refresh(participant)
 
-    # Notify participant in-app
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=participant.user_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"Your role for '{event.title}' has been updated to {body.role.value}",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
-    db.commit()
 
     # Email best-effort
     recipient = db.query(User).filter(User.id == participant.user_id).first()
@@ -1967,14 +2022,14 @@ def organizer_update_participant_status(
     db.add(participant)
     db.commit()
     db.refresh(participant)
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=participant.user_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"Your participation status for '{event.title}' is now {body.status.value}",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
     return participant
 
@@ -2094,16 +2149,17 @@ def update_participant_payment_status(
     db.commit()
     db.refresh(participant)
     
-    # Notify
-    notif = Notification(
-        recipient_id=participant.user_id,
-        actor_id=current_user.id,
-        type=NotificationType.event,
-        content=f"Your payment for '{event.title}' has been {participant.payment_status.value}. Status: {participant.status.value}",
-        link_url=f"/main/events/{event.id}",
-    )
-    db.add(notif)
-    db.commit()
+    # Notify (only if participant has a user account)
+    if participant.user_id:
+        NotificationService.create_notification(
+            db=db,
+            recipient_id=participant.user_id,
+            actor_id=current_user.id,
+            type=NotificationType.event,
+            content=f"Your payment for '{event.title}' has been {participant.payment_status.value}. Status: {participant.status.value}",
+            link_url=f"/main/events/{event.id}",
+        )
+        db.commit()
     
     return participant
 
@@ -2140,14 +2196,14 @@ def remove_event_participant(
     db.commit()
 
     # Notify participant in-app
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=participant.user_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"You have been removed from '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
 
     log_admin_action(db, current_user.id, "event.participant.remove", "event", event.id)
@@ -2630,6 +2686,27 @@ def register_walk_in(
     
     db.commit()
     db.refresh(participant)
+    try:
+        NotificationService.create_notification(
+            db=db,
+            recipient_id=event.organizer_id,
+            actor_id=(user_id or event.organizer_id),
+            type=NotificationType.event,
+            content=f"New walk-in registration: {name} ({email}) for '{event.title}'",
+            link_url=f"/dashboard?eventId={event.id}&tab=people"
+        )
+        if user_id:
+            msg = "Walk-in registration submitted, pending confirmation" if status == EventParticipantStatus.pending else ("Attendance recorded" if status == EventParticipantStatus.attended else "Registration accepted")
+            NotificationService.create_notification(
+                db=db,
+                recipient_id=user_id,
+                actor_id=user_id,
+                type=NotificationType.event,
+                content=f"{msg} for '{event.title}'",
+                link_url=f"/main/events/{event.id}"
+            )
+    except Exception:
+        pass
     return participant
 
 @router.post("/events/{event_id}/proposals/{proposal_id}/comments", response_model=EventProposalCommentResponse)
@@ -2658,24 +2735,25 @@ def create_event_proposal_comment(
         raise HTTPException(status_code=403, detail="Not allowed to comment")
     comment = EventProposalComment(proposal_id=proposal.id, user_id=current_user.id, content=body.content)
     db.add(comment)
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=event.organizer_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"A comment was added to a proposal for '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     # Notify proposal owner via in-app and email (best-effort) if not the same as organizer/actor
     if proposal.created_by_user_id != event.organizer_id and proposal.created_by_user_id != current_user.id:
         owner = db.query(User).filter(User.id == proposal.created_by_user_id).first()
-        db.add(Notification(
+        NotificationService.create_notification(
+            db=db,
             recipient_id=proposal.created_by_user_id,
             actor_id=current_user.id,
             type=NotificationType.event,
             content=f"A comment was added to your proposal for '{event.title}'",
             link_url=f"/main/events/{event.id}",
-        ))
+        )
         if owner and owner.email:
             try:
                 send_event_proposal_comment_email(email=owner.email, event=event, proposal=proposal, comment_content=body.content)
@@ -3128,14 +3206,14 @@ def scan_event_attendance(
     if participant.status == EventParticipantStatus.accepted:
         participant.status = EventParticipantStatus.attended
         db.add(participant)
-        notif = Notification(
+        NotificationService.create_notification(
+            db=db,
             recipient_id=participant.user_id,
             actor_id=participant.user_id,
             type=NotificationType.event,
             content=f"Attendance recorded for '{event.title}'",
             link_url=f"/main/events/{event.id}",
         )
-        db.add(notif)
         db.commit()
         db.refresh(participant)
         return participant
@@ -3220,16 +3298,29 @@ def walk_in_event_attendance(
         status=EventParticipantStatus.attended,
     )
     db.add(participant)
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=user.id,
         actor_id=user.id,
         type=NotificationType.event,
         content=f"Attendance recorded for '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
     db.refresh(participant)
+    
+    # Notify organizer that a walk-in attendance was recorded
+    try:
+        NotificationService.create_notification(
+            db=db,
+            recipient_id=event.organizer_id,
+            actor_id=current_user.id,
+            type=NotificationType.event,
+            content=f"Walk-in attendance recorded: {body.name} ({email_norm}) for '{event.title}'",
+            link_url=f"/dashboard?eventId={event.id}&tab=people"
+        )
+    except Exception:
+        pass
     return participant
 
 
@@ -3505,6 +3596,21 @@ def create_event_checklist_item(
     db.add(item)
     db.commit()
     db.refresh(item)
+    
+    # Notify assigned users (if any)
+    try:
+        if item.assigned_users:
+            for u in item.assigned_users:
+                NotificationService.create_notification(
+                    db=db,
+                    recipient_id=u.id,
+                    actor_id=current_user.id,
+                    type=NotificationType.event,
+                    content=f"You have been assigned a task '{item.title}' for '{event.title}'",
+                    link_url=f"/dashboard?eventId={event.id}&tab=checklist"
+                )
+    except Exception:
+        pass
     return item
 
 
@@ -3598,9 +3704,29 @@ def update_event_checklist_item(
         files = db.query(EventProposal).filter(EventProposal.id.in_(body.file_ids)).all()
         item.files = files
 
+    # Capture newly assigned users for notification
+    prev_assigned_ids = set([u.id for u in getattr(item, "assigned_users", [])])
+    
     db.add(item)
     db.commit()
     db.refresh(item)
+    
+    try:
+        new_assigned_ids = set([u.id for u in getattr(item, "assigned_users", [])])
+        newly_assigned = list(new_assigned_ids - prev_assigned_ids)
+        if newly_assigned:
+            users = db.query(User).filter(User.id.in_(newly_assigned)).all()
+            for u in users:
+                NotificationService.create_notification(
+                    db=db,
+                    recipient_id=u.id,
+                    actor_id=current_user.id,
+                    type=NotificationType.event,
+                    content=f"You have been assigned a task '{item.title}' for '{event.title}'",
+                    link_url=f"/dashboard?eventId={event.id}&tab=checklist"
+                )
+    except Exception:
+        pass
     return item
 
 
@@ -3902,14 +4028,14 @@ def scan_user_attendance(
     participant.status = EventParticipantStatus.attended
     participant.join_method = participant.join_method or "qr_scan"
     db.add(participant)
-    notif = Notification(
+    NotificationService.create_notification(
+        db=db,
         recipient_id=participant.user_id,
         actor_id=current_user.id,
         type=NotificationType.event,
         content=f"Attendance recorded for '{event.title}'",
         link_url=f"/main/events/{event.id}",
     )
-    db.add(notif)
     db.commit()
     db.refresh(participant)
     return participant
@@ -4055,19 +4181,17 @@ def create_proposal_comment(
         recipient_id = proposal.created_by_user_id
     
     if recipient_id and recipient_id != current_user.id:
-        # In-app
         try:
-            notif = Notification(
+            NotificationService.create_notification(
+                db=db,
                 recipient_id=recipient_id,
                 actor_id=current_user.id,
-                type=NotificationType.general, # specific type?
+                type=NotificationType.event,
                 content=f"New comment on proposal '{proposal.title}'",
-                link_url=f"/dashboard/events/{event.id}", # Deep link?
+                link_url=f"/dashboard/events/{event.id}",
             )
-            db.add(notif)
-            db.commit()
-        except:
-            db.rollback()
+        except Exception:
+            pass
 
         # Email
         try:
