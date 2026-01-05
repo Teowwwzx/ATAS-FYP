@@ -51,12 +51,12 @@ def seed_extra_experts():
                 "review": "Alan's workshop on LLMs was mind-blowing!"
             },
             {
-                "email": "expert_marketing@gmail.com",
-                "name": "Emily Growth",
-                "title": "Head of Growth",
-                "bio": "Helping startups scale through data-driven marketing strategies.",
-                "tags": ["Marketing", "Growth Hacking", "Startup"],
-                "review": "Emily helped us 10x our user base."
+                "email": "expert_cyber@gmail.com",
+                "name": "Emily Secure",
+                "title": "Head of Security",
+                "bio": "Expert in penetration testing and network security.",
+                "tags": ["Cybersecurity", "Network Security", "Ethical Hacking"],
+                "review": "Emily helped us secure our infrastructure."
             }
         ]
 

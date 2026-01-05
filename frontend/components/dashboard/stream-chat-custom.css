@@ -187,3 +187,49 @@
 .str-chat__loading-indicator {
   color: rgb(250 204 21) !important;
 }
+
+/* Fix for Thread View being squashed */
+.str-chat__thread {
+  min-width: 320px !important;
+  width: 350px !important;
+  flex-shrink: 0 !important;
+  background: white !important;
+  border-left: 1px solid rgb(228 228 231) !important;
+  z-index: 10 !important;
+}
+
+/* Ensure container handles flex correctly */
+.str-chat__channel {
+  display: flex !important;
+  flex-direction: row !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* Responsive Thread: Overlay on smaller screens or when space is tight */
+@media (max-width: 1024px) {
+  .str-chat__thread {
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-width: 400px !important; /* Allow it to be partial overlay on tablets, full on mobile */
+    box-shadow: -4px 0 20px rgba(0,0,0,0.1) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .str-chat__thread {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* Thread Header styling to match */
+.str-chat__thread-header {
+  height: 64px !important;
+  padding: 0 1rem !important;
+  border-bottom: 1px solid rgb(228 228 231) !important;
+}
+

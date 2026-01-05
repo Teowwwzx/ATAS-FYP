@@ -19,9 +19,9 @@ def seed_categories():
         logger.info("Seeding categories...")
 
         categories = [
-            "Technology", "Business", "Design", "Marketing", "Personal Development",
-            "Networking", "Career Fair", "Hackathon", "Workshop", "Seminar",
-            "Social", "Entertainment", "Health & Wellness"
+            "Artificial Intelligence", "Blockchain", "Fintech", "Cloud Computing",
+            "Cybersecurity", "Data Science", "Internet of Things", "Software Engineering",
+            "Mobile Development", "DevOps"
         ]
 
         for cat_name in categories:

@@ -77,7 +77,7 @@ function ResetPasswordForm() {
                     id="email"
                     label="Email Address"
                     type="email"
-                    placeholder="name@example.com"
+                    placeholder="atas@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                 />

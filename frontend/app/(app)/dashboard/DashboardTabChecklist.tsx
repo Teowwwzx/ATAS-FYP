@@ -23,12 +23,9 @@ const TEMPLATES: Record<string, { id: string, name: string, description: string,
         name: "Default",
         description: "Essential tasks for any event.",
         tasks: [
-            { title: "Secure a speaker", assigned_role: "committee" },
-            { title: "Send email confirmation", assigned_role: "organizer" },
-            { title: "Attendees confirmation emails", assigned_role: "organizer" },
-            { title: "Prepare appreciation email", assigned_role: "organizer" },
-            { title: "Collect car plate numbers", assigned_role: "committee", link_url: "https://docs.google.com/spreadsheets/u/0/create" },
-            { title: "Set up registration spreadsheet", link_url: "https://docs.google.com/spreadsheets/u/0/create" }
+            { title: "Pre-event" },
+            { title: "Execution" },
+            { title: "Post-event" }
         ]
     },
     event_prep: {
@@ -36,12 +33,9 @@ const TEMPLATES: Record<string, { id: string, name: string, description: string,
         name: "Event Day Prep",
         description: "Standard preparation items for participants & guests.",
         tasks: [
-            { title: "Car plate registration", description: "For experts & sponsors parking arrangement", link_url: "https://sheets.new", assigned_role: "organizer", visibility: "external" },
-            { title: "How to get there (Parking)", description: "Map and parking guide", link_url: "https://maps.google.com", visibility: "external" },
-            { title: "Dress Code", description: "Attire guidelines", link_url: "https://docs.new", visibility: "external" },
-            { title: "Arrive 15 mins early", visibility: "external" },
-            { title: "Emergency Contact", description: "Organizer contact info", visibility: "internal" },
-            { title: "Food & Beverage", description: "Menu and dietary requirements", link_url: "https://sheets.new", visibility: "internal" }
+            { title: "Logistics & Parking", description: "Arrangements for experts & guests", visibility: "external" },
+            { title: "Guest Communication", description: "Send guides, maps, and reminders", visibility: "external" },
+            { title: "Emergency Prep", description: "Contact info and safety protocols", visibility: "internal" }
         ]
     },
     project_management: {
@@ -49,16 +43,11 @@ const TEMPLATES: Record<string, { id: string, name: string, description: string,
         name: "Project Management",
         description: "Detailed setup for structured project tracking.",
         tasks: [
-            { title: "Create Project Charter", assigned_role: "organizer" },
-            { title: "Define Work Breakdown Structure (WBS)", assigned_role: "committee" },
-            { title: "Develop Budget Plan", assigned_role: "organizer", link_url: "https://docs.google.com/spreadsheets/u/0/create" },
-            { title: "Risk Assessment Analysis", assigned_role: "committee" },
-            { title: "Secure a speaker", assigned_role: "committee" },
-            { title: "Send email confirmation", assigned_role: "organizer" },
-            { title: "Attendees confirmation emails", assigned_role: "organizer" },
-            { title: "Prepare appreciation email", assigned_role: "organizer" },
-            { title: "Create Performance Report", assigned_role: "committee" },
-            { title: "Project Chatter" }
+            { title: "Project Charter & Plan", assigned_role: "organizer" },
+            { title: "Budget & Resources", link_url: "https://docs.google.com/spreadsheets/u/0/create" },
+            { title: "Risk Management", assigned_role: "committee" },
+            { title: "Execution Tracking" },
+            { title: "Closing & Reporting" }
         ]
     },
     coming_soon: {

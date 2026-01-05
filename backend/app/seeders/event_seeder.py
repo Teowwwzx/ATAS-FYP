@@ -53,8 +53,8 @@ def seed_events():
         db.add(event1)
         db.flush()
 
-        if tech_cat:
-            ec1 = EventCategory(event_id=event1.id, category_id=tech_cat.id)
+        if ai_cat:
+            ec1 = EventCategory(event_id=event1.id, category_id=ai_cat.id)
             db.add(ec1)
 
         logger.info("Created event: Introduction to AI (Online Free)")
@@ -81,8 +81,8 @@ def seed_events():
         db.add(event2)
         db.flush()
 
-        if tech_cat:
-            ec2 = EventCategory(event_id=event2.id, category_id=tech_cat.id)
+        if ai_cat:
+            ec2 = EventCategory(event_id=event2.id, category_id=ai_cat.id)
             db.add(ec2)
 
         logger.info("Created event: Advanced Robotics Workshop (Physical Paid)")

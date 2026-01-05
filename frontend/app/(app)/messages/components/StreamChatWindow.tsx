@@ -231,55 +231,57 @@ export function StreamChatWindow({
         <div className="flex-1 flex flex-col h-full">
             <Chat client={finalClient!} theme="str-chat__theme-light">
                 <Channel channel={channel}>
-                    <Window>
-                        {/* Custom Header */}
-                        <div className="p-4 md:p-6 border-b border-zinc-100 bg-white flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                {/* Back button for mobile or forced */}
-                                {onBack && (
-                                    <button
-                                        onClick={onBack}
-                                        className={`${forceBackVisible ? 'flex' : 'md:hidden flex'} w-10 h-10 items-center justify-center rounded-xl hover:bg-zinc-100 transition-colors`}
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
-                                )}
-
-                                {/* Avatar */}
-                                <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden flex-shrink-0">
-                                    {participantAvatar ? (
-                                        <img src={participantAvatar} alt={participantName} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-zinc-400 font-bold">
-                                            {participantName.charAt(0).toUpperCase()}
-                                        </div>
+                    <div className="str-chat__channel h-full w-full">
+                        <Window>
+                            {/* Custom Header */}
+                            <div className="p-4 md:p-6 border-b border-zinc-100 bg-white flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    {/* Back button for mobile or forced */}
+                                    {onBack && (
+                                        <button
+                                            onClick={onBack}
+                                            className={`${forceBackVisible ? 'flex' : 'md:hidden flex'} w-10 h-10 items-center justify-center rounded-xl hover:bg-zinc-100 transition-colors`}
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
                                     )}
+
+                                    {/* Avatar */}
+                                    <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden flex-shrink-0">
+                                        {participantAvatar ? (
+                                            <img src={participantAvatar} alt={participantName} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-zinc-400 font-bold">
+                                                {participantName.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Name */}
+                                    <div>
+                                        <h3 className="font-bold text-zinc-900">{participantName}</h3>
+                                        <p className="text-xs text-zinc-500">Active chat</p>
+                                    </div>
                                 </div>
 
-                                {/* Name */}
-                                <div>
-                                    <h3 className="font-bold text-zinc-900">{participantName}</h3>
-                                    <p className="text-xs text-zinc-500">Active chat</p>
+                                {/* Actions */}
+                                <div className="flex items-center gap-2">
+                                    <span className="hidden md:inline-flex px-2 py-1 bg-zinc-100 text-zinc-500 text-xs font-bold rounded-md items-center gap-1">
+                                        🔒 Private
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* Actions */}
-                            <div className="flex items-center gap-2">
-                                <span className="hidden md:inline-flex px-2 py-1 bg-zinc-100 text-zinc-500 text-xs font-bold rounded-md items-center gap-1">
-                                    🔒 Private
-                                </span>
-                            </div>
-                        </div>
+                            {/* Messages */}
+                            <MessageList />
 
-                        {/* Messages */}
-                        <MessageList />
-
-                        {/* Input */}
-                        <MessageInput />
-                    </Window>
-                    <Thread />
+                            {/* Input */}
+                            <MessageInput />
+                        </Window>
+                        <Thread />
+                    </div>
                 </Channel>
             </Chat>
         </div>

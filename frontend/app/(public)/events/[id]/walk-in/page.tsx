@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getEventById, walkInAttendance } from '@/services/api'
 import { EventDetails } from '@/services/api.types'
@@ -10,7 +10,7 @@ import { formatEventDate } from '@/lib/date'
 import Link from 'next/link'
 import { getEventPhase, EventPhase } from '@/lib/eventPhases'
 
-export default function WalkInRegistrationPage() {
+function WalkInRegistrationContent() {
     const params = useParams()
     const searchParams = useSearchParams()
     const id = params?.id as string
@@ -316,5 +316,15 @@ export default function WalkInRegistrationPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function WalkInRegistrationPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>}>
+            <WalkInRegistrationContent />
+        </Suspense>
     )
 }
