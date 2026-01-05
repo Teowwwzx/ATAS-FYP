@@ -9,9 +9,11 @@ interface DashboardTabSettingsProps {
     event: EventDetails
     onUpdate: () => void
     onDelete: () => void
+    user?: any
+    role?: string | null
 }
 
-export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTabSettingsProps) {
+export function DashboardTabSettings({ event, onUpdate, onDelete, user, role }: DashboardTabSettingsProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -129,10 +131,10 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
 
     const toggleRegistration = async () => {
         if (isConfigLocked && event.registration_status === 'opened') {
-             // Allow closing registration even if locked, but maybe warn?
-             // Actually, organizers should be able to close registration anytime.
-             // But opening it after event ends is weird.
-             // For now, allow it.
+            // Allow closing registration even if locked, but maybe warn?
+            // Actually, organizers should be able to close registration anytime.
+            // But opening it after event ends is weird.
+            // For now, allow it.
         }
 
         setLoading(true)
@@ -168,6 +170,9 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
         }
     }
 
+    // Check if user is organizer
+    const isOrganizer = user?.user_id === event.organizer_id
+
     if (isOngoing) {
         return (
             <div className="space-y-12 animate-fadeIn max-w-6xl mx-auto">
@@ -175,7 +180,7 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                     <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    Event is ongoing — only Registration Status is available.
+                    Event is ongoing — only Registration Status and Payment QR are available.
                 </div>
 
                 {/* Registration Controls */}
@@ -205,6 +210,40 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                         </button>
                     </div>
                 </section>
+
+                {/* Payment QR (only for paid events during event day) */}
+                {event.registration_type === 'paid' && (
+                    <section>
+                        <div className="bg-white rounded-[2rem] border border-zinc-200 p-8 shadow-sm">
+                            <div className="flex items-start justify-between gap-6">
+                                <div>
+                                    <h4 className="text-lg font-bold text-zinc-900 mb-1">Payment QR</h4>
+                                    <p className="text-zinc-500 text-sm font-medium">Upload a bank transfer/DuitNow QR for paid events. Visible only to joined participants.</p>
+                                    {event.payment_qr_url && (
+                                        <div className="mt-4">
+                                            <img src={event.payment_qr_url} alt="Payment QR" className="w-48 h-48 object-contain rounded-xl border border-zinc-200" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="w-full max-w-sm">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setQrFile(e.target.files?.[0] || null)}
+                                        className="block w-full text-sm text-zinc-900 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-yellow-400 file:text-zinc-900 hover:file:bg-yellow-300"
+                                    />
+                                    <button
+                                        onClick={handleUploadQR}
+                                        disabled={!qrFile || isUploadingQR}
+                                        className="mt-3 px-6 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 disabled:opacity-50"
+                                    >
+                                        {isUploadingQR ? 'Uploading...' : 'Upload QR'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
             </div>
         )
     }
@@ -422,26 +461,28 @@ export function DashboardTabSettings({ event, onUpdate, onDelete }: DashboardTab
                 </>
             )}
 
-            {/* Danger Zone */}
-            <section>
-                <div className="bg-red-50 rounded-[2rem] border border-red-100 p-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="text-lg font-bold text-red-900 mb-1">Delete Event</h4>
-                            <p className="text-red-700/80 text-sm font-medium">
-                                Once deleted, this event cannot be restored.
-                            </p>
+            {/* Danger Zone - Only visible to organizers */}
+            {isOrganizer && (
+                <section>
+                    <div className="bg-red-50 rounded-[2rem] border border-red-100 p-8">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="text-lg font-bold text-red-900 mb-1">Delete Event</h4>
+                                <p className="text-red-700/80 text-sm font-medium">
+                                    Once deleted, this event cannot be restored.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                disabled={loading}
+                                className="px-6 py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-all shadow-sm"
+                            >
+                                Delete Event
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setShowDeleteModal(true)}
-                            disabled={loading}
-                            className="px-6 py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-all shadow-sm"
-                        >
-                            Delete Event
-                        </button>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             <DeleteEventModal
                 isOpen={showDeleteModal}

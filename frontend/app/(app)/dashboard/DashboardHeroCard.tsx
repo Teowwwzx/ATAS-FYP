@@ -22,15 +22,26 @@ export function DashboardHeroCard({ event, onPreview, canEditCover, phase = Even
     const eventId = 'id' in event ? event.id : event.event_id
 
     const startDate = new Date(event.start_datetime)
-    const allowedHosts = new Set(['res.cloudinary.com', 'picsum.photos', 'placehold.co'])
+    const allowedHosts = new Set(['picsum.photos', 'placehold.co']) // Updated allowedHosts
+
     const pickCover = () => {
         const url = event.cover_url || ''
+        if (!url) return `https://placehold.co/800x400/png?text=${encodeURIComponent(event.title)}`
+
         try {
             const u = new URL(url)
+            // Allow all Cloudinary subdomains (e.g., res.cloudinary.com, res-1.cloudinary.com, etc.)
+            if (u.hostname.includes('cloudinary.com')) return url
+            // Allow other trusted hosts
             if (allowedHosts.has(u.hostname)) return url
-        } catch { }
-        return `https://placehold.co/800x400/png?text=${encodeURIComponent(event.title)}`
+            // If URL is valid but not whitelisted, still allow it (trust the backend)
+            return url
+        } catch {
+            // Invalid URL, use placeholder
+            return `https://placehold.co/800x400/png?text=${encodeURIComponent(event.title)}`
+        }
     }
+
     const coverUrl = pickCover()
     const fileRef = useRef<HTMLInputElement>(null)
     const [uploading, setUploading] = useState(false)

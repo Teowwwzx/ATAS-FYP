@@ -281,11 +281,41 @@ def list_members(
         raise HTTPException(status_code=404, detail="Organization not found")
     if org.owner_id != current_user.id and not _is_admin(db, current_user):
         raise HTTPException(status_code=403, detail="Not allowed")
+    
     rows = db.execute(select(
         organization_members.c.user_id,
         organization_members.c.role
     ).where(organization_members.c.org_id == org_id)).fetchall()
-    return [{"user_id": str(r.user_id), "role": r.role.value if hasattr(r.role, "value") else str(r.role)} for r in rows]
+    
+    # Enrich with profile data and respect privacy
+    result = []
+    for r in rows:
+        user = db.query(User).filter(User.id == r.user_id).first()
+        profile = db.query(Profile).filter(Profile.user_id == r.user_id).first()
+        
+        if profile and profile.visibility == ProfileVisibility.public:
+            # Public profile - show full details
+            result.append({
+                "user_id": str(r.user_id),
+                "role": r.role.value if hasattr(r.role, "value") else str(r.role),
+                "full_name": profile.full_name,
+                "avatar_url": profile.avatar_url,
+                "title": profile.title,
+                "visibility": "public"
+            })
+        else:
+            # Private profile or no profile - show minimal info
+            email_username = user.email.split('@')[0] if user and user.email else "User"
+            result.append({
+                "user_id": str(r.user_id),
+                "role": r.role.value if hasattr(r.role, "value") else str(r.role),
+                "full_name": email_username,
+                "avatar_url": None,
+                "title": None,
+                "visibility": "private"
+            })
+    
+    return result
 
 
 @router.put("/organizations/{org_id}/members/{user_id}")

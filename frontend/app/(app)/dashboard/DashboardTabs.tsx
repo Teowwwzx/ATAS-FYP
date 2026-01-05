@@ -52,9 +52,9 @@ export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: 
     const allTabs = [
         { name: 'Overview', id: 'overview' },
         { name: 'People', id: 'people', hidden: !(isOrganizer || isCommittee) },
-        { name: 'Checklist', id: 'checklist', hidden: !(isOrganizer || isCommittee) },
-        { name: 'Settings', id: 'settings', hidden: !isOrganizer },
-        { name: 'Reviews', id: 'reviews', hidden: !(isOrganizer || isCommittee) },
+        { name: 'Checklist', id: 'checklist', hidden: !(isOrganizer || isCommittee) }, // Only organizer/committee
+        { name: 'Settings', id: 'settings', hidden: !(isOrganizer || isCommittee) }, // Organizer/committee
+        { name: 'Reviews', id: 'reviews', hidden: !(isOrganizer || isCommittee) }, // Only organizer/committee
     ]
 
     const tabs = allTabs.filter(t => !t.hidden)
@@ -153,7 +153,7 @@ export function DashboardTabs({ event, user, role, phase, onUpdate, onDelete }: 
                     {
                         !allTabs[3].hidden && (
                             <Tab.Panel className="focus:outline-none">
-                                <DashboardTabSettings event={event} onUpdate={onUpdate} onDelete={onDelete} />
+                                <DashboardTabSettings event={event} user={user} role={role} onUpdate={onUpdate} onDelete={onDelete} />
                             </Tab.Panel>
                         )
                     }

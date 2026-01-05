@@ -146,13 +146,13 @@ export default function DiscoverPage() {
             setEventsLoading(true)
             const [incoming, fintech, ai, career, blockchain, friends, health, arts, myData] = await Promise.all([
                 getPublicEvents({ upcoming: true }),
-                getPublicEvents({ category_name: 'Fintech' }),
-                getPublicEvents({ category_name: 'AI' }),
-                getPublicEvents({ category_name: 'Future Career' }),
-                getPublicEvents({ category_name: 'Blockchain' }),
-                getPublicEvents({ friends_only: true }).catch(() => []),
-                getPublicEvents({ category_name: 'Health & Wellness' }),
-                getPublicEvents({ category_name: 'Arts & Culture' }),
+                getPublicEvents({ category_name: 'Fintech', upcoming: true }),
+                getPublicEvents({ category_name: 'AI', upcoming: true }),
+                getPublicEvents({ category_name: 'Future Career', upcoming: true }),
+                getPublicEvents({ category_name: 'Blockchain', upcoming: true }),
+                getPublicEvents({ friends_only: true, upcoming: true }).catch(() => []),
+                getPublicEvents({ category_name: 'Health & Wellness', upcoming: true }),
+                getPublicEvents({ category_name: 'Arts & Culture', upcoming: true }),
                 getMyEvents().catch(() => []) // Silently fail if not logged in
             ])
             setIncomingEvents(incoming)

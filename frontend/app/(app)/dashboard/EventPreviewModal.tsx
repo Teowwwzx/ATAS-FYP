@@ -4,6 +4,8 @@ import React, { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { EventDetails } from '@/services/api.types'
 import { format } from 'date-fns'
+import { ImageWithFallback } from '@/components/ui/ImageWithFallback'
+import { formatEventDate, formatEventTimeRange } from '@/lib/date'
 
 interface EventPreviewModalProps {
     isOpen: boolean
@@ -84,15 +86,17 @@ export function EventPreviewModal({ isOpen, onClose, event }: EventPreviewModalP
 
                                             <div className="bg-white rounded-[2.5rem] shadow-sm overflow-hidden border border-zinc-100">
                                                 {/* Header Image */}
-                                                <div className="relative h-[400px] bg-zinc-900">
-                                                    {event.cover_url && (
-                                                        <img
-                                                            src={event.cover_url}
-                                                            alt={event.title}
-                                                            className="absolute inset-0 w-full h-full object-cover opacity-80"
-                                                        />
-                                                    )}
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                                                <div className="relative h-[450px] bg-zinc-900">
+                                                    <ImageWithFallback
+                                                        src={event.cover_url || `https://placehold.co/1200x600/png?text=${encodeURIComponent(event.title)}`}
+                                                        fallbackSrc={`https://placehold.co/1200x600/png?text=${encodeURIComponent(event.title)}`}
+                                                        alt={event.title}
+                                                        className="object-cover"
+                                                        fill
+                                                        unoptimized={false}
+                                                        priority
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent opacity-90" />
 
                                                     {/* Badges Top Right */}
                                                     <div className="absolute top-6 right-6 z-20 flex gap-2">
@@ -104,36 +108,42 @@ export function EventPreviewModal({ isOpen, onClose, event }: EventPreviewModalP
                                                         </span>
                                                     </div>
 
-                                                    <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 w-full">
-                                                        <div className="max-w-5xl mx-auto w-full space-y-4">
-                                                            <div className="bg-yellow-400 text-zinc-900 inline-block px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider mb-2 border border-yellow-300">
-                                                                Guest View
-                                                            </div>
-                                                            <h1 className="text-4xl md:text-6xl font-black text-white leading-tight">
+                                                    <div className="absolute top-6 right-6 z-20 flex gap-2">
+                                                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-[10px] font-bold uppercase tracking-wider">
+                                                            {event.format.replace('_', ' ')}
+                                                        </span>
+                                                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/20 text-[10px] font-bold uppercase tracking-wider">
+                                                            {event.type}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 w-full">
+                                                        <div className="max-w-5xl mx-auto w-full space-y-3">
+                                                            <h1 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight">
                                                                 {event.title}
                                                             </h1>
-                                                            <div className="flex flex-wrap items-center gap-6 text-zinc-200 font-medium text-lg pt-2">
+                                                            <div className="flex flex-col gap-2 text-zinc-100 text-sm md:text-base">
                                                                 <div className="flex items-center gap-2">
-                                                                    <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg className="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                                     </svg>
-                                                                    {format(new Date(event.start_datetime), 'EEEE, MMMM d, yyyy • h:mm a')}
+                                                                    <span className="font-medium">{formatEventDate(event.start_datetime)}</span>
                                                                 </div>
-                                                                {(event.venue_remark || event.venue_place_id) ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <svg className="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                    <span className="font-medium">{formatEventTimeRange(event.start_datetime, event.end_datetime)}</span>
+                                                                </div>
+                                                                {(event.venue_remark || (event.type === 'online')) && (
                                                                     <div className="flex items-center gap-2">
-                                                                        <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <svg className="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                         </svg>
-                                                                        <span className="truncate max-w-[250px]">{event.venue_remark || event.venue_place_id}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                        </svg>
-                                                                        <span className="truncate max-w-[250px]">{event.type === 'online' ? 'Online Event' : 'Venue to be announced'}</span>
+                                                                        <span className="truncate max-w-[300px] font-medium">
+                                                                            {event.type === 'online' ? 'Online Event' : event.venue_remark || 'Venue TBA'}
+                                                                        </span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -180,20 +190,19 @@ export function EventPreviewModal({ isOpen, onClose, event }: EventPreviewModalP
 
                                                                 {/* Organizer Section */}
                                                                 <div className="space-y-4">
-                                                                    <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">Organizer</h3>
-                                                                    <div className="p-5 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4">
-                                                                        <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold text-lg shrink-0 border border-zinc-100">
-                                                                            ?
+                                                                    <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest">Hosted By</h3>
+                                                                    <div className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
+                                                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-indigo-700 font-bold text-lg shrink-0 border border-indigo-200 overflow-hidden">
+                                                                            {event.organizer_avatar ? (
+                                                                                <img src={event.organizer_avatar} alt={event.organizer_name || 'Organizer'} className="w-full h-full object-cover" />
+                                                                            ) : (
+                                                                                <span>{(event.organizer_name || 'Org').charAt(0)}</span>
+                                                                            )}
                                                                         </div>
-                                                                        <div className="min-w-0">
-                                                                            <div className="font-bold text-zinc-900 text-base truncate">Event Host</div>
-                                                                            <div className="text-xs text-zinc-500 font-medium truncate">View Profile</div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <div className="font-bold text-zinc-900 text-sm truncate">{event.organizer_name || 'Event Organizer'}</div>
+                                                                            <div className="text-xs text-zinc-500 font-medium">Event Organizer</div>
                                                                         </div>
-                                                                        <button className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-zinc-50 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900 transition-colors">
-                                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                                            </svg>
-                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </div>

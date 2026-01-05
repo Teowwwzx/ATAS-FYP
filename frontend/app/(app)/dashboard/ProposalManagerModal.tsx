@@ -147,34 +147,54 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all border border-zinc-100 flex flex-col max-h-[85vh]">
-                                <div className="flex items-center justify-between mb-6 border-b border-zinc-100 pb-4">
+                            <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all border border-zinc-100">
+                                {/* Header */}
+                                <div className="flex items-center justify-between p-6 border-b border-zinc-100">
                                     <div>
                                         <Dialog.Title as="h3" className="text-xl font-black text-zinc-900">
-                                            {view === 'list' ? 'Manage Proposals' : 'Upload New Proposal'}
+                                            Attach Proposal
                                         </Dialog.Title>
-                                        <p className="text-sm text-zinc-500">
-                                            {view === 'list' ? 'Select a proposal to attach or upload a new one.' : 'Upload a file and optionally link it to a checklist item.'}
+                                        <p className="text-sm text-zinc-500 mt-1">
+                                            Select an existing proposal or upload a new one
                                         </p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        {view === 'upload' && (
-                                            <button
-                                                onClick={() => setView('list')}
-                                                className="px-3 py-1.5 text-zinc-500 hover:bg-zinc-100 rounded-lg text-sm font-bold transition-colors"
-                                            >
-                                                Back to List
-                                            </button>
-                                        )}
-                                        <button onClick={onClose} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900 transition-colors">
-                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                                    <button onClick={onClose} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900 transition-colors">
+                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto min-h-[300px]">
+                                {/* Tab Navigation */}
+                                <div className="flex border-b border-zinc-200 px-6">
+                                    <button
+                                        onClick={() => setView('list')}
+                                        className={`px-6 py-3 font-bold text-sm transition-all relative ${view === 'list'
+                                                ? 'text-zinc-900'
+                                                : 'text-zinc-400 hover:text-zinc-600'
+                                            }`}
+                                    >
+                                        Select Existing
+                                        {view === 'list' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-yellow-400" />
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setView('upload')}
+                                        className={`px-6 py-3 font-bold text-sm transition-all relative ${view === 'upload'
+                                                ? 'text-zinc-900'
+                                                : 'text-zinc-400 hover:text-zinc-600'
+                                            }`}
+                                    >
+                                        Upload New
+                                        {view === 'upload' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-yellow-400" />
+                                        )}
+                                    </button>
+                                </div>
+
+                                {/* Content Area */}
+                                <div className="p-6 max-h-[500px] overflow-y-auto">
                                     {view === 'list' ? (
                                         <div className="space-y-3">
                                             {loading ? (
@@ -182,68 +202,59 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
                                                 </div>
                                             ) : proposals.length === 0 ? (
-                                                <div className="text-center py-16 px-4 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
-                                                    <div className="w-16 h-16 bg-white border border-zinc-100 text-zinc-300 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                                <div className="text-center py-12 px-4">
+                                                    <div className="w-16 h-16 bg-zinc-50 border border-zinc-200 text-zinc-300 rounded-full flex items-center justify-center mx-auto mb-4">
                                                         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                     </div>
-                                                    <h4 className="text-zinc-900 font-bold mb-1">No proposals found</h4>
+                                                    <h4 className="text-zinc-900 font-bold mb-1">No proposals yet</h4>
                                                     <p className="text-zinc-500 text-sm mb-4">Get started by uploading your first proposal.</p>
                                                     <button
                                                         onClick={() => setView('upload')}
                                                         className="px-4 py-2 bg-zinc-900 text-yellow-400 font-bold rounded-xl text-sm hover:bg-zinc-800 transition-all"
                                                     >
-                                                        Upload Proposal
+                                                        Upload Now
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <>
-                                                    <button
-                                                        onClick={() => setView('upload')}
-                                                        className="w-full py-3 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-500 font-bold hover:border-yellow-400 hover:text-yellow-600 hover:bg-yellow-50/50 transition-all flex items-center justify-center gap-2 mb-4"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                                        Upload New Proposal
-                                                    </button>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        {proposals.map(proposal => (
-                                                            <div
-                                                                key={proposal.id}
-                                                                onClick={() => {
-                                                                    onSelectProposal(proposal)
-                                                                    onClose()
-                                                                }}
-                                                                className={`group p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-4 ${selectedProposalId === proposal.id
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    {proposals.map(proposal => (
+                                                        <div
+                                                            key={proposal.id}
+                                                            onClick={() => {
+                                                                onSelectProposal(proposal)
+                                                                onClose()
+                                                            }}
+                                                            className={`group p-4 rounded-xl border cursor-pointer transition-all flex items-center gap-4 ${selectedProposalId === proposal.id
                                                                     ? 'bg-yellow-50 border-yellow-400 shadow-sm ring-1 ring-yellow-400'
                                                                     : 'bg-white border-zinc-200 hover:border-yellow-400 hover:shadow-md'
-                                                                    }`}
-                                                            >
-                                                                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
-                                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h4 className="font-bold text-zinc-900 truncate">{proposal.title}</h4>
-                                                                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                                                                        <span>PDF</span>
-                                                                        <span>•</span>
-                                                                        <span>{new Date(proposal.created_at).toLocaleDateString()}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <button
-                                                                    onClick={(e) => handleDelete(proposal.id, e)}
-                                                                    className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                                    title="Delete Proposal"
-                                                                >
-                                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                                </button>
-                                                                {selectedProposalId === proposal.id && (
-                                                                    <div className="w-6 h-6 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-sm">
-                                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                                                    </div>
-                                                                )}
+                                                                }`}
+                                                        >
+                                                            <div className="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                </>
+                                                            <div className="flex-1 min-w-0">
+                                                                <h4 className="font-bold text-zinc-900 truncate">{proposal.title}</h4>
+                                                                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                                                    <span>PDF</span>
+                                                                    <span>•</span>
+                                                                    <span>{new Date(proposal.created_at).toLocaleDateString()}</span>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => handleDelete(proposal.id, e)}
+                                                                className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                                title="Delete Proposal"
+                                                            >
+                                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                            </button>
+                                                            {selectedProposalId === proposal.id && (
+                                                                <div className="w-6 h-6 rounded-full bg-yellow-400 text-white flex items-center justify-center shadow-sm">
+                                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
                                     ) : (
@@ -294,9 +305,9 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
 
                                             <div>
                                                 <label className="block text-sm font-bold text-zinc-700 mb-2">Link to Checklist (Optional)</label>
-                                                <div className="bg-zinc-50 rounded-xl border border-zinc-200 max-h-40 overflow-y-auto p-2 space-y-1">
+                                                <div className="bg-zinc-50 rounded-xl border border-zinc-200 max-h-32 overflow-y-auto p-2 space-y-1">
                                                     {checklistItems.length === 0 ? (
-                                                        <p className="text-xs text-zinc-400 text-center py-4">No checklist items found</p>
+                                                        <p className="text-xs text-zinc-400 text-center py-3">No checklist items found</p>
                                                     ) : (
                                                         checklistItems.map(item => (
                                                             <label key={item.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors">
@@ -317,13 +328,13 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                                                         ))
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-zinc-400 mt-1 pl-1">Selected checkist items will be linked to this proposal.</p>
+                                                <p className="text-xs text-zinc-400 mt-1 pl-1">Selected checklist items will be linked to this proposal.</p>
                                             </div>
 
-                                            <div className="pt-4 flex gap-3">
+                                            <div className="pt-2 flex gap-3">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setView('list')}
+                                                    onClick={onClose}
                                                     className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200 transition-colors"
                                                 >
                                                     Cancel
@@ -333,7 +344,7 @@ export function ProposalManagerModal({ isOpen, onClose, eventId, onSelectProposa
                                                     disabled={uploading}
                                                     className="flex-1 py-3 bg-zinc-900 text-yellow-400 font-bold rounded-xl shadow-lg hover:bg-zinc-800 transition-all disabled:opacity-50"
                                                 >
-                                                    {uploading ? 'Uploading...' : 'Upload & Create'}
+                                                    {uploading ? 'Uploading...' : 'Upload & Attach'}
                                                 </button>
                                             </div>
                                         </form>

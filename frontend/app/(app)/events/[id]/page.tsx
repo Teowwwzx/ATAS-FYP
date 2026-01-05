@@ -385,8 +385,8 @@ export default function EventDetailsPage() {
     const currentParticipants = event.participant_count ?? stats?.total_participants ?? 0
     const isFull = event.max_participant ? currentParticipants >= event.max_participant : false
 
-    const friendsGoing = participants.filter(p => 
-        (p.status === 'accepted' || p.status === 'attended') && 
+    const friendsGoing = participants.filter(p =>
+        (p.status === 'accepted' || p.status === 'attended') &&
         myFollows.some(f => f.followee_id === p.user_id)
     )
 
@@ -628,7 +628,7 @@ export default function EventDetailsPage() {
                                                             </div>
                                                         </Link>
                                                     )}
-                                                    
+
                                                     <div className="flex flex-col">
                                                         {r.is_anonymous ? (
                                                             <span className="font-bold text-sm text-zinc-900 cursor-default">
@@ -843,7 +843,7 @@ export default function EventDetailsPage() {
                                                 <div className="flex gap-2 pt-2">
                                                     {user.roles.includes('expert') && (
                                                         <button
-                                                            onClick={() => window.location.href = `mailto:?subject=Apply as Expert for ${event.title}`}
+                                                            onClick={() => handleContactOrganizer('expert')}
                                                             className="flex-1 py-3 bg-white border border-zinc-200 text-zinc-700 rounded-xl font-bold text-center text-sm hover:bg-zinc-50 transition-colors shadow-sm"
                                                         >
                                                             Apply as Speaker
@@ -851,7 +851,7 @@ export default function EventDetailsPage() {
                                                     )}
                                                     {user.roles.includes('sponsor') && (
                                                         <button
-                                                            onClick={() => window.location.href = `mailto:?subject=Sponsorship for ${event.title}`}
+                                                            onClick={() => handleContactOrganizer('sponsor')}
                                                             className="flex-1 py-3 bg-white border border-zinc-200 text-zinc-700 rounded-xl font-bold text-center text-sm hover:bg-zinc-50 transition-colors shadow-sm"
                                                         >
                                                             Sponsor Event
@@ -1014,7 +1014,7 @@ export default function EventDetailsPage() {
                                     <div className="flex justify-between items-end mb-4">
                                         <h3 className="text-xs font-bold text-violet-400 uppercase tracking-widest">Share this event</h3>
                                         {(event.participant_count !== undefined || stats) && (
-                                            <button 
+                                            <button
                                                 onClick={() => setShowParticipantsModal(true)}
                                                 className="text-right flex flex-col items-end justify-center group"
                                             >
@@ -1049,7 +1049,7 @@ export default function EventDetailsPage() {
                                     <div className="pt-4 border-t border-zinc-100">
                                         <div className="flex justify-between items-center mb-3">
                                             <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Friends Going</h4>
-                                            <button 
+                                            <button
                                                 onClick={() => setShowParticipantsModal(true)}
                                                 className="text-xs text-violet-600 font-bold hover:underline"
                                             >
@@ -1058,8 +1058,8 @@ export default function EventDetailsPage() {
                                         </div>
                                         <div className="flex items-center -space-x-3">
                                             {friendsGoing.slice(0, 5).map((friend) => (
-                                                <Link 
-                                                    key={friend.id} 
+                                                <Link
+                                                    key={friend.id}
                                                     href={`/profile/${friend.user_id}`}
                                                     className="w-10 h-10 rounded-full border-2 border-white bg-zinc-100 overflow-hidden hover:scale-110 hover:z-10 transition-all relative"
                                                     title={friend.user_full_name || friend.name || 'Friend'}
@@ -1074,7 +1074,7 @@ export default function EventDetailsPage() {
                                                 </Link>
                                             ))}
                                             {friendsGoing.length > 5 && (
-                                                <button 
+                                                <button
                                                     onClick={() => setShowParticipantsModal(true)}
                                                     className="w-10 h-10 rounded-full border-2 border-white bg-violet-50 flex items-center justify-center text-xs font-bold text-violet-600 hover:bg-violet-100 transition-colors z-0"
                                                 >

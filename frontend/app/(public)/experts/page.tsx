@@ -54,9 +54,10 @@ function ExpertsContent() {
             try {
                 let data: ProfileResponse[] = []
                 if (searchTerm.trim()) {
-                    data = await semanticSearchProfiles({ q_text: searchTerm })
+                    data = await semanticSearchProfiles({ q_text: searchTerm, role: 'expert' })
                 } else {
-                    data = await discoverProfiles({})
+                    // Default to showing only expert role on landing page
+                    data = await discoverProfiles({ role: 'expert' })
                 }
                 setExperts(data)
             } catch (error) {

@@ -116,7 +116,8 @@ function AttendanceScanInner() {
   })
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-8 px-4">
+    <div className="min-h-screen py-8 px-4">
+      {/* <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-8 px-4"> */}
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -258,13 +259,13 @@ function AttendanceScanInner() {
         {/* Instructions */}
         {showHint && (
           <div className="mt-6 bg-zinc-50 rounded-2xl p-6 border border-zinc-200 relative group">
-            <button 
-                onClick={() => setShowHint(false)}
-                className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 p-1 hover:bg-zinc-200 rounded-full transition-all"
+            <button
+              onClick={() => setShowHint(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 p-1 hover:bg-zinc-200 rounded-full transition-all"
             >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
             <h4 className="text-sm font-bold text-zinc-900 mb-3 uppercase tracking-wider flex items-center gap-2">
               <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -291,33 +292,54 @@ function AttendanceScanInner() {
 
         {/* Attended List */}
         <div className="mt-8">
-            <h3 className="text-xl font-black text-zinc-900 mb-4 flex items-center justify-between">
-                <span>Recent Attendees</span>
-                <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">{sortedAttended.length}</span>
-            </h3>
-            
-            {sortedAttended.length === 0 ? (
-                <div className="text-center py-8 bg-zinc-50 rounded-2xl border border-zinc-100">
-                    <p className="text-zinc-400 font-medium">No attendees yet</p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {sortedAttended.map((p) => (
-                        <div key={p.id} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4 animate-fadeIn">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
-                                {p.name?.charAt(0) || p.email?.charAt(0) || '?'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-zinc-900 truncate">{p.name || 'Unknown User'}</h4>
-                                <p className="text-sm text-zinc-500 truncate">{p.email}</p>
-                            </div>
-                            <div className="text-xs font-medium text-zinc-400">
-                                {new Date(p.updated_at || p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+          <h3 className="text-xl font-black text-zinc-900 mb-4 flex items-center justify-between">
+            <span>Recent Attendees</span>
+            <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">{sortedAttended.length}</span>
+          </h3>
+
+          {sortedAttended.length === 0 ? (
+            <div className="text-center py-8 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <p className="text-zinc-400 font-medium">No attendees yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sortedAttended.map((p) => {
+                // Check if profile is public or private
+                const isPublic = p.user_visibility === 'public'
+                const displayName = isPublic ? (p.user_full_name || p.name || 'Unknown User') : 'Private User'
+                const displayEmail = isPublic ? p.email : '•••@•••.•••'
+                const displayAvatar = isPublic ? (p.user_avatar || null) : null
+                const initial = isPublic ? (displayName.charAt(0) || '?') : '🔒'
+
+                return (
+                  <div key={p.id} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm flex items-center gap-4 animate-fadeIn">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${isPublic ? 'bg-blue-100 text-blue-600' : 'bg-zinc-100 text-zinc-400'
+                      }`}>
+                      {displayAvatar ? (
+                        <img src={displayAvatar} alt={displayName} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        initial
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-zinc-900 truncate">{displayName}</h4>
+                        {!isPublic && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-500 border border-zinc-200">
+                            Private
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-zinc-500 truncate">{displayEmail}</p>
+                    </div>
+                    <div className="text-xs font-medium text-zinc-400">
+                      {new Date(p.updated_at || p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

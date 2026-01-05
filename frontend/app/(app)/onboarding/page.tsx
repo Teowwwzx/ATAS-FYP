@@ -14,18 +14,14 @@ import { APU_DEGREES, COUNTRIES } from '@/lib/constants'
 import { OrganizationSearchCombobox } from '@/components/profile/OrganizationSearchCombobox'
 
 // Intent mapping: Frontend labels -> Backend enum values
+// 6 Standardized Intent Options
 const INTENT_MAP: Record<string, string> = {
-  // Student intents
-  'Find Expert / Speaker': 'seeking_mentorship',
-  'Find Sponsorship': 'looking_for_sponsor',
-  'Join Events': 'open_to_collaborate',
-  // Expert intents
-  'Open to Speaking': 'open_to_speak',
-  'Judging Hackathons': 'offering_mentorship',
-  'Hiring Talents': 'hiring_talent',
-  // Sponsor intents
-  'Sponsor Event': 'looking_for_sponsor',
-  'Provide Drinks / Food': 'offering_mentorship',
+  'Open to Speak': 'open_to_speak',
+  'Open to Sponsor': 'open_to_sponsor',
+  'Looking for Sponsor': 'looking_for_sponsor',
+  'Looking for Speaker': 'looking_for_speaker',
+  'Hiring Talent': 'hiring_talent',
+  'Open to Job': 'open_to_job',
 }
 
 // --- Components ---
@@ -231,7 +227,7 @@ export default function OnboardingPage() {
   // Initialize defaults based on role
   useEffect(() => {
     if (form.role === 'student' && (!form.intents || form.intents.length === 0)) {
-      updateField('intents', ['Find Expert / Speaker'])
+      updateField('intents', ['Looking for Speaker'])
     }
     if (form.role === 'expert') {
       const currentIntents = form.intents || [];
@@ -289,15 +285,8 @@ export default function OnboardingPage() {
       // Note: Backend strictly validates intents against IntentType enum.
       // We need to map UI friendly strings to backend enum values.
 
-      const INTENT_MAPPING: Record<string, string> = {
-        'Find Expert / Speaker': 'seeking_mentorship',
-        'Find Sponsorship': 'looking_for_sponsor',
-        'Join Events': 'open_to_collaborate',
-        'Open to Speaking': 'open_to_speak',
-        // Expert defaults that might be added later
-        'Mentoring': 'offering_mentorship',
-        'Hiring': 'hiring_talent'
-      }
+      // Use the global INTENT_MAP for consistency
+      const INTENT_MAPPING = INTENT_MAP
 
       const finalIntents = new Set<string>()
 
@@ -478,7 +467,7 @@ export default function OnboardingPage() {
                     <div>
                       <label className="block text-sm font-bold text-black mb-3">I am looking for...</label>
                       <div className="grid grid-cols-2 gap-4">
-                        {['Find Expert / Speaker', 'Find Sponsorship', 'Join Events'].map(intent => (
+                        {['Looking for Speaker', 'Looking for Sponsor', 'Open to Job'].map(intent => (
                           <label
                             key={intent}
                             className={`flex items-center space-x-3 p-3 rounded-xl border transition-colors cursor-pointer ${form.intents?.includes(intent) ? 'bg-yellow-50 border-yellow-400' : 'border-zinc-100 hover:bg-zinc-50'}`}
@@ -606,7 +595,7 @@ export default function OnboardingPage() {
                     <div>
                       <label className="block text-sm font-bold text-black mb-3">I am open to...</label>
                       <div className="grid grid-cols-2 gap-4">
-                        {['Open to Speaking', 'Judging Hackathons', 'Hiring Talents'].map(intent => {
+                        {['Open to Speak', 'Open to Sponsor', 'Hiring Talent'].map(intent => {
                           const isSelected = form.intents?.includes(intent);
 
                           return (
@@ -650,7 +639,7 @@ export default function OnboardingPage() {
                       <div>
                         <label className="block text-sm font-bold text-black mb-3">Our goals...</label>
                         <div className="grid grid-cols-2 gap-4">
-                          {['Sponsor Event', 'Provide Drinks / Food', 'Hiring Talents', 'Other'].map(intent => {
+                          {['Open to Sponsor', 'Hiring Talent', 'Looking for Speaker'].map(intent => {
                             const isSelected = form.intents?.includes(intent);
                             const isOther = intent === 'Other';
 

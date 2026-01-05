@@ -559,17 +559,61 @@ export default function OrganizationDetailPage() {
                       <div className="text-center py-8 text-zinc-400">Loading members...</div>
                     ) : members.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {members.map(member => (
-                          <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100">
-                            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-700 font-bold">
-                              {member.user_id.slice(0, 2)}
+                        {members.map((member: any) => {
+                          const isPublic = member.visibility === 'public'
+
+                          const memberContent = (
+                            <>
+                              {member.avatar_url ? (
+                                <img
+                                  src={member.avatar_url}
+                                  alt={member.full_name}
+                                  className="w-10 h-10 rounded-full object-cover border border-zinc-200"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-700 font-bold border border-green-100">
+                                  {member.full_name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-bold text-zinc-900 text-sm truncate">
+                                  {member.full_name || 'Unknown User'}
+                                </div>
+                                {member.title && (
+                                  <div className="text-xs text-zinc-500 truncate">{member.title}</div>
+                                )}
+                                <div className="text-xs text-zinc-400 capitalize flex items-center gap-2 mt-0.5">
+                                  <span>{member.role}</span>
+                                  {!isPublic && (
+                                    <span className="text-[10px] bg-zinc-100 px-2 py-0.5 rounded">Private</span>
+                                  )}
+                                </div>
+                              </div>
+                              {isPublic && (
+                                <svg className="w-4 h-4 text-zinc-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                              )}
+                            </>
+                          )
+
+                          return isPublic ? (
+                            <Link
+                              key={member.user_id}
+                              href={`/profiles/${member.user_id}`}
+                              className="flex items-center gap-3 p-3 rounded-xl border border-transparent hover:bg-zinc-50 hover:border-zinc-200 cursor-pointer transition-colors"
+                            >
+                              {memberContent}
+                            </Link>
+                          ) : (
+                            <div
+                              key={member.user_id}
+                              className="flex items-center gap-3 p-3 rounded-xl border border-transparent opacity-75"
+                            >
+                              {memberContent}
                             </div>
-                            <div>
-                              <div className="font-bold text-zinc-900 text-sm">User {member.user_id.slice(0, 4)}...</div>
-                              <div className="text-xs text-zinc-500 capitalize">{member.role}</div>
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <div className="text-center py-8 text-zinc-400">No members yet.</div>

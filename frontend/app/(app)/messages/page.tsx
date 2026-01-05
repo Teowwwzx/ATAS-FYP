@@ -66,11 +66,11 @@ function MessagesContent() {
     const selectedConv = conversations.find(c => c.id === selectedId)
 
     return (
-        <div className="h-[calc(100vh-80px)] w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8 animate-fadeIn">
-            <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl overflow-hidden h-full flex">
+        <div className="h-[calc(100vh-80px)] w-full mx-auto p-2 md:p-4 lg:p-6 animate-fadeIn">
+            <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl overflow-hidden h-full flex max-w-screen-2xl mx-auto">
 
                 {/* Sidebar / List */}
-                <div className={`w-full md:w-[350px] lg:w-[400px] border-r border-zinc-100 flex flex-col ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`w-full md:w-80 lg:w-96 xl:w-[400px] flex-shrink-0 border-r border-zinc-100 flex flex-col ${selectedId ? 'hidden md:flex' : 'flex'}`}>
                     {/* <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
                         <h2 className="text-xl font-black text-zinc-900 tracking-tight">Messages</h2>
                         <button className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors">

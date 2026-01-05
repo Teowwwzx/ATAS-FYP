@@ -10,7 +10,7 @@ import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
 import { CategoryResponse } from '@/services/api.types'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 import { useLoadScript } from '@react-google-maps/api'
- 
+
 
 const libraries: ("places")[] = ["places"]
 
@@ -26,7 +26,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
-    
+
 
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -461,7 +461,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                     </div> */}
                                     <div className="flex flex-col gap-1">
                                         <h3 className="text-xl font-black text-zinc-900">Event Details</h3>
-                                        
+
                                         {/* Categories Display */}
                                         <div className="flex flex-wrap gap-2">
                                             {selectedCategories.length > 0 ? (
@@ -493,7 +493,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                             Edit Details
                                         </button>
                                     )}
-                                    
+
                                 </div>
                             </div>
 
@@ -552,7 +552,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                 )}
             </div>
 
-            
+
         </div >
     )
 }
