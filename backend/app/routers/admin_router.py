@@ -244,7 +244,7 @@ def admin_create_event(
         end_datetime=body.end_datetime,
         registration_type=body.registration_type,
         visibility=body.visibility,
-        status=EventStatus.draft,
+        status=EventStatus[body.status] if body.status and body.status in EventStatus.__members__ else EventStatus.draft,
         max_participant=body.max_participant,
         venue_place_id=body.venue_place_id,
         venue_remark=body.venue_remark,
@@ -1151,3 +1151,141 @@ def admin_delete_category(
     db.commit()
     
     return {"status": "success", "message": "Category deleted"}
+
+
+# --- Export Endpoints ---
+
+@router.get("/export/users")
+def export_users_csv(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Export all users to CSV"""
+    from io import StringIO
+    import csv
+    
+    # Fetch all users with profiles
+    users = db.query(User).options(joinedload(User.profile)).all()
+    
+    # Create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['ID', 'Email', 'Full Name', 'Status', 'Verified', 'Roles', 'Created At'])
+    
+    # Write data
+    for user in users:
+        roles = ','.join([r.name for r in user.roles]) if user.roles else ''
+        full_name = user.profile.full_name if user.profile else ''
+        writer.writerow([
+            str(user.id),
+            user.email,
+            full_name,
+            user.status.value if user.status else '',
+            user.is_verified,
+            roles,
+            user.created_at.isoformat() if user.created_at else ''
+        ])
+    
+    output.seek(0)
+    log_admin_action(db, current_user.id, "users.export", "system", None)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=users_export.csv"}
+    )
+
+
+@router.get("/export/events")
+def export_events_csv(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Export all events to CSV"""
+    from io import StringIO
+    import csv
+    
+    events = db.query(Event).all()
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID', 'Title', 'Format', 'Type', 'Status', 'Visibility',
+        'Start Date', 'End Date', 'Organizer ID', 'Organization ID',
+        'Registration Type', 'Max Participants', 'Created At'
+    ])
+    
+    # Write data
+    for event in events:
+        writer.writerow([
+            str(event.id),
+            event.title,
+            event.format.value if event.format else '',
+            event.type.value if event.type else '',
+            event.status.value if event.status else '',
+            event.visibility.value if event.visibility else '',
+            event.start_datetime.isoformat() if event.start_datetime else '',
+            event.end_datetime.isoformat() if event.end_datetime else '',
+            str(event.organizer_id) if event.organizer_id else '',
+            str(event.organization_id) if event.organization_id else '',
+            event.registration_type.value if event.registration_type else '',
+            event.max_participant or '',
+            event.created_at.isoformat() if event.created_at else ''
+        ])
+    
+    output.seek(0)
+    log_admin_action(db, current_user.id, "events.export", "system", None)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=events_export.csv"}
+    )
+
+
+@router.get("/export/organizations")
+def export_organizations_csv(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    """Export all organizations to CSV"""
+    from io import StringIO
+    import csv
+    
+    orgs = db.query(Organization).all()
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID', 'Name', 'Type', 'Status', 'Visibility',
+        'Owner ID', 'Location', 'Website', 'Created At'
+    ])
+    
+    # Write data
+    for org in orgs:
+        writer.writerow([
+            str(org.id),
+            org.name,
+            org.type.value if org.type else '',
+            org.status.value if org.status else '',
+            org.visibility.value if org.visibility else '',
+            str(org.owner_id) if org.owner_id else '',
+            org.location or '',
+            org.website_url or '',
+            org.created_at.isoformat() if org.created_at else ''
+        ])
+    
+    output.seek(0)
+    log_admin_action(db, current_user.id, "organizations.export", "system", None)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=organizations_export.csv"}
+    )

@@ -502,5 +502,25 @@ export const adminService = {
 
     deleteSkill: async (skillId: string) => {
         await api.delete(`/skills/${skillId}`)
+    },
+
+    // --- Tags Management ---
+    getTags: async () => {
+        const response = await api.get<import('./api.types').TagResponse[]>('/tags')
+        return response.data
+    },
+
+    createTag: async (data: import('./api.types').TagCreate) => {
+        const response = await api.post<import('./api.types').TagResponse>('/tags', data)
+        return response.data
+    },
+
+    updateTag: async (tagId: string, data: import('./api.types').TagCreate) => {
+        const response = await api.put<import('./api.types').TagResponse>(`/tags/${tagId}`, data)
+        return response.data
+    },
+
+    deleteTag: async (tagId: string) => {
+        await api.delete(`/tags/${tagId}`)
     }
 }
