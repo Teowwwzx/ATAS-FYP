@@ -330,7 +330,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                         value={form.meeting_url}
                                         onChange={(e) => setForm({ ...form, meeting_url: e.target.value })}
                                         placeholder="https://zoom.us/..."
-                                        className="block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-grey-700"
+                                        className="text-gray-700 block w-full rounded-2xl border-zinc-200 bg-zinc-50 focus:bg-white focus:border-yellow-400 focus:ring-yellow-400 py-3 px-4 text-grey-700"
                                     />
                                 </div>
                             )}
