@@ -1,15 +1,28 @@
 "use client"
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import { isTokenExpired } from '@/lib/auth'
+import { getMe } from '@/services/api'
 
 export function PublicNavbar() {
     const navbarRef = useRef<HTMLElement>(null)
     const [isLoggedIn, setIsLoggedIn] = useState(false)
 
     useEffect(() => {
-        // Check if user is logged in by checking for token
         const token = localStorage.getItem('atas_token')
-        setIsLoggedIn(!!token)
+        if (!token) {
+            setIsLoggedIn(false)
+        } else if (isTokenExpired(token)) {
+            try { localStorage.removeItem('atas_token') } catch {}
+            setIsLoggedIn(false)
+        } else {
+            getMe(true).then(() => {
+                setIsLoggedIn(true)
+            }).catch(() => {
+                try { localStorage.removeItem('atas_token') } catch {}
+                setIsLoggedIn(false)
+            })
+        }
 
         const handleScroll = () => {
             if (navbarRef.current) {
@@ -17,8 +30,18 @@ export function PublicNavbar() {
                 else navbarRef.current.classList.remove('scrolled')
             }
         }
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'atas_token') {
+                const has = !!localStorage.getItem('atas_token')
+                setIsLoggedIn(has)
+            }
+        }
         window.addEventListener('scroll', handleScroll)
-        return () => window.removeEventListener('scroll', handleScroll)
+        window.addEventListener('storage', handleStorage)
+        return () => {
+            window.removeEventListener('scroll', handleScroll)
+            window.removeEventListener('storage', handleStorage)
+        }
     }, [])
 
     return (
