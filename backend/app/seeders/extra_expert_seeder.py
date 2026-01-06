@@ -40,7 +40,9 @@ def seed_extra_experts():
                 "title": "Fintech Innovation Lead",
                 "bio": "Expert in Blockchain, DeFi, and Financial Technology with 10 years experience.",
                 "tags": ["Fintech", "Blockchain", "DeFi"],
-                "review": "Sarah provided excellent insights on DeFi protocols."
+                "review": "Sarah provided excellent insights on DeFi protocols.",
+                "avatar_url": "/img/avatars/3.jpg",
+                "availability": "Weekdays 9am-6pm, flexible hours"
             },
             {
                 "email": "expert_ai@gmail.com",
@@ -48,7 +50,9 @@ def seed_extra_experts():
                 "title": "Chief AI Scientist",
                 "bio": "Specializing in NLP, LLMs, and Generative AI applications for business.",
                 "tags": ["Artificial Intelligence", "NLP", "Machine Learning"],
-                "review": "Alan's workshop on LLMs was mind-blowing!"
+                "review": "Alan's workshop on LLMs was mind-blowing!",
+                "avatar_url": "/img/avatars/1.jpg",
+                "availability": "Weekends and evenings"
             },
             {
                 "email": "expert_cyber@gmail.com",
@@ -56,7 +60,9 @@ def seed_extra_experts():
                 "title": "Head of Security",
                 "bio": "Expert in penetration testing and network security.",
                 "tags": ["Cybersecurity", "Network Security", "Ethical Hacking"],
-                "review": "Emily helped us secure our infrastructure."
+                "review": "Emily helped us secure our infrastructure.",
+                "avatar_url": "/img/avatars/2.png",
+                "availability": "Monday to Friday, 10am-5pm"
             }
         ]
 
@@ -90,6 +96,8 @@ def seed_extra_experts():
                     full_name=data["name"],
                     title=data["title"],
                     bio=data["bio"],
+                    avatar_url=data.get("avatar_url"),
+                    availability=data.get("availability"),
                     visibility=ProfileVisibility.public,
                     is_onboarded=True
                 )
