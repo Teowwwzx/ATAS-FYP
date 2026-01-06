@@ -41,7 +41,7 @@ def seed_extra_experts():
                 "bio": "Expert in Blockchain, DeFi, and Financial Technology with 10 years experience.",
                 "tags": ["Fintech", "Blockchain", "DeFi"],
                 "review": "Sarah provided excellent insights on DeFi protocols.",
-                "avatar_url": "/img/avatars/3.jpg",
+                "avatar_url": "public/img/avatars/3.jpg",
                 "availability": "Weekdays 9am-6pm, flexible hours"
             },
             {
