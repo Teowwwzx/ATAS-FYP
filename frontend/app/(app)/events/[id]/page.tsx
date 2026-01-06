@@ -838,10 +838,11 @@ export default function EventDetailsPage() {
                                                 </button>
                                             )}
 
+
                                             {/* Expert / Sponsor Buttons */}
-                                            {user && !isRegistered && !isOrganizer && myRole !== 'speaker' && myRole !== 'sponsor' && user.roles.some(r => ['expert', 'sponsor'].includes(r as string)) && (
+                                            {user && !isRegistered && !isOrganizer && myRole !== 'speaker' && myRole !== 'sponsor' && user.roles.some(r => ['expert', 'expert_pending', 'sponsor', 'sponsor_pending'].includes(r as string)) && (
                                                 <div className="flex gap-2 pt-2">
-                                                    {user.roles.includes('expert') && (
+                                                    {(user.roles.includes('expert') || user.roles.includes('expert_pending')) && (
                                                         <button
                                                             onClick={() => handleContactOrganizer('expert')}
                                                             className="flex-1 py-3 bg-white border border-zinc-200 text-zinc-700 rounded-xl font-bold text-center text-sm hover:bg-zinc-50 transition-colors shadow-sm"
@@ -849,7 +850,7 @@ export default function EventDetailsPage() {
                                                             Apply as Speaker
                                                         </button>
                                                     )}
-                                                    {user.roles.includes('sponsor') && (
+                                                    {(user.roles.includes('sponsor') || user.roles.includes('sponsor_pending')) && (
                                                         <button
                                                             onClick={() => handleContactOrganizer('sponsor')}
                                                             className="flex-1 py-3 bg-white border border-zinc-200 text-zinc-700 rounded-xl font-bold text-center text-sm hover:bg-zinc-50 transition-colors shadow-sm"
@@ -859,6 +860,7 @@ export default function EventDetailsPage() {
                                                     )}
                                                 </div>
                                             )}
+
                                         </div>
                                     )}
                                 </div>
