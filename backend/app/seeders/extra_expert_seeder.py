@@ -2,6 +2,7 @@ import logging
 import uuid
 import os
 import sys
+import random
 
 # Add path to sys to ensure imports work if run directly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -33,6 +34,18 @@ def seed_extra_experts():
              logger.error("Expert role not found. Run basic seeders first.")
              return
 
+        # Available avatars in frontend/public/img/avatars
+        available_avatars = [
+            "/img/avatars/1.jpg",
+            "/img/avatars/2.png", 
+            "/img/avatars/3.jpg",
+            "/img/avatars/strategy.jpg",
+            "/img/avatars/tim.webp"
+        ]
+        
+        # Randomly shuffle avatars for variety
+        random.shuffle(available_avatars)
+
         experts_data = [
             {
                 "email": "expert_fintech@gmail.com",
@@ -41,7 +54,7 @@ def seed_extra_experts():
                 "bio": "Expert in Blockchain, DeFi, and Financial Technology with 10 years experience.",
                 "tags": ["Fintech", "Blockchain", "DeFi"],
                 "review": "Sarah provided excellent insights on DeFi protocols.",
-                "avatar_url": "/img/avatars/3.jpg",
+                "avatar_url": available_avatars[0],  # Random avatar
                 "availability": "Weekdays 9am-6pm, flexible hours"
             },
             {
@@ -51,7 +64,7 @@ def seed_extra_experts():
                 "bio": "Specializing in NLP, LLMs, and Generative AI applications for business.",
                 "tags": ["Artificial Intelligence", "NLP", "Machine Learning"],
                 "review": "Alan's workshop on LLMs was mind-blowing!",
-                "avatar_url": "/img/avatars/1.jpg",
+                "avatar_url": available_avatars[1],  # Random avatar
                 "availability": "Weekends and evenings"
             },
             {
@@ -61,7 +74,7 @@ def seed_extra_experts():
                 "bio": "Expert in penetration testing and network security.",
                 "tags": ["Cybersecurity", "Network Security", "Ethical Hacking"],
                 "review": "Emily helped us secure our infrastructure.",
-                "avatar_url": "/img/avatars/2.png",
+                "avatar_url": available_avatars[2],  # Random avatar
                 "availability": "Monday to Friday, 10am-5pm"
             }
         ]
