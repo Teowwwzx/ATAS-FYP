@@ -15,6 +15,7 @@ from app.database.database import SessionLocal
 from app.models.user_model import User
 from app.models.organization_model import Organization
 from app.models.event_model import Event, EventFormat, EventType, EventRegistrationType, EventStatus, EventVisibility, EventParticipant, EventParticipantRole, EventParticipantStatus, Category, EventCategory
+from app.models.review_model import Review
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -63,7 +64,10 @@ def seed_extra_past_events():
                 "format": EventFormat.panel_discussion,
                 "expert_email": "expert_fintech@gmail.com",
                 "sponsor_email": "sponsor_gold@gmail.com",
-                "cat_id": fintech_cat.id if fintech_cat else None
+                "cat_id": fintech_cat.id if fintech_cat else None,
+                "reviewer_email": "expert_ai@gmail.com",
+                "rating": 5,
+                "review_comment": "Excellent insights on Fintech! The panel discussion was very engaging."
             },
             {
                 "title": "AI in Healthcare Conference",
@@ -72,7 +76,10 @@ def seed_extra_past_events():
                 "format": EventFormat.webinar,
                 "expert_email": "expert_ai@gmail.com",
                 "sponsor_email": "sponsor_silver@gmail.com",
-                "cat_id": ai_cat.id if ai_cat else None
+                "cat_id": ai_cat.id if ai_cat else None,
+                "reviewer_email": "expert_cyber@gmail.com",
+                "rating": 4,
+                "review_comment": "Very informative session on AI applications. Would love to see more case studies next time."
             },
             {
                 "title": "Cybersecurity Bootcamp",
@@ -81,7 +88,10 @@ def seed_extra_past_events():
                 "format": EventFormat.workshop,
                 "expert_email": "expert_cyber@gmail.com",
                 "sponsor_email": "sponsor_bronze@gmail.com",
-                "cat_id": cyber_cat.id if cyber_cat else None
+                "cat_id": cyber_cat.id if cyber_cat else None,
+                "reviewer_email": "expert_fintech@gmail.com",
+                "rating": 5,
+                "review_comment": "Best security bootcamp ever! The hands-on labs were incredibly useful."
             }
         ]
 
@@ -137,6 +147,18 @@ def seed_extra_past_events():
                         description="Event Partner"
                     )
                     db.add(sp_participant)
+
+                # Add Review
+                reviewer = next((u for u in experts if u.email == data["reviewer_email"]), None)
+                if reviewer:
+                    review = Review(
+                        event_id=event.id,
+                        reviewer_id=reviewer.id,
+                        rating=data["rating"],
+                        comment=data["review_comment"]
+                    )
+                    db.add(review)
+                    logger.info(f"Added review for event: {data['title']}")
                 
             else:
                 logger.info(f"Event {data['title']} already exists.")

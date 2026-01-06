@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { findProfiles, inviteEventParticipant, getEventParticipants } from '@/services/api'
-import { ProfileResponse } from '@/services/api.types'
+import { ProfileResponse, EventProposalResponse } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
 // @ts-ignore
 import { debounce } from 'lodash'
@@ -23,6 +23,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
     const [results, setResults] = useState<ProfileResponse[]>([])
     const [selectedUsers, setSelectedUsers] = useState<string[]>([])
     const [selectedProposalId, setSelectedProposalId] = useState<string>('')
+    const [selectedProposal, setSelectedProposal] = useState<EventProposalResponse | null>(null)
     const [joinedUserIds, setJoinedUserIds] = useState<Set<string>>(new Set())
     const [estAudience, setEstAudience] = useState<string>('')
     const [isProposalManagerOpen, setIsProposalManagerOpen] = useState(false)
@@ -106,7 +107,8 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
                 inviteEventParticipant(eventId, {
                     user_id: userId,
                     role: inviteRole as any,
-                    description: selectedProposalId ? `Proposal Attached: ${selectedProposalId}` : undefined
+                    description: undefined,
+                    proposal_id: selectedProposalId || undefined
                 })
             )
 
@@ -126,6 +128,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
             onClose()
             setSelectedUsers([])
             setSelectedProposalId('')
+            setSelectedProposal(null)
             setSearch('')
         } catch (error) {
             console.error(error)
@@ -229,7 +232,7 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-xs font-bold text-yellow-800 uppercase tracking-wide">Attached</p>
-                                                                <p className="text-sm font-bold text-zinc-900 truncate">Proposal ID: {selectedProposalId.substring(0, 8)}...</p>
+                                                                <p className="text-sm font-bold text-zinc-900 truncate">{selectedProposal?.title || 'Untitled Proposal'}</p>
                                                             </div>
                                                             <button
                                                                 onClick={() => setSelectedProposalId('')}
@@ -355,7 +358,10 @@ export function EventInviteModal({ isOpen, onClose, eventId, eventTitle, onSucce
                 isOpen={isProposalManagerOpen}
                 onClose={() => setIsProposalManagerOpen(false)}
                 eventId={eventId}
-                onSelectProposal={(proposal) => setSelectedProposalId(proposal.id)}
+                onSelectProposal={(proposal) => {
+                    setSelectedProposalId(proposal.id)
+                    setSelectedProposal(proposal)
+                }}
                 selectedProposalId={selectedProposalId}
             />
         </Fragment>

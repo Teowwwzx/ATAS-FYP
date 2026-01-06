@@ -26,7 +26,7 @@ def seed_events():
         # 1. Find Organizer (Admin) and Org (APU)
         admin_user = db.query(User).filter(User.email == "admin@gmail.com").first()
         apu_org = db.query(Organization).filter(Organization.name == "Asia Pacific University").first()
-        tech_cat = db.query(Category).filter(Category.name == "Technology").first()
+        ai_cat = db.query(Category).filter(Category.name == "Artificial Intelligence").first()
 
         if not admin_user or not apu_org:
             logger.error("Admin user or APU organization not found. Please seed users and organizations first.")

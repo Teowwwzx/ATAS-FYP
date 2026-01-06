@@ -286,10 +286,12 @@ function LoginPageContent() {
 
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-12">
-                        <div className="h-14 w-14 bg-zinc-900 rounded-full flex items-center justify-center text-yellow-400 font-bold text-2xl">
-                            {/* ATAS */}
-                            <span className="text-3xl font-black text-white tracking-tight">ATAS</span>
-                        </div>
+                        <a href="/">
+                            <div className="h-14 w-14 bg-zinc-900 rounded-full flex items-center justify-center text-yellow-400 font-bold text-2xl">
+                                {/* ATAS */}
+                                <span className="text-3xl font-black text-white tracking-tight">ATAS</span>
+                            </div>
+                        </a>
                     </div>
 
                     <h1 className="text-6xl font-black text-zinc-900 leading-[1.1] mb-6">

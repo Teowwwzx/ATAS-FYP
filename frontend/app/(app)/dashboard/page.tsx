@@ -49,9 +49,16 @@ function DashboardPageInner() {
 
     const fetchData = async () => {
         try {
+            // We use allSettled-like pattern by catching individual promises so one failure doesn't break the whole dashboard
             const [eventsData, profileData, meData, checklistItems, requestsData] = await Promise.all([
-                getMyEvents(),
-                getMyProfile(),
+                getMyEvents().catch(e => {
+                    console.error('Failed to fetch events:', e)
+                    return []
+                }),
+                getMyProfile().catch(e => {
+                    console.error('Failed to fetch profile:', e)
+                    return null
+                }),
                 getMe().catch(() => null),
                 getMyChecklistItems(true).catch(() => []),
                 getMyRequests().catch(() => [])
@@ -64,7 +71,7 @@ function DashboardPageInner() {
             setOpenChecklistCount((checklistItems || []).length)
 
         } catch (error) {
-            console.error(error)
+            console.error('Dashboard fatal load error:', error)
             toast.error('Failed to load dashboard')
         } finally {
             setLoading(false)

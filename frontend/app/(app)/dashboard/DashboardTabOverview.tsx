@@ -3,7 +3,7 @@ import { EventDetails, ProfileResponse } from '@/services/api.types'
 import { updateEvent } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { differenceInDays, differenceInHours } from 'date-fns'
+import { differenceInDays, differenceInHours, intervalToDuration, formatDuration } from 'date-fns'
 import useSWR from 'swr'
 import { getEventAttendanceStats, getEventChecklist, listCategories, getEventCategories, attachEventCategories } from '@/services/api'
 import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
@@ -499,7 +499,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
 
                             <div className="flex flex-col gap-8">
                                 {/* Metadata Row (Moved from right column) */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-zinc-50 rounded-2xl border border-zinc-100">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-white rounded-lg border border-zinc-200 text-zinc-400">
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -527,14 +527,31 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-white rounded-lg border border-zinc-200 text-zinc-400">
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Duration</h4>
+                                            <p className="text-sm font-bold text-zinc-900 capitalize">
+                                                {formatDuration(intervalToDuration({
+                                                    start: new Date(event.start_datetime),
+                                                    end: new Date(event.end_datetime)
+                                                }), { format: ['hours', 'minutes'] }) || '0m'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white rounded-lg border border-zinc-200 text-zinc-400">
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                             </svg>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Location</h4>
-                                            <p className="text-sm font-bold text-zinc-900 truncate" title={event.venue_remark || 'TBD'}>
-                                                {event.venue_remark || 'To Be Announced'}
+                                            <p className="text-sm font-bold text-zinc-900 truncate" title={event.venue_remark || event.location || 'TBD'}>
+                                                {event.venue_remark || event.location || (event.meeting_url ? 'Online Meeting' : 'To Be Announced')}
                                             </p>
                                         </div>
                                     </div>
