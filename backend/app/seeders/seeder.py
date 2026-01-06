@@ -43,7 +43,7 @@ def seed_all():
         seed_follows()
         # seed_extra_experts()
         # seed_extra_sponsors()
-        # seed_extra_past_events()
+        seed_extra_past_events()
         seed_tags()
         seed_onboarding()
         seed_notifications()

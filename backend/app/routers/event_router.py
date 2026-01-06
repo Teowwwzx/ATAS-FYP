@@ -3053,7 +3053,7 @@ def update_event_payment_qr(
 
 
 def _make_attendance_token(event_id: uuid.UUID, minutes_valid: int = 15) -> tuple[str, datetime]:
-    exp = datetime.utcnow() + timedelta(minutes=minutes_valid)
+    exp = datetime.now(timezone.utc) + timedelta(minutes=minutes_valid)
     payload = f"{event_id}|{int(exp.timestamp())}"
     signature = hmac.new(settings.SECRET_KEY.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).digest()
     token = f"{base64.urlsafe_b64encode(payload.encode('utf-8')).decode('utf-8').rstrip('=')}.{base64.urlsafe_b64encode(signature).decode('utf-8').rstrip('=')}"
@@ -3073,7 +3073,7 @@ def _verify_attendance_token(token: str) -> uuid.UUID:
             raise HTTPException(status_code=400, detail="Invalid token signature")
         event_id_str, exp_ts_str = payload_raw.split("|")
         exp_ts = int(exp_ts_str)
-        if int(datetime.utcnow().timestamp()) > exp_ts:
+        if int(datetime.now(timezone.utc).timestamp()) > exp_ts:
             raise HTTPException(status_code=400, detail="Token expired")
         return uuid.UUID(event_id_str)
     except HTTPException:

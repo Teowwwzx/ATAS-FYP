@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.main import app
@@ -54,8 +54,8 @@ def test_comprehensive_event_crud(client: TestClient, db: Session):
         "description": "Testing CRUD",
         "format": "seminar",
         "type": "physical",
-        "start_datetime": (datetime.utcnow() + timedelta(days=1)).isoformat(),
-        "end_datetime": (datetime.utcnow() + timedelta(days=2)).isoformat(),
+        "start_datetime": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "end_datetime": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
         "registration_type": "free",
         "visibility": "public"
     }
@@ -133,7 +133,7 @@ def test_comprehensive_event_crud(client: TestClient, db: Session):
     checklist_internal = {
         "title": "Internal Planning",
         "visibility": "internal",
-        "due_datetime": (datetime.utcnow() + timedelta(hours=12)).isoformat()
+        "due_datetime": (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat()
     }
     res_cl_int = client.post(f"/api/v1/events/{event_id}/checklist", json=checklist_internal)
     check_res(res_cl_int)
