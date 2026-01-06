@@ -1,5 +1,6 @@
 import logging
 import uuid
+import random
 from sqlalchemy.orm import Session
 from app.database.database import SessionLocal, engine
 from app.models.user_model import User, Role, UserStatus
@@ -30,6 +31,14 @@ def seed_users():
                 db.flush() # Flush to get ID
                 logger.info(f"Created role: {role_name}")
             roles[role_name] = role
+
+        available_avatars = [
+            "/img/avatars/1.jpg",
+            "/img/avatars/2.png",
+            "/img/avatars/3.jpg",
+            "/img/avatars/strategy.jpg",
+            "/img/avatars/tim.webp"
+        ]
 
         # 2. Create Users
         users_config = [
@@ -90,12 +99,28 @@ def seed_users():
                     full_name=user_data["full_name"],
                     visibility=ProfileVisibility.public,
                     title=user_data.get("title"),
+                    avatar_url=random.choice(available_avatars),
                     is_onboarded=True
                 )
                 db.add(profile)
                 
                 logger.info(f"Created user: {user_data['email']} ({user_data['role']})")
             else:
+                profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+                if not profile:
+                    profile = Profile(
+                        user_id=user.id,
+                        full_name=user_data["full_name"],
+                        visibility=ProfileVisibility.public,
+                        title=user_data.get("title"),
+                        avatar_url=random.choice(available_avatars),
+                        is_onboarded=True
+                    )
+                    db.add(profile)
+                else:
+                    if not profile.avatar_url:
+                        profile.avatar_url = random.choice(available_avatars)
+                        db.add(profile)
                 logger.info(f"User already exists: {user_data['email']}")
 
         db.commit()

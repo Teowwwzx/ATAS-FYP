@@ -1,6 +1,7 @@
 import logging
 from dotenv import load_dotenv
 load_dotenv()
+import random
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from fastapi.encoders import jsonable_encoder
@@ -25,27 +26,34 @@ def seed_onboarding():
     try:
         logger.info("Seeding onboarding data...")
 
+        available_avatars = [
+            "/img/avatars/1.jpg",
+            "/img/avatars/2.png",
+            "/img/avatars/3.jpg",
+            "/img/avatars/strategy.jpg",
+            "/img/avatars/tim.webp"
+        ]
+        random.shuffle(available_avatars)
+
         # Define onboarding data for basic users
         onboarding_data = {
             "admin@gmail.com": {
                 "bio": "System Administrator and Community Manager at APU.",
-                "intents": ["open_to_collaborate", "organizing_events"],
+                "intents": ["hiring_talent", "looking_for_speaker"],
                 "availability": "Weekdays 9am-5pm",
                 "city": "Kuala Lumpur",
                 "country": "Malaysia",
                 "origin_country": "Malaysia",
-                "avatar_url": "/img/avatars/1.jpg",
                 "average_rating": 5.0,
                 "title": "Community Manager"
             },
             "student@gmail.com": {
                 "bio": "Computer Science student eager to learn about AI and Fintech.",
-                "intents": ["seeking_mentorship", "open_to_collaborate"],
+                "intents": ["open_to_job", "looking_for_sponsor"],
                 "availability": "Weekends and Evenings",
                 "city": "Kuala Lumpur",
                 "country": "Malaysia",
                 "origin_country": "Malaysia",
-                "avatar_url": "/img/avatars/tim.webp",
                 "average_rating": 0.0,
                 "title": "CS Student",
                 "linkedin_url": "https://linkedin.com/in/student-user",
@@ -53,12 +61,11 @@ def seed_onboarding():
             },
             "expert@gmail.com": {
                 "bio": "Senior Researcher specializing in Artificial Intelligence and Machine Learning.",
-                "intents": ["open_to_speak", "offering_mentorship", "open_to_collaborate"],
+                "intents": ["open_to_speak", "hiring_talent"],
                 "availability": "Flexible, by appointment",
                 "city": "Singapore",
                 "country": "Singapore",
                 "origin_country": "Singapore",
-                "avatar_url": "/img/avatars/lee.jpg",
                 "average_rating": 4.9,
                 "can_be_speaker": True,
                 "title": "Senior AI Researcher",
@@ -66,12 +73,11 @@ def seed_onboarding():
             },
             "sponsor@gmail.com": {
                 "bio": "Representing corporate interests in tech education and innovation.",
-                "intents": ["hiring_talent", "open_to_collaborate"],
+                "intents": ["hiring_talent", "open_to_sponsor"],
                 "availability": "Weekdays 10am-4pm",
                 "city": "Petaling Jaya",
                 "country": "Malaysia",
                 "origin_country": "Malaysia",
-                "avatar_url": "/img/avatars/strategy.jpg",
                 "average_rating": 4.5,
                 "title": "Corporate Relations Manager"
             }
@@ -100,11 +106,11 @@ def seed_onboarding():
                     profile.title = data["title"]
                 if "origin_country" in data:
                     profile.origin_country = data["origin_country"]
-                if "avatar_url" in data:
-                    profile.avatar_url = data["avatar_url"]
+                if not profile.avatar_url:
+                    profile.avatar_url = random.choice(available_avatars)
                 if "average_rating" in data:
                     profile.average_rating = data["average_rating"]
-                
+
                 logger.info(f"Updated profile data for {email}")
 
                 # 2. Update/Create UserOnboarding Record

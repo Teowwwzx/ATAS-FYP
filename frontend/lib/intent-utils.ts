@@ -4,44 +4,44 @@
 export interface IntentDisplay {
     label: string
     icon: string
-    color: 'blue' | 'purple' | 'green' | 'orange' | 'pink' | 'yellow'
+    color: 'blue' | 'purple' | 'green' | 'orange' | 'pink' | 'yellow' | 'indigo'
 }
 
 export const INTENT_DISPLAY_MAP: Record<string, IntentDisplay> = {
-    // Mentorship
-    'seeking_mentorship': {
-        label: 'Seeking Mentorship',
-        icon: '🎓',
-        color: 'blue'
-    },
-    'offering_mentorship': {
-        label: 'Offering Mentorship',
-        icon: '👨‍🏫',
-        color: 'purple'
-    },
-
     // Speaking & Events
     'open_to_speak': {
-        label: 'Available for Speaking',
+        label: 'Open to Speak',
         icon: '🎤',
-        color: 'purple'
+        color: 'blue'
     },
-    'open_to_collaborate': {
-        label: 'Open to Collaborate',
-        icon: '🤝',
-        color: 'green'
+    'looking_for_speaker': {
+        label: 'Looking for Speaker',
+        icon: '📢',
+        color: 'blue'
     },
 
-    // Business
+    // Sponsorship
+    'open_to_sponsor': {
+        label: 'Open to Sponsor',
+        icon: '💰',
+        color: 'yellow'
+    },
+    'looking_for_sponsor': {
+        label: 'Looking for Sponsor',
+        icon: '🚀',
+        color: 'purple'
+    },
+
+    // Career
     'hiring_talent': {
-        label: 'Hiring Talents',
+        label: 'Hiring Talent',
         icon: '💼',
         color: 'green'
     },
-    'looking_for_sponsor': {
-        label: 'Looking for Sponsors',
-        icon: '🚀',
-        color: 'orange'
+    'open_to_job': {
+        label: 'Open to Job',
+        icon: '👔',
+        color: 'indigo'
     },
 }
 
@@ -65,6 +65,7 @@ export function getIntentBadgeClasses(color: IntentDisplay['color']): string {
         orange: 'bg-orange-100 text-orange-800 border-orange-200',
         pink: 'bg-pink-100 text-pink-800 border-pink-200',
         yellow: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     }
     return colorMap[color] || colorMap.blue
 }

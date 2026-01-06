@@ -134,14 +134,70 @@ def seed_extra_experts():
 
                 # Generate/Upsert Embedding (After commit so relations exist if needed, but we pass source_text manually)
                 source_text = f"{data['name']} {data['title']} {data['bio']} {' '.join(data['tags'])}"
-                # Use dummy embedding if no key, but service handles it
-                # Note: upsert_expert_embedding handles transaction inside it usually, or uses db session passed
-                # Let's check logic: it uses db.execute.
                 upsert_expert_embedding(db, user.id, source_text)
                 
                 logger.info(f"Created expert {data['name']} with tags and embedding.")
             else:
-                logger.info(f"Expert {data['email']} already exists.")
+                profile = db.query(Profile).filter(Profile.user_id == user.id).first()
+                if not profile:
+                    profile_tags = []
+                    for tag_name in data["tags"]:
+                        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+                        if not tag:
+                            tag = Tag(name=tag_name)
+                            db.add(tag)
+                            db.flush()
+                        profile_tags.append(tag)
+                    profile = Profile(
+                        user_id=user.id,
+                        full_name=data["name"],
+                        title=data["title"],
+                        bio=data["bio"],
+                        avatar_url=data.get("avatar_url"),
+                        availability=data.get("availability"),
+                        visibility=ProfileVisibility.public,
+                        is_onboarded=True
+                    )
+                    db.add(profile)
+                    db.flush()
+                    profile.tags.extend(profile_tags)
+                else:
+                    updated = False
+                    if not profile.avatar_url and data.get("avatar_url"):
+                        profile.avatar_url = data["avatar_url"]
+                        updated = True
+                    if not profile.full_name and data.get("name"):
+                        profile.full_name = data["name"]
+                        updated = True
+                    if not profile.title and data.get("title"):
+                        profile.title = data["title"]
+                        updated = True
+                    if not profile.bio and data.get("bio"):
+                        profile.bio = data["bio"]
+                        updated = True
+                    if not profile.availability and data.get("availability"):
+                        profile.availability = data["availability"]
+                        updated = True
+                    if updated:
+                        db.add(profile)
+                existing_review = None
+                if student_user:
+                    existing_review = db.query(Review).filter(
+                        Review.reviewer_id == student_user.id,
+                        Review.reviewee_id == user.id
+                    ).first()
+                if student_user and not existing_review:
+                    review = Review(
+                        reviewer_id=student_user.id,
+                        reviewee_id=user.id,
+                        rating=5,
+                        comment=data["review"]
+                    )
+                    db.add(review)
+                db.commit()
+                source_text = f"{data['name']} {data['title']} {data['bio']} {' '.join(data['tags'])}"
+                upsert_expert_embedding(db, user.id, source_text)
+                logger.info(f"Updated expert {data['email']} profile and embedding.")
 
         logger.info("Extra experts seeded successfully.")
 

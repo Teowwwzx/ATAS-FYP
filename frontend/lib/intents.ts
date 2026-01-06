@@ -46,12 +46,12 @@ export function getIntentIcon(intent: string): string {
  */
 export function getIntentBadgeClass(intent: string): string {
     const intentColors: Record<string, string> = {
-        'open_to_speak': 'bg-purple-50 text-purple-700 border-purple-200',
-        'open_to_sponsor': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        'looking_for_sponsor': 'bg-orange-50 text-orange-700 border-orange-200',
-        'looking_for_speaker': 'bg-blue-50 text-blue-700 border-blue-200',
-        'hiring_talent': 'bg-green-50 text-green-700 border-green-200',
-        'open_to_job': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        'open_to_speak': 'bg-blue-100 text-blue-700 border-blue-200',
+        'looking_for_speaker': 'bg-blue-100 text-blue-700 border-blue-200',
+        'open_to_sponsor': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+        'looking_for_sponsor': 'bg-purple-100 text-purple-700 border-purple-200',
+        'hiring_talent': 'bg-green-100 text-green-700 border-green-200',
+        'open_to_job': 'bg-indigo-100 text-indigo-700 border-indigo-200',
     }
 
     return intentColors[intent] || 'bg-zinc-50 text-zinc-700 border-zinc-200'
