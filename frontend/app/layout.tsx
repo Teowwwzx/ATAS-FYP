@@ -3,6 +3,7 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast' // Import the Toaster
+import WireframeToggle from '@/components/WireframeToggle'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -58,6 +59,7 @@ export default function RootLayout({
             },
           }}
         />
+        <WireframeToggle />
         {children}
       </body>
     </html>

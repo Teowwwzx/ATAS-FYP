@@ -2,6 +2,7 @@ import logging
 import uuid
 import os
 import sys
+import random
 from datetime import datetime, timedelta, timezone
 
 # Add path to sys to ensure imports work if run directly
@@ -35,10 +36,20 @@ def seed_extra_sponsors():
             logger.error("Dependencies missing (Role, Admin, or Org). Run basic seeders first.")
             return
 
+        # Available sponsor promo images in frontend/public/img/sponsor
+        available_sponsor_images = [
+            "/img/sponsor/aha-kopi-sponsor.jpg",
+            "/img/sponsor/cover.jpg",
+            "/img/sponsor/logo.jpg"
+        ]
+        
+        # Shuffle for random assignment
+        random.shuffle(available_sponsor_images)
+
         sponsors_config = [
-            {"email": "sponsor_gold@gmail.com", "name": "TechGiant Corp", "tier": "Gold Sponsor"},
-            {"email": "sponsor_silver@gmail.com", "name": "Innovate Ltd", "tier": "Silver Sponsor"},
-            {"email": "sponsor_bronze@gmail.com", "name": "Community Inc", "tier": "Bronze Sponsor"}
+            {"email": "sponsor_gold@gmail.com", "name": "TechGiant Corp", "tier": "Gold Sponsor", "promo_image": available_sponsor_images[0], "promo_link": "https://techgiant.com"},
+            {"email": "sponsor_silver@gmail.com", "name": "Innovate Ltd", "tier": "Silver Sponsor", "promo_image": available_sponsor_images[1], "promo_link": "https://innovate.io"},
+            {"email": "sponsor_bronze@gmail.com", "name": "Community Inc", "tier": "Bronze Sponsor", "promo_image": available_sponsor_images[2], "promo_link": "https://community.org"}
         ]
 
         created_sponsors = []
@@ -98,9 +109,10 @@ def seed_extra_sponsors():
             logger.info("Created past event: Past Tech Summit 2025")
         
         # 3. Add Sponsors to Event
-        for sponsor_info in created_sponsors:
+        for idx, sponsor_info in enumerate(created_sponsors):
             sp_user = sponsor_info["user"]
             tier = sponsor_info["tier"]
+            sponsor_config = sponsors_config[idx]
             
             # Check if participant
             participant = db.query(EventParticipant).filter(
@@ -116,10 +128,18 @@ def seed_extra_sponsors():
                     status=EventParticipantStatus.accepted,
                     description=tier, # Storing tier in description
                     email=sp_user.email,
-                    name=sp_user.full_name or sp_user.email
+                    name=sp_user.full_name or sp_user.email,
+                    promo_image_url=sponsor_config["promo_image"],  # Add promo image
+                    promo_link=sponsor_config["promo_link"]  # Add promo link
                 )
                 db.add(participant)
-                logger.info(f"Added {sp_user.email} as {tier} to event.")
+                logger.info(f"Added {sp_user.email} as {tier} with promo image to event.")
+            else:
+                # Update existing participant with promo images
+                participant.promo_image_url = sponsor_config["promo_image"]
+                participant.promo_link = sponsor_config["promo_link"]
+                db.add(participant)
+                logger.info(f"Updated {sp_user.email} with new promo image.")
 
         db.commit()
         logger.info("Extra sponsors seeds completed.")
