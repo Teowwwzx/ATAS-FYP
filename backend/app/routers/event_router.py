@@ -4212,5 +4212,3 @@ def create_proposal_comment(
             pass
 
     return comment
-
-
