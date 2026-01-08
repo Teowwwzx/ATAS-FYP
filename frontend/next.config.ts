@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import * as path from 'path';
 
 const nextConfig: NextConfig = {
   images: {
@@ -39,6 +40,9 @@ const nextConfig: NextConfig = {
         hostname: 'lh3.googleusercontent.com',
       }
     ],
+  },
+  turbopack: {
+    root: path.join(__dirname)
   }
 };
 

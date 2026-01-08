@@ -3,6 +3,10 @@ import uvicorn
 import os
 
 if __name__ == "__main__":
+    # Mitigate file-watcher instability on synced folders (e.g., OneDrive) by forcing polling
+    # This reduces spurious reload loops or crashes when many transient files are touched.
+    os.environ.setdefault("WATCHFILES_FORCE_POLLING", "1")
+
     # Ensure we are in the correct directory (backend root)
     # This helps if the script is run from a different location
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,6 +23,8 @@ if __name__ == "__main__":
         reload=True,
         # Only watch the application code
         reload_dirs=["app"],
+        # Only reload on Python source changes to avoid noisy transient files
+        reload_includes=["*.py"],
         # Explicitly exclude migration and environment directories
         reload_excludes=["alembic", "venv", ".venv", "__pycache__", ".git"],
         log_level="info"
