@@ -59,7 +59,7 @@ export default function RootLayout({
             },
           }}
         />
-        <WireframeToggle />
+        {/* <WireframeToggle /> */}
         {children}
       </body>
     </html>
