@@ -200,10 +200,11 @@
 
 /* Ensure container handles flex correctly */
 .str-chat__channel {
-  display: flex !important;
+  width: 100%;
+  /* display: flex !important;
   flex-direction: row !important;
   overflow: hidden !important;
-  position: relative !important;
+  position: relative !important; */
 }
 
 /* Responsive Thread: Overlay on smaller screens or when space is tight */

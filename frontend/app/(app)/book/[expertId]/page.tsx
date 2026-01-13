@@ -400,18 +400,49 @@ export default function BookingPage() {
                                         You don't have any organized events yet. Please create a new event.
                                     </div>
                                 ) : (
-                                    <select
-                                        value={selectedEventId}
-                                        onChange={(e) => setSelectedEventId(e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
-                                    >
-                                        <option value="">-- Select an event --</option>
-                                        {myEvents.map(event => (
-                                            <option key={event.id} value={event.id}>
-                                                {event.title} ({new Date(event.start_datetime).toLocaleDateString()})
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Search your events..."
+                                            onChange={(e) => {
+                                                const searchTerm = e.target.value.toLowerCase()
+                                                if (!searchTerm) {
+                                                    setSelectedEventId('')
+                                                    return
+                                                }
+                                                // Find matching event
+                                                const match = myEvents.find(event =>
+                                                    event.title.toLowerCase().includes(searchTerm)
+                                                )
+                                                if (match) setSelectedEventId(match.id)
+                                            }}
+                                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-slate-500 focus:ring-4 focus:ring-slate-100 transition-all outline-none text-slate-700"
+                                        />
+                                        <div className="absolute right-3 top-3 text-slate-400">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                        {/* Event List */}
+                                        <div className="mt-2 max-h-60 overflow-y-auto space-y-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                            {myEvents.map(event => (
+                                                <button
+                                                    key={event.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedEventId(event.id)}
+                                                    className={`w-full text-left px-4 py-3 rounded-lg transition-all ${selectedEventId === event.id
+                                                        ? 'bg-slate-900 text-white shadow-md'
+                                                        : 'bg-white hover:bg-slate-100 text-slate-700'
+                                                        }`}
+                                                >
+                                                    <div className="font-bold text-sm">{event.title}</div>
+                                                    <div className={`text-xs mt-1 ${selectedEventId === event.id ? 'text-slate-300' : 'text-slate-500'}`}>
+                                                        {new Date(event.start_datetime).toLocaleDateString()} • {event.type}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 

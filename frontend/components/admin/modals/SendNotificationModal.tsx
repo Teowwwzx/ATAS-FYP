@@ -162,7 +162,24 @@ export function SendNotificationModal({ isOpen, onClose, onSuccess }: SendNotifi
                                         </label>
                                         <select
                                             value={selectedTemplateId}
-                                            onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                            onChange={(e) => {
+                                                setSelectedTemplateId(e.target.value)
+                                                // Auto-fill template variables based on template name
+                                                const template = (templates || []).find(t => t.id === e.target.value)
+                                                if (template) {
+                                                    if (template.name.includes('verification')) {
+                                                        setTemplateVars('{"user_name":"User","verification_link":"https://atas.com/verify"}')
+                                                    } else if (template.name.includes('reset') || template.name.includes('password')) {
+                                                        setTemplateVars('{"user_name":"User","reset_link":"https://atas.com/reset-password"}')
+                                                    } else if (template.name.includes('event') || template.name.includes('invitation')) {
+                                                        setTemplateVars('{"user_name":"User","event_title":"Event Name","event_link":"https://atas.com/events/123"}')
+                                                    } else if (template.name.includes('moderation')) {
+                                                        setTemplateVars('{"user_name":"User","event_title":"Event Name"}')
+                                                    } else {
+                                                        setTemplateVars('{"user_name":"User"}')
+                                                    }
+                                                }
+                                            }}
                                             className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                                         >
                                             <option value="">Select template</option>
@@ -173,13 +190,44 @@ export function SendNotificationModal({ isOpen, onClose, onSuccess }: SendNotifi
                                     </div>
                                     {selectedTemplateId && (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Template Variables (JSON)</label>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <label className="block text-sm font-medium text-gray-700">Template Variables <span className="text-gray-400 font-normal">(Auto-filled, edit if needed)</span></label>
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTemplateVars('{"user_name":"User","event_title":"Event","event_link":"https://atas.com/events/123"}')}
+                                                        className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                                                        title="Event template"
+                                                    >
+                                                        Event
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTemplateVars('{"user_name":"User","verification_link":"https://atas.com/verify"}')}
+                                                        className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
+                                                        title="Verification template"
+                                                    >
+                                                        Verify
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setTemplateVars('{"user_name":"User"}')}
+                                                        className="text-xs px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                                                        title="Basic template"
+                                                    >
+                                                        Basic
+                                                    </button>
+                                                </div>
+                                            </div>
                                             <textarea
                                                 value={templateVars}
                                                 onChange={(e) => setTemplateVars(e.target.value)}
                                                 className="text-gray-700 w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all h-20 font-mono text-xs"
                                                 placeholder='{"user_name":"Alice","verification_link":"https://..."}'
                                             />
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                💡 Use the preset buttons above or edit the JSON. Variables like <code className="bg-gray-100 px-1 rounded">user_name</code>, <code className="bg-gray-100 px-1 rounded">event_title</code>, <code className="bg-gray-100 px-1 rounded">event_link</code> will be replaced in the email.
+                                            </p>
                                         </div>
                                     )}
                                 </div>

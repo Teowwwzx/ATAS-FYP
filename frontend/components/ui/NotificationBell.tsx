@@ -38,11 +38,61 @@ export function NotificationBell() {
             // Reload notifications when a new one arrives
             loadNotifications()
 
-            // Show toast notification
-            toast.success('New notification received!', {
-                duration: 3000,
-                icon: '🔔',
-            })
+            // Play notification sound
+            try {
+                const audio = new Audio('/notification.mp3')
+                audio.volume = 0.5
+                audio.play().catch(() => {
+                    // User hasn't interacted with page yet, sound blocked
+                    console.log('Sound blocked by browser')
+                })
+            } catch (e) {
+                console.log('Sound not available')
+            }
+
+            // Show rich notification toast (top-right, custom content)
+            toast.custom(
+                (t) => (
+                    <div
+                        className={`${t.visible ? 'animate-enter' : 'animate-leave'
+                            } max-w-lg w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 border-l-4 border-yellow-400`}
+                    >
+                        <div className="flex-1 w-0 p-5">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 pt-0.5">
+                                    <div className="h-11 w-11 rounded-full bg-yellow-100 flex items-center justify-center">
+                                        <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-base font-bold text-gray-900">
+                                        {latestNotification.title || 'New Notification'}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                                        {latestNotification.message || latestNotification.content}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex border-l border-gray-200">
+                            <button
+                                onClick={() => toast.dismiss(t.id)}
+                                className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                            >
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                ),
+                {
+                    duration: 6000,
+                    position: 'top-right',
+                }
+            )
         }
     }, [latestNotification, loadNotifications])
 
