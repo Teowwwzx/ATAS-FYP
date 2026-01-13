@@ -11,6 +11,8 @@ import { useLoadScript } from '@react-google-maps/api'
 import { UserCreateOrganizationModal } from '@/components/modals/UserCreateOrganizationModal'
 import { ImageUpload } from '@/components/ui/ImageUpload'
 import { ChevronDownIcon, UpdateIcon } from '@radix-ui/react-icons'
+import { CategorySearchSelect } from '@/components/admin/CategorySearchSelect'
+import { showDraftRestoreToast } from '@/components/ui/DraftRestoreToast'
 
 const libraries: ("places")[] = ["places"]
 
@@ -53,15 +55,23 @@ export default function CreateEventPage() {
     const [categorySearch, setCategorySearch] = useState('')
 
     // Load draft on mount
+    const isRestoring = React.useRef(false)
+    const restoredDraft = React.useRef(false)
+    const hasUserEditedSinceRestore = React.useRef(false)
+    const markUserEdited = () => {
+        if (restoredDraft.current) hasUserEditedSinceRestore.current = true
+    }
     useEffect(() => {
-        const draft = localStorage.getItem('event_create_draft')
-        if (draft) {
-            try {
-                const parsed = JSON.parse(draft)
-                setFormData(prev => ({ ...prev, ...parsed }))
-                toast.success('Restored draft from previous session', { id: 'draft-restore' })
-            } catch { }
-        }
+        showDraftRestoreToast('event_create_draft', (data) => {
+            isRestoring.current = true
+            restoredDraft.current = true
+            hasUserEditedSinceRestore.current = false
+            setFormData(prev => ({ ...prev, ...data }))
+            // Reset restoring flag after a short delay to allow subsequent edits to save
+            setTimeout(() => {
+                isRestoring.current = false
+            }, 1100)
+        })
     }, [])
 
     // Fetch organizations and categories on mount
@@ -77,13 +87,20 @@ export default function CreateEventPage() {
 
     // Save draft on change
     useEffect(() => {
+        if (isRestoring.current) return
+        if (restoredDraft.current && !hasUserEditedSinceRestore.current) return
+
         const handler = setTimeout(() => {
-            localStorage.setItem('event_create_draft', JSON.stringify(formData))
-        }, 500)
+            // Only save if there's actual content to avoid saving empty drafts
+            if (formData.title || formData.description || formData.start_datetime) {
+                localStorage.setItem('event_create_draft', JSON.stringify(formData))
+            }
+        }, 1000)
         return () => clearTimeout(handler)
     }, [formData])
 
     const handleSelect = async (address: string) => {
+        markUserEdited()
         setFormData(prev => ({ ...prev, venue_remark: address }))
         try {
             const results = await geocodeByAddress(address)
@@ -109,6 +126,7 @@ export default function CreateEventPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target
+        markUserEdited()
         setFormData((prev) => ({ ...prev, [name]: value }))
     }
 
@@ -230,6 +248,7 @@ export default function CreateEventPage() {
     const handleOrgCreated = (orgId: string) => {
         getMyOrganizations().then(orgs => {
             setOrganizations(orgs)
+            markUserEdited()
             setFormData(prev => ({ ...prev, organization_id: orgId }))
         })
     }
@@ -258,37 +277,12 @@ export default function CreateEventPage() {
                 />
 
                 <div>
-                    <label className="block text-sm font-bold text-zinc-900 mb-2 ml-1">
-                        Categories
-                    </label>
-                    <input 
-                        type="text" 
-                        placeholder="Search categories..." 
-                        value={categorySearch} 
-                        onChange={(e) => setCategorySearch(e.target.value)} 
-                        className="block w-full mb-3 rounded-2xl bg-gray-50 border-transparent focus:border-yellow-400 focus:bg-white focus:ring-0 text-zinc-700 font-medium py-3 px-5 transition-all duration-200" 
+                    <CategorySearchSelect
+                        label="Categories"
+                        selectedCategoryIds={selectedCategories}
+                        onChange={setSelectedCategories}
+                        placeholder="Search or create categories..."
                     />
-                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
-                        {allCategories.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase())).map(cat => {
-                            const isSelected = selectedCategories.includes(cat.id)
-                            return (
-                                <button
-                                    key={cat.id}
-                                    type="button"
-                                    onClick={() => setSelectedCategories(prev => 
-                                        isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id]
-                                    )}
-                                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-                                        isSelected 
-                                            ? 'bg-yellow-400 border-yellow-400 text-zinc-900 shadow-sm' 
-                                            : 'bg-white border-zinc-200 text-zinc-600 hover:border-yellow-400 hover:text-zinc-900'
-                                    }`}
-                                >
-                                    {cat.name}
-                                </button>
-                            )
-                        })}
-                    </div>
                 </div>
 
                 <div>
@@ -323,6 +317,7 @@ export default function CreateEventPage() {
                                 min={minStart}
                                 value={formData.start_datetime}
                                 onChange={(e) => {
+                                    markUserEdited()
                                     const v = e.target.value
                                     const clamped = v && v < minStart ? minStart : v
                                     setFormData(prev => ({ ...prev, start_datetime: clamped }))
@@ -348,6 +343,7 @@ export default function CreateEventPage() {
                                 min={minEnd}
                                 value={formData.end_datetime}
                                 onChange={(e) => {
+                                    markUserEdited()
                                     const v = e.target.value
                                     const minV = minEnd
                                     const clamped = v && v < minV ? minV : v
@@ -446,7 +442,10 @@ export default function CreateEventPage() {
                         isLoaded ? (
                             <PlacesAutocomplete
                                 value={formData.venue_remark || ''}
-                                onChange={(address) => setFormData(prev => ({ ...prev, venue_remark: address }))}
+                                onChange={(address) => {
+                                    markUserEdited()
+                                    setFormData(prev => ({ ...prev, venue_remark: address }))
+                                }}
                                 onSelect={handleSelect}
                             >
                                 {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
@@ -582,7 +581,10 @@ export default function CreateEventPage() {
                                                     </label>
                                                     <ImageUpload
                                                         value={formData.payment_qr_url || null}
-                                                        onChange={(url) => setFormData(prev => ({ ...prev, payment_qr_url: url || undefined }))}
+                                                        onChange={(url) => {
+                                                            markUserEdited()
+                                                            setFormData(prev => ({ ...prev, payment_qr_url: url || undefined }))
+                                                        }}
                                                         placeholder="Upload Payment QR"
                                                         helpText="Upload your DuitNow, TNG, or bank transfer QR code"
                                                         maxSizeMB={2}
@@ -622,6 +624,7 @@ export default function CreateEventPage() {
                                                     if (e.target.value === 'create_new') {
                                                         setShowOrgModal(true)
                                                     } else {
+                                                        markUserEdited()
                                                         setFormData(prev => ({ ...prev, organization_id: e.target.value || undefined }))
                                                     }
                                                 }}
@@ -667,7 +670,10 @@ export default function CreateEventPage() {
                                             </label>
                                             <ImageUpload
                                                 value={formData.cover_url || null}
-                                                onChange={(url) => setFormData(prev => ({ ...prev, cover_url: url || undefined }))}
+                                                onChange={(url) => {
+                                                    markUserEdited()
+                                                    setFormData(prev => ({ ...prev, cover_url: url || undefined }))
+                                                }}
                                                 placeholder="Upload Cover Image"
                                                 helpText="Recommended: 1920x1080px. Used in event cards and detail pages."
                                                 maxSizeMB={5}
@@ -680,7 +686,10 @@ export default function CreateEventPage() {
                                             </label>
                                             <ImageUpload
                                                 value={formData.logo_url || null}
-                                                onChange={(url) => setFormData(prev => ({ ...prev, logo_url: url || undefined }))}
+                                                onChange={(url) => {
+                                                    markUserEdited()
+                                                    setFormData(prev => ({ ...prev, logo_url: url || undefined }))
+                                                }}
                                                 placeholder="Upload Logo"
                                                 helpText="Recommended: 512x512px. Used in navigation and as event icon."
                                                 maxSizeMB={2}

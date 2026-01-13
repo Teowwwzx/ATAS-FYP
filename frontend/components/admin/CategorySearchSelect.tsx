@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { getCategories } from '@/services/api'
+import { getCategories, createCategory as createCategoryAdmin } from '@/services/api'
+import { createCategoryPublic } from '@/services/api'
 import { CategoryResponse } from '@/services/api.types'
 import { MagnifyingGlassIcon, CheckCircledIcon, Cross2Icon } from '@radix-ui/react-icons'
 import useSWR from 'swr'
@@ -38,11 +39,11 @@ export function CategorySearchSelect({
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
-    const filteredCategories = categories?.filter(cat =>
-        cat.name.toLowerCase().includes(query.toLowerCase())
-    ) || []
+    const filteredCategories = (categories || [])
+        .filter(cat => cat.name.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 10)
 
-    const maxCategories = 3 // Maximum number of categories allowed
+    const maxCategories = 3
 
     const toggleCategory = (categoryId: string) => {
         if (selectedCategoryIds.includes(categoryId)) {
@@ -64,6 +65,35 @@ export function CategorySearchSelect({
         selectedCategoryIds.includes(cat.id)
     ) || []
 
+    const canCreate = (() => {
+        const q = query.trim()
+        if (q.length < 2) return false
+        const exists = (categories || []).some(c => c.name.toLowerCase() === q.toLowerCase())
+        return !exists
+    })()
+
+    const handleCreate = async () => {
+        const name = query.trim()
+        if (!name || name.length < 2) return
+        try {
+            const created = await createCategoryPublic({ name })
+            if (selectedCategoryIds.length < maxCategories) {
+                onChange([...selectedCategoryIds, created.id])
+            }
+            setQuery('')
+            setIsOpen(false)
+        } catch (e) {
+            try {
+                const createdAdmin = await createCategoryAdmin({ name })
+                if (selectedCategoryIds.length < maxCategories) {
+                    onChange([...selectedCategoryIds, createdAdmin.id])
+                }
+                setQuery('')
+                setIsOpen(false)
+            } catch { }
+        }
+    }
+
     return (
         <div className="relative" ref={wrapperRef}>
             {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
@@ -73,7 +103,7 @@ export function CategorySearchSelect({
                 {selectedCategories.map(cat => (
                     <div
                         key={cat.id}
-                        className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200 text-xs font-bold animate-fadeIn"
+                        className="flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full border border-yellow-200 text-xs font-bold"
                     >
                         <span>{cat.name}</span>
                         <button
@@ -117,28 +147,35 @@ export function CategorySearchSelect({
             </div>
 
             {/* Dropdown Results */}
-            {isOpen && (query.length > 0 || isOpen) && (
+            {isOpen && query.trim().length >= 2 && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {filteredCategories.length === 0 && !isLoading ? (
+                    {filteredCategories.length > 0 && filteredCategories.map((cat) => {
+                        const isSelected = selectedCategoryIds.includes(cat.id)
+                        return (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => toggleCategory(cat.id)}
+                                className={`w-full flex items-center justify-between p-2 hover:bg-gray-50 transition-colors text-left border-b last:border-b-0 border-gray-50 ${isSelected ? 'bg-blue-50/50' : ''}`}
+                            >
+                                <span className={`text-sm ${isSelected ? 'font-bold text-blue-700' : 'text-gray-900'}`}>
+                                    {cat.name}
+                                </span>
+                                {isSelected && <CheckCircledIcon className="w-4 h-4 text-blue-500" />}
+                            </button>
+                        )
+                    })}
+                    {filteredCategories.length === 0 && !isLoading && (
                         <div className="p-3 text-sm text-gray-500 text-center">No categories found</div>
-                    ) : (
-                        filteredCategories.map((cat) => {
-                            const isSelected = selectedCategoryIds.includes(cat.id)
-                            return (
-                                <button
-                                    key={cat.id}
-                                    type="button"
-                                    onClick={() => toggleCategory(cat.id)}
-                                    className={`w-full flex items-center justify-between p-2 hover:bg-gray-50 transition-colors text-left border-b last:border-b-0 border-gray-50 ${isSelected ? 'bg-blue-50/50' : ''
-                                        }`}
-                                >
-                                    <span className={`text-sm ${isSelected ? 'font-bold text-blue-700' : 'text-gray-900'}`}>
-                                        {cat.name}
-                                    </span>
-                                    {isSelected && <CheckCircledIcon className="w-4 h-4 text-blue-500" />}
-                                </button>
-                            )
-                        })
+                    )}
+                    {canCreate && (
+                        <button
+                            type="button"
+                            onClick={handleCreate}
+                            className="w-full p-2 text-left bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold transition-colors border-t border-amber-200"
+                        >
+                            Create “{query.trim()}”
+                        </button>
                     )}
                 </div>
             )}

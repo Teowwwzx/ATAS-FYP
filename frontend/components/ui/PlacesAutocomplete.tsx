@@ -54,8 +54,9 @@ export function PlacesAutocomplete({ onPlaceSelect, defaultValue }: Props) {
                                     const props = getSuggestionItemProps(s, {
                                         className: "cursor-pointer px-3 py-2 text-sm hover:bg-blue-50"
                                     })
+                                    const { key: reactKey, ...restProps } = props as Record<string, any>
                                     return (
-                                        <div {...props}>
+                                        <div key={reactKey ?? s.placeId ?? s.description} {...restProps}>
                                             <div className="text-gray-900">{s.description}</div>
                                         </div>
                                     )
