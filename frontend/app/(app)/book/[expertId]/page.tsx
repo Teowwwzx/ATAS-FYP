@@ -16,6 +16,7 @@ import {
 import { ProfileResponse, UserMeResponse, EventDetails } from '@/services/api.types'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 import { showDraftRestoreToast } from '@/components/ui/DraftRestoreToast'
+import { format } from 'date-fns'
 
 export default function BookingPage() {
     const params = useParams()
@@ -301,8 +302,8 @@ export default function BookingPage() {
                 const newEvent = await createEvent({
                     title: title,
                     description: undefined, // Don't use proposal message as public description
-                    start_datetime: startDateTime.toISOString(),
-                    end_datetime: endDateTime.toISOString(),
+                    start_datetime: format(startDateTime, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+                    end_datetime: format(endDateTime, "yyyy-MM-dd'T'HH:mm:ssXXX"),
                     venue_place_id: venuePlaceId || null,
                     venue_remark: venue,
                     type: meetingType,

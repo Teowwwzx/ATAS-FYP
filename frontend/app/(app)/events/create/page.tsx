@@ -15,6 +15,7 @@ import { CategorySearchSelect } from '@/components/admin/CategorySearchSelect'
 import { showDraftRestoreToast } from '@/components/ui/DraftRestoreToast'
 
 const libraries: ("places")[] = ["places"]
+import { format } from 'date-fns'
 
 export default function CreateEventPage() {
     const router = useRouter()
@@ -174,6 +175,10 @@ export default function CreateEventPage() {
             // Clean up payload
             const payload = {
                 ...formData,
+                // Use format with XXX to include timezone offset (e.g. +08:00) explicitly
+                // This prevents issues where UTC conversion might be misinterpreted
+                start_datetime: format(new Date(formData.start_datetime), "yyyy-MM-dd'T'HH:mm:ssXXX"),
+                end_datetime: format(new Date(formData.end_datetime), "yyyy-MM-dd'T'HH:mm:ssXXX"),
                 venue_place_id: formData.venue_place_id || null,
                 venue_remark: formData.venue_remark || null,
                 meeting_url: formData.meeting_url || null,

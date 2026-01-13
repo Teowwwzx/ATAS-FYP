@@ -9,6 +9,7 @@ import { UserSearchSelect } from '@/components/admin/UserSearchSelect'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 import { CategorySearchSelect } from '@/components/admin/CategorySearchSelect'
 import { OrganizationSearchSelect } from '@/components/admin/OrganizationSearchSelect'
+import { format } from 'date-fns'
 
 interface CreateEventModalProps {
     isOpen: boolean
@@ -77,8 +78,8 @@ export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModa
                 const createdEvent = await adminService.createEvent({
                     title: formData.title,
                     description: formData.description,
-                    start_datetime: start.toISOString(),
-                    end_datetime: end.toISOString(),
+                    start_datetime: format(start, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+                    end_datetime: format(end, "yyyy-MM-dd'T'HH:mm:ssXXX"),
                     venue_place_id: formData.venue_place_id,
                     venue_remark: formData.venue_remark,
                     max_participant: formData.max_participant,

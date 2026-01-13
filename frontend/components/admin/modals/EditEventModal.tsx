@@ -97,21 +97,21 @@ export function EditEventModal({ isOpen, onClose, event, onSuccess }: EditEventM
         e.preventDefault()
         setIsLoading(true)
         try {
-            // Helper to convert datetime-local string to UTC ISO string
-            const toUTCString = (localDateTimeStr: string) => {
+            // Helper to convert datetime-local string to ISO string with timezone offset
+            const toOffsetString = (localDateTimeStr: string) => {
                 if (!localDateTimeStr) return undefined
                 // datetime-local format: "YYYY-MM-DDTHH:mm"
-                // We need to treat this as local time and convert to UTC
-                const date = new Date(localDateTimeStr)
-                return date.toISOString()
+                // We use format(..., "...XXX") to include the offset (e.g. +08:00)
+                // This ensures the backend knows the exact local time and timezone.
+                return format(new Date(localDateTimeStr), "yyyy-MM-dd'T'HH:mm:ssXXX")
             }
 
             await adminService.updateEvent(event.id, {
                 organizer_id: formData.organizer_id || null, // Sanitize empty string to null
                 title: formData.title,
                 description: formData.description,
-                start_datetime: toUTCString(formData.start_datetime),
-                end_datetime: toUTCString(formData.end_datetime),
+                start_datetime: toOffsetString(formData.start_datetime),
+                end_datetime: toOffsetString(formData.end_datetime),
                 venue_remark: formData.venue_remark,
                 venue_place_id: formData.venue_place_id,
                 max_participant: formData.max_participant,

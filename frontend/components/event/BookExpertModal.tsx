@@ -7,6 +7,7 @@ import { useUser } from '@/hooks/useUser'
 import { ProfileResponse } from '@/services/api.types'
 import * as api from '@/services/api'
 import { toast } from 'react-hot-toast'
+import { format } from 'date-fns'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
 
 interface BookExpertModalProps {
@@ -147,8 +148,8 @@ export function BookExpertModal({
                 description: message,
                 format: eventFormat as any,
                 type: eventType as any,
-                start_datetime: start.toISOString(),
-                end_datetime: end.toISOString(),
+                start_datetime: format(start, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+                end_datetime: format(end, "yyyy-MM-dd'T'HH:mm:ssXXX"),
                 registration_type: 'free',
                 visibility: 'private',
                 venue_remark: eventType === 'online' ? 'Online Session' : 'TBD'
