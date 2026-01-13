@@ -231,7 +231,7 @@ export function StreamChatWindow({
         <div className="flex-1 flex flex-col h-full">
             <Chat client={finalClient!} theme="str-chat__theme-light">
                 <Channel channel={channel}>
-                    <div className="str-chat__channel h-full w-full">
+                    <div className="str-chat__channel h-full ">
                         <Window>
                             {/* Custom Header */}
                             <div className="p-4 md:p-6 border-b border-zinc-100 bg-white flex items-center justify-between">

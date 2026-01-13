@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getPublicEvents, getPublicOrganizations, findProfiles, getMyEvents, semanticSearchEvents, semanticSearchProfiles, getMe, getEventsCount, getOrganizationsCount, discoverProfiles, discoverProfilesCount } from '@/services/api'
 import { EventDetails, OrganizationResponse, ProfileResponse, EventType, EventRegistrationType, EventRegistrationStatus, MyEventItem } from '@/services/api.types'
 import { toast } from 'react-hot-toast'
@@ -39,7 +40,14 @@ const Pagination = ({ page, total, pageSize = 20, onChange }: { page: number, to
 
 
 export default function DiscoverPage() {
-    const [activeTab, setActiveTab] = useState<'events' | 'organizations' | 'people'>('events')
+    const router = useRouter()
+    const searchParams = useSearchParams()
+
+    // Initialize tab from URL parameter, default to 'events'
+    const tabParam = searchParams.get('tab') as 'events' | 'organizations' | 'people' | null
+    const [activeTab, setActiveTab] = useState<'events' | 'organizations' | 'people'>(
+        tabParam === 'organizations' || tabParam === 'people' ? tabParam : 'events'
+    )
 
     // Events State
     const [events, setEvents] = useState<EventDetails[]>([])
@@ -258,6 +266,12 @@ export default function DiscoverPage() {
 
     const filteredOrgs = orgs
 
+    // Function to change tab and update URL
+    const handleTabChange = (tab: 'events' | 'organizations' | 'people') => {
+        setActiveTab(tab)
+        router.push(`/discover?tab=${tab}`, { scroll: false })
+    }
+
     return (
         <div className="min-h-screen">
             {/* Top Bar: Tabs + Search/Filter */}
@@ -266,19 +280,19 @@ export default function DiscoverPage() {
                     {/* Tabs (Left) */}
                     <div className="flex gap-1 bg-zinc-100/50 p-1 rounded-xl w-fit">
                         <button
-                            onClick={() => setActiveTab('events')}
+                            onClick={() => handleTabChange('events')}
                             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'events' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
                         >
                             Events
                         </button>
                         <button
-                            onClick={() => setActiveTab('organizations')}
+                            onClick={() => handleTabChange('organizations')}
                             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'organizations' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
                         >
                             Organizations
                         </button>
                         <button
-                            onClick={() => setActiveTab('people')}
+                            onClick={() => handleTabChange('people')}
                             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'people' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
                         >
                             People

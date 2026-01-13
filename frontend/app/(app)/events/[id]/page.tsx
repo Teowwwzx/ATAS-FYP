@@ -699,10 +699,7 @@ export default function EventDetailsPage() {
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        <div className="w-full py-4 bg-zinc-100 text-zinc-500 rounded-2xl font-bold text-center text-lg border border-zinc-200">
-                                                            Joined
-                                                        </div>
-                                                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
+                                                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3 mb-4">
                                                             <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                                                                 <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -745,7 +742,7 @@ export default function EventDetailsPage() {
                                                             <button
                                                                 onClick={() => setShowQRModal(true)}
                                                                 disabled={!isAttendanceOpen || !event.is_attendance_enabled}
-                                                                className={`w-full py-3 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all ${isAttendanceOpen && event.is_attendance_enabled
+                                                                className={`w-full py-3 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all mb-4 ${isAttendanceOpen && event.is_attendance_enabled
                                                                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:shadow-lg hover:-translate-y-0.5'
                                                                     : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
                                                                     }`}

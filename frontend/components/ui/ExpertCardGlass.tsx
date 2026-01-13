@@ -40,7 +40,14 @@ export function ExpertCardGlass({ expert, variant = 'grid', style, className }: 
     const handleBookClick = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        setIsBookingOpen(true)
+
+        // Redirect authenticated users to dedicated book page for richer experience
+        if (user) {
+            router.push(`/book/${expert.user_id}`)
+        } else {
+            // Unauthenticated users open modal (will redirect to login then book page)
+            setIsBookingOpen(true)
+        }
     }
 
     // Get primary intent for badge
