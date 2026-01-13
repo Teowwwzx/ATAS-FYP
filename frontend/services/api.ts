@@ -761,6 +761,11 @@ export const createCategory = async (body: CategoryCreate) => {
   return response.data
 }
 
+export const createCategoryPublic = async (body: CategoryCreate) => {
+  const response = await api.post<CategoryResponse>(`/categories`, body)
+  return response.data
+}
+
 export const updateCategory = async (categoryId: string, body: { name: string }) => {
   const response = await api.put<CategoryResponse>(`/admin/categories/${categoryId}`, body)
   return response.data

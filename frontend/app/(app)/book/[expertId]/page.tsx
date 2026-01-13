@@ -15,6 +15,7 @@ import {
 } from '@/services/api'
 import { ProfileResponse, UserMeResponse, EventDetails } from '@/services/api.types'
 import { PlacesAutocomplete } from '@/components/ui/PlacesAutocomplete'
+import { showDraftRestoreToast } from '@/components/ui/DraftRestoreToast'
 
 export default function BookingPage() {
     const params = useParams()
@@ -56,57 +57,91 @@ export default function BookingPage() {
                 setCurrentUser(me)
                 setMyEvents(events || [])
 
-                // Check for saved draft from public profile modal
-                const savedDraft = localStorage.getItem(`booking_draft_${expertId}`)
-                if (savedDraft) {
-                    try {
-                        const draft = JSON.parse(savedDraft)
-                        if (draft.topic) setTitle(draft.topic)
-                        if (draft.eventType) setMeetingType(draft.eventType as 'physical' | 'online')
-
-                        if (draft.startDatetime) {
-                            // Convert to datetime-local format (YYYY-MM-DDTHH:mm)
-                            const dt = new Date(draft.startDatetime)
-                            const localDatetime = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
-                                .toISOString()
-                                .slice(0, 16)
-                            setStartDatetime(localDatetime)
-
-                            // Calculate end datetime based on duration
-                            if (draft.duration) {
-                                const endDt = new Date(dt.getTime() + parseInt(draft.duration) * 60000)
-                                const localEndDatetime = new Date(endDt.getTime() - endDt.getTimezoneOffset() * 60000)
-                                    .toISOString()
-                                    .slice(0, 16)
-                                setEndDatetime(localEndDatetime)
-                            }
-                        }
-
-                        // Restore venue for physical/hybrid events
-                        if (draft.venue_address && (draft.eventType === 'physical' || draft.eventType === 'hybrid')) {
-                            setVenue(draft.venue_address)
-                            if (draft.place_id) setVenuePlaceId(draft.place_id)
-                        }
-
-                        // Restore message and inject user contact info
-                        if (draft.message) {
-                            let finalMessage = draft.message
-
-                            // Auto-inject user contact info if not already present
-                            if (me && !draft.message.includes('Contact Information:')) {
-                                finalMessage += `\n\n---\nContact Information:\nName: ${me.full_name || 'Not provided'}\nEmail: ${me.email || 'Not provided'}\nPhone: (Please fill in below)`
-                            }
-
-                            setMessage(finalMessage)
-                        }
-
-                        toast.success('Restored your booking draft!')
-                        // Clear draft after successful restoration
-                        localStorage.removeItem(`booking_draft_${expertId}`)
-                    } catch (e) {
-                        console.error('Failed to parse draft', e)
+                const toDatetimeLocalValue = (value: unknown) => {
+                    if (!value || typeof value !== 'string') return ''
+                    const trimmed = value.trim()
+                    if (!trimmed) return ''
+                    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) {
+                        return trimmed.slice(0, 16)
                     }
+                    const d = new Date(trimmed)
+                    if (Number.isNaN(d.getTime())) return ''
+                    const pad = (n: number) => n.toString().padStart(2, '0')
+                    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
                 }
+
+                // Check for saved draft from public profile modal
+                showDraftRestoreToast(`booking_draft_${expertId}`, (draft) => {
+                    const draftAny = draft as any
+
+                    // Restore Logic
+                    const topic = draftAny.topic || draftAny.title
+                    if (topic) setTitle(topic)
+
+                    const eventTypeRaw = draftAny.eventType || draftAny.event_type || draftAny.type
+                    if (eventTypeRaw === 'online' || eventTypeRaw === 'physical') {
+                        setMeetingType(eventTypeRaw)
+                    } else if (eventTypeRaw === 'hybrid') {
+                        setMeetingType('physical')
+                    }
+
+                    const restoredStart = toDatetimeLocalValue(draftAny.startDatetime || draftAny.start_datetime)
+                    if (restoredStart) setStartDatetime(restoredStart)
+
+                    const restoredEnd = toDatetimeLocalValue(draftAny.endDatetime || draftAny.end_datetime)
+                    if (restoredEnd) {
+                        setEndDatetime(restoredEnd)
+                    } else {
+                        const durationValue = draftAny.duration || draftAny.duration_minutes
+                        const mins = typeof durationValue === 'string' || typeof durationValue === 'number' ? Number(durationValue) : NaN
+                        if (!Number.isNaN(mins) && mins > 0 && restoredStart) {
+                            const startDate = new Date(restoredStart)
+                            if (!Number.isNaN(startDate.getTime())) {
+                                const endDate = new Date(startDate.getTime() + mins * 60000)
+                                setEndDatetime(toDatetimeLocalValue(endDate.toISOString()))
+                            }
+                        }
+                    }
+
+                    const venueAddress =
+                        draftAny.venue_address ||
+                        draftAny.venueAddress ||
+                        draftAny.venue_remark ||
+                        draftAny.venue
+
+                    if (venueAddress) {
+                        setVenue(venueAddress)
+                    }
+
+                    const placeId =
+                        draftAny.place_id ||
+                        draftAny.placeId ||
+                        draftAny.venue_place_id ||
+                        draftAny.venuePlaceId
+
+                    if (placeId) setVenuePlaceId(placeId)
+
+                    const maxParticipantsValue =
+                        draftAny.maxParticipants ||
+                        draftAny.max_participants ||
+                        draftAny.max_participant
+
+                    if (maxParticipantsValue !== undefined && maxParticipantsValue !== null && `${maxParticipantsValue}`.trim()) {
+                        setMaxParticipants(`${maxParticipantsValue}`)
+                    }
+
+                    if (draftAny.phoneNumber || draftAny.phone_number) {
+                        setPhoneNumber(draftAny.phoneNumber || draftAny.phone_number)
+                    }
+
+                    if (draftAny.message) {
+                        let finalMessage = draftAny.message
+                        if (me && !draftAny.message.includes('Contact Information:')) {
+                            finalMessage += `\n\n---\nContact Information:\nName: ${me.full_name || 'Not provided'}\nEmail: ${me.email || 'Not provided'}\nPhone: (Please fill in below)`
+                        }
+                        setMessage(finalMessage)
+                    }
+                })
 
             } catch (error: any) {
                 console.error(error)
