@@ -43,15 +43,6 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: path.join(__dirname)
-  },
-  async redirects() {
-    return [
-      {
-        source: '/cv',
-        destination: 'https://cv.thedzx.site',
-        permanent: true,
-      },
-    ]
   }
 };
 
