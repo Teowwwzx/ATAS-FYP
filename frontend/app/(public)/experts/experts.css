@@ -415,16 +415,16 @@
     font-weight: 700;
     text-decoration: none;
     transition: 0.2s;
-    opacity: 0;
+    opacity: 1;
     transform: translateY(10px);
     cursor: pointer;
     border: none;
 }
 
-.expert-card-glass:hover .btn-view {
+/* .expert-card-glass:hover .btn-view {
     opacity: 1;
     transform: translateY(0);
-}
+} */
 
 /* Mobile */
 @media (max-width: 768px) {
