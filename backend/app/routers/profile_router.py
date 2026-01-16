@@ -772,55 +772,58 @@ def complete_onboarding(onboarding_data: OnboardingUpdate, db: Session = Depends
 
 @router.get("/me", response_model=ProfileResponse)
 def read_my_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_profile = profile_service.get_profile(db, user_id=current_user.id)
-    if db_profile is None:
+    profile = profile_service.get_profile_response_cached(db, user_id=current_user.id)
+    if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
-    # Manually attach email since not in Profile model
-    setattr(db_profile, "email", current_user.email)
+
+    profile.email = current_user.email
     
     # Calculate counts
     followers = db.query(func.count(Follow.id)).filter(Follow.followee_id == current_user.id).scalar()
     following = db.query(func.count(Follow.id)).filter(Follow.follower_id == current_user.id).scalar()
-    
-    setattr(db_profile, "followers_count", followers)
-    setattr(db_profile, "following_count", following)
-    setattr(db_profile, "sponsor_tier", calculate_sponsor_tier(db, current_user.id))
-    
-    return db_profile
+
+    profile.followers_count = followers
+    profile.following_count = following
+    profile.sponsor_tier = calculate_sponsor_tier(db, current_user.id)
+
+    return profile
 
 @router.get("/{user_id}", response_model=ProfileResponse)
 def read_profile(user_id: uuid.UUID, db: Session = Depends(get_db), current_user: User | None = Depends(get_current_user_optional)):
-    db_profile = profile_service.get_profile(db, user_id=user_id)
-    if db_profile is None:
+    profile = profile_service.get_profile_response_cached(db, user_id=user_id)
+    if profile is None:
         if current_user is not None and current_user.id == user_id:
-            db_profile = profile_service.create_profile(db, profile=ProfileCreate(full_name=""), user_id=user_id)
+            profile_service.create_profile(db, profile=ProfileCreate(full_name=""), user_id=user_id)
+            profile = profile_service.get_profile_response_cached(db, user_id=user_id)
+            if profile is None:
+                raise HTTPException(status_code=500, detail="Failed to create profile")
         else:
             raise HTTPException(status_code=404, detail="Profile not found")
     # Enforce visibility for private profiles
-    if db_profile.visibility.value == "private":
+    if profile.visibility.value == "private":
         if current_user is None or current_user.id != user_id:
             raise HTTPException(status_code=403, detail="This profile is private")
-            
-    # Manually attach email if user is loaded
-    if db_profile.user:
-        setattr(db_profile, "email", db_profile.user.email)
+
+    email = db.query(User.email).filter(User.id == user_id).scalar()
+    if email:
+        profile.email = email
         
     # Calculate counts
     followers = db.query(func.count(Follow.id)).filter(Follow.followee_id == user_id).scalar()
     following = db.query(func.count(Follow.id)).filter(Follow.follower_id == user_id).scalar()
-    
-    setattr(db_profile, "followers_count", followers)
-    setattr(db_profile, "following_count", following)
-    setattr(db_profile, "sponsor_tier", calculate_sponsor_tier(db, user_id))
-        
-    return db_profile
+
+    profile.followers_count = followers
+    profile.following_count = following
+    profile.sponsor_tier = calculate_sponsor_tier(db, user_id)
+
+    return profile
 
 @router.post("/backfill")
 def backfill_profiles(db: Session = Depends(get_db), current_user: User = Depends(require_roles(["admin"]))):
     users = db.query(UserModel).all()
     created = 0
     for u in users:
-        p = profile_service.get_profile(db, user_id=u.id)
+        p = profile_service.get_profile_from_db(db, user_id=u.id)
         if p is None:
             profile_service.create_profile(db, profile=ProfileCreate(full_name=""), user_id=u.id)
             created += 1
@@ -844,9 +847,6 @@ def update_current_user_profile(
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return db_profile
-
- 
-
 
 @router.put("/me/avatar", response_model=ProfileResponse)
 def update_my_avatar(
@@ -872,11 +872,12 @@ def update_my_cover_picture(
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     return db_profile
+
 @router.post("/{user_id}", response_model=ProfileResponse)
 def create_profile_for_user(user_id: uuid.UUID, body: ProfileCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="You can only create your own profile")
-    existing = profile_service.get_profile(db, user_id=user_id)
+    existing = profile_service.get_profile_from_db(db, user_id=user_id)
     if existing is not None:
         return existing
     created = profile_service.create_profile(db, profile=body, user_id=user_id)
@@ -884,7 +885,7 @@ def create_profile_for_user(user_id: uuid.UUID, body: ProfileCreate, db: Session
 
 @router.post("/me/tags")
 def attach_tag_to_my_profile(tag_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    profile = profile_service.get_profile(db, user_id=current_user.id)
+    profile = profile_service.get_profile_from_db(db, user_id=current_user.id)
     if profile is None:
         profile = profile_service.create_profile(db, profile=ProfileCreate(full_name=""), user_id=current_user.id)
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
@@ -901,7 +902,7 @@ def attach_tag_to_my_profile(tag_id: uuid.UUID, db: Session = Depends(get_db), c
 
 @router.delete("/me/tags/{tag_id}", status_code=204)
 def detach_tag_from_my_profile(tag_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    profile = profile_service.get_profile(db, user_id=current_user.id)
+    profile = profile_service.get_profile_from_db(db, user_id=current_user.id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     db.execute(profile_tags.delete().where(
@@ -913,7 +914,7 @@ def detach_tag_from_my_profile(tag_id: uuid.UUID, db: Session = Depends(get_db),
 
 @router.post("/me/skills")
 def attach_skill_to_my_profile(skill_id: uuid.UUID, level: int = 1, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    profile = profile_service.get_profile(db, user_id=current_user.id)
+    profile = profile_service.get_profile_from_db(db, user_id=current_user.id)
     if profile is None:
         profile = profile_service.create_profile(db, profile=ProfileCreate(full_name=""), user_id=current_user.id)
     skill = db.query(Skill).filter(Skill.id == skill_id).first()
@@ -937,7 +938,7 @@ def attach_skill_to_my_profile(skill_id: uuid.UUID, level: int = 1, db: Session 
 
 @router.delete("/me/skills/{skill_id}", status_code=204)
 def detach_skill_from_my_profile(skill_id: uuid.UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    profile = profile_service.get_profile(db, user_id=current_user.id)
+    profile = profile_service.get_profile_from_db(db, user_id=current_user.id)
     if profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
     db.execute(profile_skills.delete().where(

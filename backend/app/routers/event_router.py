@@ -36,6 +36,8 @@ from app.models.profile_model import Profile, ProfileVisibility
 from app.models.organization_model import Organization, organization_members
 from app.models.notification_model import NotificationType
 from app.services.notification_service import NotificationService
+from app.services.event_reminder_service import EventReminderService
+from app.services.event_payment_service import EventPaymentService
 from app.services.email_service import (
     send_event_invitation_email,
     send_event_role_update_email,
@@ -1030,58 +1032,12 @@ def create_event_reminder(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a reminder for a joined event. Options: one_week, three_days, one_day."""
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    # Must be organizer or a participant of the event
-    if event.organizer_id != current_user.id:
-        my_participation = (
-            db.query(EventParticipant)
-            .filter(
-                EventParticipant.event_id == event.id,
-                EventParticipant.user_id == current_user.id,
-            )
-            .first()
-        )
-        if my_participation is None:
-            raise HTTPException(status_code=403, detail="You must join the event to set a reminder")
-
-    delta_map = {
-        "one_week": timedelta(days=7),
-        "three_days": timedelta(days=3),
-        "one_day": timedelta(days=1),
-    }
-    if body.option not in delta_map:
-        raise HTTPException(status_code=400, detail="Invalid reminder option. Use one_week, three_days, or one_day")
-
-    # Duplication guard: prevent creating multiple unsent reminders for the same (user, event, option)
-    existing_unsent = (
-        db.query(EventReminder)
-        .filter(
-            EventReminder.event_id == event.id,
-            EventReminder.user_id == current_user.id,
-            EventReminder.option == body.option,
-            EventReminder.is_sent == False,
-        )
-        .first()
-    )
-    if existing_unsent is not None:
-        raise HTTPException(status_code=409, detail="Reminder for this option already exists")
-
-    remind_at = event.start_datetime - delta_map[body.option]
-
-    reminder = EventReminder(
-        event_id=event.id,
-        user_id=current_user.id,
+    reminder = EventReminderService.create_reminder(
+        db,
+        event_id=event_id,
+        user=current_user,
         option=body.option,
-        remind_at=remind_at,
-        is_sent=False,
     )
-    db.add(reminder)
-    db.commit()
-    db.refresh(reminder)
     return reminder
 
 @router.delete("/events/{event_id}/reminders", status_code=204)
@@ -1090,20 +1046,7 @@ def delete_my_event_reminder(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Remove pending reminders for the user and event."""
-    reminders = db.query(EventReminder).filter(
-        EventReminder.event_id == event_id,
-        EventReminder.user_id == current_user.id,
-        EventReminder.is_sent == False
-    ).all()
-
-    if not reminders:
-        # Idempotent success or 404? 404 is more informative for UI feedback
-        raise HTTPException(status_code=404, detail="No active reminder found")
-
-    for r in reminders:
-        db.delete(r)
-    db.commit()
+    EventReminderService.delete_pending_reminders(db, event_id=event_id, user_id=current_user.id)
     return
 
 @router.get("/events/reminders/me", response_model=list[EventReminderResponse])
@@ -1112,12 +1055,7 @@ def list_my_event_reminders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    now_utc = datetime.now(timezone.utc)
-    q = db.query(EventReminder).filter(EventReminder.user_id == current_user.id)
-    if upcoming_only:
-        q = q.filter(EventReminder.remind_at >= now_utc, EventReminder.is_sent == False)
-    items = q.order_by(EventReminder.remind_at.asc()).all()
-    return items
+    return EventReminderService.list_my_reminders(db, user_id=current_user.id, upcoming_only=upcoming_only)
 
 
 @router.post("/events/reminders/run", response_model=list[EventReminderResponse])
@@ -1126,59 +1064,7 @@ def run_due_event_reminders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Process and send due reminders for the current user.
-    Sends both in-app notification and email (best-effort).
-    """
-    now = datetime.now(timezone.utc)
-    due = (
-        db.query(EventReminder)
-        .filter(
-            EventReminder.user_id == current_user.id,
-            EventReminder.is_sent == False,
-            EventReminder.remind_at <= now,
-        )
-        .order_by(EventReminder.remind_at.asc())
-        .limit(limit)
-        .all()
-    )
-
-    processed: list[EventReminder] = []
-    for r in due:
-        event = db.query(Event).filter(Event.id == r.event_id).first()
-        if event is None:
-            # Skip invalid
-            r.is_sent = True
-            r.sent_at = now
-            db.add(r)
-            continue
-
-        NotificationService.create_notification(
-            db=db,
-            recipient_id=r.user_id,
-            actor_id=r.user_id,
-            type=NotificationType.event,
-            content=f"Reminder: '{event.title}' starts at {event.start_datetime}",
-            link_url=f"/main/events/{event.id}",
-        )
-
-        # Email best-effort
-        user = db.query(User).filter(User.id == r.user_id).first()
-        if user and user.email:
-            try:
-                send_event_reminder_email(email=user.email, event=event, when_label=r.option)
-            except Exception:
-                pass
-
-        r.is_sent = True
-        r.sent_at = now
-        db.add(r)
-        processed.append(r)
-
-    db.commit()
-    # Refresh processed reminders
-    for pr in processed:
-        db.refresh(pr)
-    return processed
+    return EventReminderService.run_due_for_user(db, user=current_user, limit=limit)
 
 
 @router.get("/events/checklist/me", response_model=list[EventChecklistItemResponse])
@@ -1781,57 +1667,7 @@ def upload_payment_proof(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Participant uploads payment proof for a paid event.
-    Updates status to 'pending' (if not already) and payment_status to 'pending' or 'verified' logic? 
-    Usually sets payment_status='pending' (verification needed) and status='pending'.
-    """
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-    
-    participant = (
-        db.query(EventParticipant)
-        .filter(EventParticipant.event_id == event.id, EventParticipant.user_id == current_user.id)
-        .first()
-    )
-    if participant is None:
-         raise HTTPException(status_code=404, detail="You are not a participant")
-
-    # Upload file
-    from app.services import cloudinary_service
-    try:
-        url = cloudinary_service.upload_file(file, "payment_proofs")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
-    participant.payment_proof_url = url
-    # If currently rejected or something, maybe reset?
-    # Usually we want payment_status to be 'pending' so organizer sees it needs review.
-    from app.models.event_model import EventPaymentStatus
-    participant.payment_status = EventPaymentStatus.pending
-    
-    # If they were rejected for payment reasons, we might want to set main status to pending too?
-    # Only if not already accepted. If accepted, they are fine.
-    if participant.status == EventParticipantStatus.rejected:
-        participant.status = EventParticipantStatus.pending
-        
-    db.add(participant)
-    db.commit()
-    db.refresh(participant)
-    
-    # Notify organizer
-    NotificationService.create_notification(
-        db=db,
-        recipient_id=event.organizer_id,
-        actor_id=current_user.id,
-        type=NotificationType.event,
-        content=f"Participant {current_user.full_name} uploaded payment proof for '{event.title}'",
-        link_url=f"/main/events/{event.id}?tab=participants&filter=pending",
-    )
-    db.commit()
-
-    return participant
+    return EventPaymentService.upload_payment_proof(db, event_id=event_id, file=file, current_user=current_user)
 
 
 @router.post("/events/{event_id}/participants/bulk", response_model=List[EventParticipantDetails])
@@ -2114,54 +1950,13 @@ def update_participant_payment_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Organizer manually verifies payment.
-    If status is 'accepted', we set payment_status='verified' and participant.status='accepted'.
-    If status is 'rejected', we set payment_status='rejected' and participant.status='rejected' (or 'pending'?).
-    """
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-    is_admin = any(role.name == "admin" for role in current_user.roles)
-    if event.organizer_id != current_user.id and not is_admin:
-        raise HTTPException(status_code=403, detail="Only organizer or admin can verify payments")
-        
-    participant = (
-        db.query(EventParticipant)
-        .filter(EventParticipant.id == participant_id, EventParticipant.event_id == event.id)
-        .first()
+    return EventPaymentService.verify_participant_payment(
+        db,
+        event_id=event_id,
+        participant_id=participant_id,
+        new_status=body.status,
+        current_user=current_user,
     )
-    if participant is None:
-        raise HTTPException(status_code=404, detail="Participant not found")
-        
-    from app.models.event_model import EventPaymentStatus
-    
-    if body.status == EventParticipantStatus.accepted:
-        participant.payment_status = EventPaymentStatus.verified
-        participant.status = EventParticipantStatus.accepted
-    elif body.status == EventParticipantStatus.rejected:
-        participant.payment_status = EventPaymentStatus.rejected
-        # Should we kick them out or just mark payment rejected?
-        # Usually payment rejected means they are not accepted yet.
-        participant.status = EventParticipantStatus.rejected
-        
-    db.add(participant)
-    db.commit()
-    db.refresh(participant)
-    
-    # Notify (only if participant has a user account)
-    if participant.user_id:
-        NotificationService.create_notification(
-            db=db,
-            recipient_id=participant.user_id,
-            actor_id=current_user.id,
-            type=NotificationType.event,
-            content=f"Your payment for '{event.title}' has been {participant.payment_status.value}. Status: {participant.status.value}",
-            link_url=f"/main/events/{event.id}",
-        )
-        db.commit()
-    
-    return participant
 
 @router.delete("/events/{event_id}/participants/{participant_id}")
 def remove_event_participant(
@@ -3036,20 +2831,7 @@ def update_event_payment_qr(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    event = db.query(Event).filter(Event.id == event_id).first()
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    # Organizer only per requirement
-    if event.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only organizer can upload payment QR")
-
-    url = upload_file(file, "event_payment_qr")
-    event.payment_qr_url = url
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    return event
+    return EventPaymentService.update_event_payment_qr(db, event_id=event_id, file=file, current_user=current_user)
 
 
 def _make_attendance_token(event_id: uuid.UUID, minutes_valid: int = 15) -> tuple[str, datetime]:
