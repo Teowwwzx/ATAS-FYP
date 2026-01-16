@@ -22,3 +22,5 @@ cloudinary
 resend
 google-generativeai
 stream-chat
+celery[redis]
+locust

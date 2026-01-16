@@ -7,7 +7,10 @@ from app.core.config import settings
 DATABASE_URL = settings.DATABASE_URL
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL not found in environment variables. Please provide the full PostgreSQL connection string.")
+    raise ValueError(
+        "DATABASE_URL not found. For local Docker Postgres, use: "
+        "postgresql+psycopg2://atas:123123@localhost:5432/atas"
+    )
 
 engine = create_engine(
     DATABASE_URL,
@@ -21,17 +24,9 @@ engine = create_engine(
     },
 )
 
-# Construct the SQLAlchemy connection string
-
-
-try:
-    with engine.connect() as connection:
-        print("Connection successful!")
-except Exception as e:
-    print(f"Failed to connect: {e}")
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-TestingSessionLocal = Nonetest_engine = None
+TestingSessionLocal = None
+test_engine = None
 if os.environ.get("TESTING") == "1":
     # Use in-memory SQLite for testing to avoid creating local files
     test_engine = create_engine(

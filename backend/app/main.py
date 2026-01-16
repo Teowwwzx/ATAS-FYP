@@ -3,8 +3,9 @@
 
 import logging
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.routers import admin_router, event_router, follows_router, email_router, auth_router, user_router, profile_router, review_router, notification_router, taxonomy_router
 try:
@@ -70,7 +71,7 @@ app.include_router(notification_router.router, prefix="/api/v1", tags=["Notifica
 from app.routers import ai_router
 app.include_router(ai_router.router, prefix="/api/v1/ai", tags=["AI"])
 
-if os.environ.get("PYTEST_CURRENT_TEST"):
+if os.environ.get("TESTING") == "1" or os.environ.get("PYTEST_CURRENT_TEST"):
     SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
@@ -105,6 +106,25 @@ app.include_router(booking_router.router, prefix="/api/v1", tags=["Bookings"])
 # except Exception as e:
 #     logger.warning(f"Could not init pgvector on import: {e}")
 
+# 1. 捕获所有未知的“爆雷”
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"💥 System Crash: {exc}", exc_info=True) # 记录详细错误堆栈给开发看
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error. Please contact support."} # 给用户看优雅的提示
+    )
+
+# 2. 捕获特定的业务错误 (比如你自定义的)
+class BusinessError(Exception):
+    def __init__(self, msg: str):
+        self.msg = msg
+
+@app.exception_handler(BusinessError)
+async def business_error_handler(request: Request, exc: BusinessError):
+    return JSONResponse(status_code=400, content={"detail": exc.msg})
+
+    
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the ATAS API!"}
