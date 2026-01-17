@@ -1,7 +1,12 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=str(Path(__file__).resolve().parents[3] / ".env"),
+        extra="ignore",
+    )
 
     DATABASE_URL: str = "" # Default to empty to force .env loading. Do not use sqlite:///./test.db
     SECRET_KEY: str = "dev-secret"
