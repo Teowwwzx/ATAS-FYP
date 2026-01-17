@@ -21,8 +21,12 @@ RUN apt-get update \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_DEFAULT_TIMEOUT=120
+ENV PIP_PROGRESS_BAR=off
+
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN python -m pip install --no-cache-dir --retries 10 --default-timeout 120 --prefer-binary -r /app/requirements.txt
 
 # ==========================================
 # 第二阶段：运行环境 (Final)

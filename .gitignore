@@ -48,27 +48,6 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 backend/test.db
-reports/FYP Structure Guidelines.md
-reports/current_report_summary.md
-reports/guideline_summary.md
-reports/fyp-report.md
-reports/FYP-IR2.docx
-reports/FYP Structure Guidelines.pdf
-reports/fyp_chapter_4.md
-reports/FYP_Structure_Guidelines_Converted.md
-reports/FYP-IR2_Converted.md
-archieve/schema-v2.drawio
-reports/architecture.dsl
-reports/neon_db.sql
-reports/neon_db.dbml
-archieve/.$schema-v2.drawio.bkp
-archieve/schema-v2.drawio
-reports/schema-v2.drawio.png
-archieve/schema-v2.drawio
-archieve/schema-v2.drawio
-archieve/schema-v2.drawio
-archieve/schema-v2.drawio
-backend/test_output.txt
-backend/output.txt
-backend/test_output.txt
-reports/FYP-IR2.txt
+reports/*
+archieve/*
+.trae/
