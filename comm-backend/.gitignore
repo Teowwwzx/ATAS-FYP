@@ -50,5 +50,4 @@ frontend/yarn-error.log*
 backend/test.db
 reports/*
 archieve/*
-.trae
-./trae/*
+.trae/
