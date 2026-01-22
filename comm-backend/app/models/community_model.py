@@ -56,7 +56,18 @@ class Comment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     post = relationship("Post", back_populates="comments")
-    replies = relationship("Comment", backref="parent", remote_side=[id])
+    parent = relationship(
+        "Comment",
+        remote_side=[id],
+        foreign_keys=[parent_id],
+        back_populates="replies",
+    )
+    replies = relationship(
+        "Comment",
+        foreign_keys=[parent_id],
+        back_populates="parent",
+        cascade="all, delete-orphan",
+    )
 
 
 class Interaction(Base):

@@ -38,7 +38,7 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: ../ATAS-V2/backend
       dockerfile: Dockerfile
     container_name: atas_api
     environment:
@@ -65,7 +65,7 @@ services:
 
   worker:
     build:
-      context: ./backend
+      context: ../ATAS-V2/backend
       dockerfile: Dockerfile
     container_name: atas_worker
     environment:
@@ -106,6 +106,23 @@ services:
       timeout: 3s
       retries: 20
 
+  comm_redis:
+    image: redis:7-alpine
+    container_name: comm_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - comm_redis_data:/data
+    networks:
+      - atas_network
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
   comm_api:
     build:
       context: ./comm-backend # 你需要新建这个目录，放置社群后端的代码
@@ -114,23 +131,23 @@ services:
     environment:
       # 连接到 comm_postgres，注意这里用的是 service 名 "comm_postgres"
       DATABASE_URL: postgresql+psycopg2://comm_user:comm_password@comm_postgres:5432/community
-      REDIS_URL: redis://redis:6379/1 # 共用 Redis，但使用 DB 1 隔离数据
-      CELERY_BROKER_URL: redis://redis:6379/1 
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      REDIS_URL: redis://comm_redis:6379/0 # 共用 Redis，但使用 DB 1 隔离数据
+      CELERY_BROKER_URL: redis://comm_redis:6379/0 
+      CELERY_RESULT_BACKEND: redis://comm_redis:6379/1
       CLOUDINARY_URL: ${CLOUDINARY_URL}
     ports:
       - "8001:8000" # 社群占用 8001，避免和 ATAS 冲突
     depends_on:
       comm_postgres:
         condition: service_healthy
-      redis:
+      comm_redis:
         condition: service_healthy
     networks:
       - atas_network
     command:
       - bash
       - -lc
-      - /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
   comm_worker:
     build:
@@ -138,14 +155,14 @@ services:
     container_name: comm_worker
     environment:
       DATABASE_URL: postgresql+psycopg2://comm_user:comm_password@comm_postgres:5432/community
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      REDIS_URL: redis://comm_redis:6379/0
+      CELERY_BROKER_URL: redis://comm_redis:6379/0
+      CELERY_RESULT_BACKEND: redis://comm_redis:6379/1
       CLOUDINARY_URL: ${CLOUDINARY_URL}
     command: ["celery", "-A", "app.worker", "worker", "-l", "info"]
     depends_on:
       - comm_postgres
-      - redis
+      - comm_redis
     networks:
       - atas_network
 
@@ -157,3 +174,4 @@ volumes:
   postgres_data:
   comm_postgres_data:
   redis_data:
+  comm_redis_data:
