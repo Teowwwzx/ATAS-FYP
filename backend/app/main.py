@@ -3,6 +3,7 @@
 
 import logging
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,23 +18,29 @@ from app.database.database import get_db, Base, engine
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-app = FastAPI(
-    title="ATAS API",
-    version="1.0.0"
-)
-
-@app.on_event("startup")
-def startup_db():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    # Initialize Rate Limiter
+    from app.core.redis import async_redis_client
+    from fastapi_limiter import FastAPILimiter
+    await FastAPILimiter.init(async_redis_client)
+    
     Base.metadata.create_all(bind=engine)
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
+    # Shutdown
     # Close SSE connections
     from app.services.sse_manager import sse_manager
     await sse_manager.broadcast_shutdown()
     
     # Close database connections gracefully to prevent "stuck" reloads
     engine.dispose()
+
+app = FastAPI(
+    title="ATAS API",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # CORS Middleware
 app.add_middleware(

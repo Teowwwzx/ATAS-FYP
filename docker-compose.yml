@@ -73,6 +73,8 @@ services:
       GET_STREAM_SECRET_KEY: ${GET_STREAM_SECRET_KEY}
       DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+    volumes:
+      - ./backend:/app
     ports:
       - "8000:8000"
     depends_on:
@@ -125,6 +127,8 @@ services:
       GET_STREAM_SECRET_KEY: ${GET_STREAM_SECRET_KEY}
       DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+    volumes:
+      - ./backend:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -221,7 +225,7 @@ services:
     networks:
       - atas_network
     volumes:
-      - ../ATAS-Link/comm-backend/.env:/app/.env:ro
+      - ../ATAS-Link/comm-backend:/app  # Live reload: Map entire backend code to container
     command:
       - bash
       - -lc
@@ -268,7 +272,36 @@ services:
     networks:
       - atas_network
     volumes:
-      - ../ATAS-Link/comm-backend/.env:/app/.env:ro
+      - ../ATAS-Link/comm-backend:/app  # Live reload: Map entire backend code to container
+
+  # ==========================================
+  # 3. Monitoring & Visualization Tools
+  # ==========================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis_commander
+    restart: always
+    environment:
+      - REDIS_HOSTS=atas:atas_redis:6379,comm:comm_redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      - atas_network
+    depends_on:
+      - redis
+      - comm_redis
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - atas_network
 
 networks:
   atas_network:
@@ -279,3 +312,4 @@ volumes:
   comm_postgres_data:
   redis_data:
   comm_redis_data:
+  portainer_data:
