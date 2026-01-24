@@ -103,6 +103,26 @@ docker-compose up --build comm_api comm_worker
 
 ---
 
+### 3. Database schema (Production-style)
+
+In production, the application should not create tables automatically. Instead, run Alembic migrations as a dedicated deploy step (CI/CD job, Kubernetes Job, or one-off task):
+
+```bash
+python -m app.scripts.migrate
+```
+
+Then seed dev users only when needed:
+
+```bash
+python -m app.scripts.seed
+```
+
+- **API URL:** `http://localhost:8001`
+
+- **Documentation:** `http://localhost:8001/docs`
+
+---
+
 ## 🔮 Roadmap
 
 - **Phase 1:** Core UGC engine (Posts, Likes, Comments) and Image Processing.

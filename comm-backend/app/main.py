@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.services.socket_manager import app as socket_app
 from app.routers.comment import router as comment_router
+from app.core.config import settings
+from app.database.init_db import init_db_schema
 
 app = FastAPI(title="ATAS Link Community API", version="0.1.0")
 
@@ -18,6 +20,12 @@ app.mount("/ws", socket_app)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    if settings.AUTO_CREATE_TABLES:
+        await init_db_schema()
 
 try:
     from app.routers.posts import router as posts_router

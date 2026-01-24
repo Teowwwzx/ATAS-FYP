@@ -6,6 +6,12 @@ from sqlalchemy import create_engine
 from alembic import context
 from app.database.database import Base
 from app.core.config import settings
+from urllib.parse import urlsplit, urlunsplit
+
+import app.models.community_model
+import app.models.graph
+import app.models.notification
+import app.models.user
 
 config = context.config
 
@@ -15,13 +21,24 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    return settings.DATABASE_URL
+    url = settings.DATABASE_URL
+    if url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    parts = urlsplit(url)
+    if parts.query:
+        url = urlunsplit((parts.scheme, parts.netloc, parts.path, "", parts.fragment))
+    return url
 
 def run_migrations_offline():
     url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        compare_type=True,
+        compare_server_default=True,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -31,7 +48,12 @@ def run_migrations_offline():
 def run_migrations_online():
     connectable = create_engine(get_url())
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
+        )
         with context.begin_transaction():
             context.run_migrations()
 
