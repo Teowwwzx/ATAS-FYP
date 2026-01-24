@@ -3,15 +3,15 @@ services:
     image: pgvector/pgvector:pg15
     container_name: atas_postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-atas}
-      POSTGRES_USER: ${POSTGRES_USER:-atas}
+      POSTGRES_DB: ${POSTGRES_DB:-atas_pro}
+      POSTGRES_USER: ${POSTGRES_USER:-atas_pro_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - atas_network
     ports:
-      - "5432:5432"
+      - "5433:5432" # Changed to 5433 as requested by user
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -42,12 +42,37 @@ services:
       dockerfile: Dockerfile
     container_name: atas_api
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-atas}:${POSTGRES_PASSWORD:-123123}@postgres:5432/${POSTGRES_DB:-atas}
-      SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-atas_pro_user}:${POSTGRES_PASSWORD:-123123}@postgres:5432/${POSTGRES_DB:-atas_pro}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      
+      # Redis & Celery
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+
+      # AI Services
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENDER_EMAIL: ${SENDER_EMAIL}
+
+      # Cloudinary
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+
+      # External Auth & APIs
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GET_STREAM_API_KEY: ${GET_STREAM_API_KEY}
+      GET_STREAM_SECRET_KEY: ${GET_STREAM_SECRET_KEY}
+      DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
     ports:
       - "8000:8000"
     depends_on:
@@ -69,11 +94,37 @@ services:
       dockerfile: Dockerfile
     container_name: atas_worker
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-atas}:${POSTGRES_PASSWORD:-123123}@postgres:5432/${POSTGRES_DB:-atas}
-      SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-atas_pro_user}:${POSTGRES_PASSWORD:-123123}@postgres:5432/${POSTGRES_DB:-atas_pro}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      
+      # Redis & Celery
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+
+      # AI Services
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENDER_EMAIL: ${SENDER_EMAIL}
+
+      # Cloudinary
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+
+      # External Auth & APIs
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GET_STREAM_API_KEY: ${GET_STREAM_API_KEY}
+      GET_STREAM_SECRET_KEY: ${GET_STREAM_SECRET_KEY}
+      DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,17 +142,17 @@ services:
     image: pgvector/pgvector:pg15 # 同样使用 pgvector，方便做社群内容的 AI 推荐
     container_name: comm_postgres
     environment:
-      POSTGRES_DB: community
-      POSTGRES_USER: comm_user
-      POSTGRES_PASSWORD: comm_password
+      POSTGRES_DB: ${POSTGRES_DB:-atas_link}
+      POSTGRES_USER: ${POSTGRES_USER:-atas_link_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123123}
     volumes:
       - comm_postgres_data:/var/lib/postgresql/data # 独立的数据卷
     networks:
       - atas_network # 加入同一个网络，方便以后做“跨应用数据读取”
     ports:
-      - "5433:5432" # 宿主机映射到 5433，避免和 ATAS 冲突
+      - "5434:5432" # 宿主机映射到 5434，避免和 ATAS 冲突
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U comm_user -d community"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -130,11 +181,36 @@ services:
     container_name: comm_api
     environment:
       # 连接到 comm_postgres，注意这里用的是 service 名 "comm_postgres"
-      DATABASE_URL: postgresql+psycopg2://comm_user:comm_password@comm_postgres:5432/community
-      REDIS_URL: redis://comm_redis:6379/0 # 共用 Redis，但使用 DB 1 隔离数据
-      CELERY_BROKER_URL: redis://comm_redis:6379/0 
-      CELERY_RESULT_BACKEND: redis://comm_redis:6379/1
-      CLOUDINARY_URL: ${CLOUDINARY_URL}
+      DATABASE_URL: postgresql+psycopg2://${COMM_POSTGRES_USER:-atas_link_user}:${COMM_POSTGRES_PASSWORD:-123123}@comm_postgres:5432/${COMM_POSTGRES_DB:-atas_link}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+
+      # Redis & Celery
+      REDIS_URL: ${REDIS_URL:-redis://comm_redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://comm_redis:6379/0} 
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://comm_redis:6379/1}
+      
+      # AI Services
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENDER_EMAIL: ${SENDER_EMAIL}
+      
+      # Cloudinary
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+
+      # External Auth & APIs
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
+
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
     ports:
       - "8001:8000" # 社群占用 8001，避免和 ATAS 冲突
     depends_on:
@@ -145,7 +221,7 @@ services:
     networks:
       - atas_network
     volumes:
-      - ./comm-backend.env:/app/.env:ro
+      - ../ATAS-Link/comm-backend/.env:/app/.env:ro
     command:
       - bash
       - -lc
@@ -156,11 +232,35 @@ services:
       context: ../ATAS-Link/comm-backend
     container_name: comm_worker
     environment:
-      DATABASE_URL: postgresql+psycopg2://comm_user:comm_password@comm_postgres:5432/community
-      REDIS_URL: redis://comm_redis:6379/0
-      CELERY_BROKER_URL: redis://comm_redis:6379/0
-      CELERY_RESULT_BACKEND: redis://comm_redis:6379/1
-      CLOUDINARY_URL: ${CLOUDINARY_URL}
+      DATABASE_URL: postgresql+psycopg2://${COMM_POSTGRES_USER:-atas_link_user}:${COMM_POSTGRES_PASSWORD:-123123}@comm_postgres:5432/${COMM_POSTGRES_DB:-atas_link}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+
+      # Redis & Celery
+      REDIS_URL: ${REDIS_URL:-redis://comm_redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://comm_redis:6379/0} 
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://comm_redis:6379/1}
+      
+      # AI Services
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENDER_EMAIL: ${SENDER_EMAIL}
+
+      # Cloudinary
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+
+      # External Auth & APIs
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
     command: ["celery", "-A", "app.tasks.tasks.celery_app", "worker", "-l", "info"]
     depends_on:
       - comm_postgres
@@ -168,7 +268,7 @@ services:
     networks:
       - atas_network
     volumes:
-      - ./comm-backend.env:/app/.env:ro
+      - ../ATAS-Link/comm-backend/.env:/app/.env:ro
 
 networks:
   atas_network:

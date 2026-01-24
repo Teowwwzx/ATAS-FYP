@@ -51,3 +51,4 @@ backend/test.db
 reports/*
 archieve/*
 .trae/
+.env

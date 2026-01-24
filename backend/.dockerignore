@@ -1,0 +1,5 @@
+# Ignore environment variables to prevent leaking secrets into images
+.env
+venv/
+__pycache__/
+*.pyc
