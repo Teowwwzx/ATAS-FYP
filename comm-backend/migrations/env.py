@@ -21,7 +21,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    url = settings.DATABASE_URL
+    url = str(settings.DATABASE_URL)
     if url.startswith("postgresql+asyncpg://"):
         url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
     elif url.startswith("postgresql://"):

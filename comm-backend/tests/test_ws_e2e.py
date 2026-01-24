@@ -11,14 +11,30 @@ BASE_URL = "http://127.0.0.1:8001"
 
 @pytest.fixture(scope="module")
 def admin_token():
+    # Ensure user exists
+    requests.post(f"{BASE_URL}/v1/auth/register", json={
+        "email": "admin@gmail.com", 
+        "password": "123123",
+        "username": "admin_user",
+        "role": "student" # Assuming default or role field availability
+    })
+    # Login
     r = requests.post(f"{BASE_URL}/v1/auth/login", json={"email": "admin@gmail.com", "password": "123123"})
-    assert r.status_code == 200
+    assert r.status_code == 200, f"Admin login failed: {r.text}"
     return r.json()["access_token"]
 
 @pytest.fixture(scope="module")
 def student_token():
+    # Ensure user exists
+    requests.post(f"{BASE_URL}/v1/auth/register", json={
+        "email": "student@gmail.com", 
+        "password": "123123",
+        "username": "student_user",
+        "role": "student"
+    })
+    # Login
     r = requests.post(f"{BASE_URL}/v1/auth/login", json={"email": "student@gmail.com", "password": "123123"})
-    assert r.status_code == 200
+    assert r.status_code == 200, f"Student login failed: {r.text}"
     return r.json()["access_token"]
 
 @pytest.fixture(scope="module")
@@ -84,12 +100,12 @@ def test_websocket_notification_flow(admin_token, student_token, admin_user, tes
         # Wait... python-socketio client expects `socketio_path` to be the URL path suffix.
         # If server is at /ws/socket.io, then socketio_path should be 'ws/socket.io'
         sio.connect(
-            BASE_URL,
-            socketio_path="ws/socket.io",
-            wait_timeout=5,
-            transports=['polling'],
-            headers={"Authorization": f"Bearer {admin_token}"}
-        )
+                BASE_URL,
+                socketio_path="socket.io",
+                wait_timeout=5,
+                transports=['polling'],
+                headers={"Authorization": f"Bearer {admin_token}"}
+            )
     except Exception as e:
         pytest.fail(f"Could not connect to WebSocket server: {e}")
 
