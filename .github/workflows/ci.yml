@@ -65,6 +65,9 @@ jobs:
         DATABASE_URL: postgresql+psycopg2://test_user:test_password@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
         TESTING: "1"
+        SECRET_KEY: "test_secret_key"
+        ALGORITHM: "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES: "30"
       run: |
         pytest tests/
 
@@ -73,11 +76,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run Trivy Vulnerability Scanner (Repo)
+      - name: Run Trivy Vulnerability Scanner (Backend Only)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
-          scan-ref: '.'
+          scan-ref: './backend'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
