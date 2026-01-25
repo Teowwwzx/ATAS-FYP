@@ -112,6 +112,6 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ghcr.io/${{ github.repository_owner }}/atas-v2-backend:latest
+          tags: ghcr.io/${{ env.REPO_OWNER }}/atas-v2-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
