@@ -6,7 +6,7 @@ supabase
 Faker
 requests
 psycopg2
-psycopg2-binary
+gunicorn
 python-dotenv
 python-multipart
 pydantic
@@ -24,5 +24,11 @@ google-generativeai
 stream-chat
 celery[redis]
 locust
+pytest
+pytest-asyncio
+httpx
+ruff
+black
 fastapi-limiter
 redis
+prometheus-fastapi-instrumentator

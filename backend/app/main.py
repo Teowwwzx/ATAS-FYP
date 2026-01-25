@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.routers import admin_router, event_router, follows_router, email_router, auth_router, user_router, profile_router, review_router, notification_router, taxonomy_router
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
 try:
     from app.routers import organization_router
     _has_org_router = hasattr(organization_router, "router")
@@ -98,6 +99,33 @@ if os.environ.get("TESTING") == "1" or os.environ.get("PYTEST_CURRENT_TEST"):
 from app.routers import communication_log_router
 app.include_router(communication_log_router.router, prefix="/api/v1", tags=["Communications"])
 app.include_router(taxonomy_router.router, prefix="/api/v1", tags=["Taxonomy"])
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "version": "1.0.0"}
+
+# Prometheus Instrumentation
+instrumentator = Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=[".*admin.*", "/metrics"],
+    env_var_name="ENABLE_METRICS",
+    inprogress_name="inprogress",
+    inprogress_labels=True,
+)
+
+instrumentator.add(
+    metrics.request_size(should_include_handler=True, should_include_method=True, should_include_status=True)
+).add(
+    metrics.response_size(should_include_handler=True, should_include_method=True, should_include_status=True)
+).add(
+    metrics.latency(should_include_handler=True, should_include_method=True, should_include_status=True)
+).add(
+    metrics.requests(should_include_handler=True, should_include_method=True, should_include_status=True)
+)
+
+instrumentator.instrument(app).expose(app)
 
 from app.routers import chat_router
 app.include_router(chat_router.router, prefix="/api/v1", tags=["Chat"])

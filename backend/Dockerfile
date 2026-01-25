@@ -52,10 +52,20 @@ RUN apt-get update \
 
 COPY . /app
 
+# Add entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # 【关键】大厂标准：不要使用 root 用户运行容器
 RUN useradd -m appuser \
   && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8000
+# Healthcheck to ensure container is ready
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+# Use Gunicorn for production process management
+CMD ["gunicorn", "app.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
 

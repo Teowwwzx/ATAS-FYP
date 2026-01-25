@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: atas_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-atas_pro}
+      POSTGRES_USER: ${POSTGRES_USER:-atas_pro_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - atas_network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: atas_redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - atas_network
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: always
+
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-teowz}/atas-v2-backend:latest
+    container_name: atas_api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-atas_pro_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-atas_pro}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      # Include all other env vars here or use env_file
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENDER_EMAIL: ${SENDER_EMAIL}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GET_STREAM_API_KEY: ${GET_STREAM_API_KEY}
+      GET_STREAM_SECRET_KEY: ${GET_STREAM_SECRET_KEY}
+      DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - atas_network
+    restart: always
+
+  worker:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-teowz}/atas-v2-backend:latest
+    container_name: atas_worker
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-atas_pro_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-atas_pro}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      AI_PROVIDER: ${AI_PROVIDER}
+      AI_MODEL: ${AI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      SENDER_EMAIL: ${SENDER_EMAIL}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GET_STREAM_API_KEY: ${GET_STREAM_API_KEY}
+      GET_STREAM_SECRET_KEY: ${GET_STREAM_SECRET_KEY}
+      DEFAULT_APU_PLACE_ID: ${DEFAULT_APU_PLACE_ID}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - atas_network
+    restart: always
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "-l", "info", "--concurrency=2"]
+
+networks:
+  atas_network:
+    name: atas_network
+
+volumes:
+  postgres_data:
+  redis_data:
