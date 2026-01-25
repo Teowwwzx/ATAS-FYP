@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 import os
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select, update, delete, insert
+from sqlalchemy import select, update, delete, insert, func
 from typing import List
 import uuid
 
@@ -11,6 +11,7 @@ from app.models.organization_model import Organization, OrganizationVisibility, 
 from app.schemas.organization_schema import OrganizationResponse, OrganizationCreate, OrganizationUpdate
 from app.dependencies import get_current_user, get_current_user_optional, require_roles
 from app.models.user_model import User
+from app.models.profile_model import Profile, ProfileVisibility
 from app.services.audit_service import log_admin_action
 from app.services import cloudinary_service
 
