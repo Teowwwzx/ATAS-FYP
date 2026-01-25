@@ -1,13 +1,6 @@
 import pytest
-import requests
 import time
-import os
-import json
 import uuid
-
-# Configuration
-API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1")
-HEADERS = {"Content-Type": "application/json"}
 
 # Helper to clear cache (requires the script we made earlier or direct redis access)
 # For this test, we'll assume we can't easily clear redis without auth/access, 
@@ -17,11 +10,7 @@ def get_unique_params():
     """Generates unique parameters to bypass cache."""
     return {"q_text": f"test_{uuid.uuid4()}"}
 
-@pytest.fixture(scope="module")
-def api_base():
-    return API_URL
-
-def test_events_list_caching():
+def test_events_list_caching(client):
     """
     Verifies that subsequent requests to /events with the same parameters
     are significantly faster (Cache Hit) than the first request (Cache Miss).
@@ -33,14 +22,14 @@ def test_events_list_caching():
     
     # Warmup / Cache Miss
     start_time = time.time()
-    resp1 = requests.get(f"{API_URL}/events", params=params, headers=HEADERS)
+    resp1 = client.get("/api/v1/events", params=params)
     duration1 = (time.time() - start_time) * 1000
     
     assert resp1.status_code == 200, f"First request failed: {resp1.text}"
     
     # 2. Same query to hit Cache
     start_time = time.time()
-    resp2 = requests.get(f"{API_URL}/events", params=params, headers=HEADERS)
+    resp2 = client.get("/api/v1/events", params=params)
     duration2 = (time.time() - start_time) * 1000
     
     assert resp2.status_code == 200, f"Second request failed: {resp2.text}"
@@ -56,6 +45,7 @@ def test_events_list_caching():
     # Note: On local machine with 0 network latency, DB might be fast enough that 
     # overhead of Redis connection makes them similar. But usually Redis is faster.
     # We allow a small margin or expect at least it's not SLOWER.
+    # We allow a small margin or expect at least it's not SLOWER.
     # Ideally: duration2 < duration1
     
     # If duration1 is very fast (e.g. < 50ms), the difference might be negligible.
@@ -64,7 +54,7 @@ def test_events_list_caching():
     else:
         print("   ⚠️ Database is too fast (<50ms) to measure significant cache speedup locally.")
 
-def test_events_count_caching():
+def test_events_count_caching(client):
     """
     Verifies /events/count caching.
     """
@@ -83,13 +73,13 @@ def test_events_count_caching():
     
     # Miss
     start_time = time.time()
-    resp1 = requests.get(f"{API_URL}/events/count", params=params)
+    resp1 = client.get("/api/v1/events/count", params=params)
     duration1 = (time.time() - start_time) * 1000
     assert resp1.status_code == 200
     
     # Hit
     start_time = time.time()
-    resp2 = requests.get(f"{API_URL}/events/count", params=params)
+    resp2 = client.get("/api/v1/events/count", params=params)
     duration2 = (time.time() - start_time) * 1000
     assert resp2.status_code == 200
     
@@ -98,7 +88,7 @@ def test_events_count_caching():
     
     assert resp1.json() == resp2.json()
 
-def test_profile_discover_caching():
+def test_profile_discover_caching(client):
     """
     Verifies /profiles/discover caching.
     """
@@ -109,12 +99,12 @@ def test_profile_discover_caching():
     
     # Miss
     start_time = time.time()
-    resp1 = requests.get(f"{API_URL}/profiles/discover", params=params)
+    resp1 = client.get("/api/v1/profiles/discover", params=params)
     duration1 = (time.time() - start_time) * 1000
     
     # Hit
     start_time = time.time()
-    resp2 = requests.get(f"{API_URL}/profiles/discover", params=params)
+    resp2 = client.get("/api/v1/profiles/discover", params=params)
     duration2 = (time.time() - start_time) * 1000
     
     if resp1.status_code == 200 and resp2.status_code == 200:
