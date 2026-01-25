@@ -2,9 +2,9 @@ name: ATAS V2 CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "v2-pro-dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "v2-pro-dev" ]
 
 jobs:
   quality-check:

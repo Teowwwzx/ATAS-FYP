@@ -13,7 +13,8 @@ from app.dependencies import get_current_user, get_current_user_optional, requir
 from typing import List
 from fastapi import File, UploadFile
 from sqlalchemy import or_, text, select, insert, update
-from app.services.ai_service import generate_text_embedding, _vec_to_pg
+from app.services.ai_service import generate_text_embedding, _vec_to_pg, search_similar_experts
+from app.tasks.ai_tasks import process_expert_embedding
 from sqlalchemy.sql import func
 from app.models.profile_model import Profile, ProfileVisibility, Tag, profile_tags, Education, JobExperience
 from app.schemas.profile_schema import (
@@ -32,13 +33,8 @@ from app.models.review_model import Review
 from app.models.follows_model import Follow
 from app.models.event_model import EventParticipant, EventParticipantRole, EventParticipantStatus
 
-# Simple in-memory rate limiter
-# Map: IP -> List[timestamp]
-import time
 from fastapi import Request
-RATE_LIMIT_STORE = {}
-RATE_LIMIT_MAX_REQUESTS = 30
-RATE_LIMIT_WINDOW_SECONDS = 3600  # 1 hour
+from fastapi_limiter.depends import RateLimiter
 
 router = APIRouter()
 
@@ -73,6 +69,10 @@ def calculate_sponsor_tier(db: Session, user_id: uuid.UUID) -> str | None:
         return "Bronze"
     return None
 
+import json
+import hashlib
+from app.core.redis import redis_client
+
 @router.get("/discover", response_model=List[ProfileResponse])
 def discover_profiles(
     name: str | None = "",
@@ -85,6 +85,33 @@ def discover_profiles(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional)
 ):
+    # --- Cache-Aside Implementation ---
+    try:
+        # Construct a stable cache key based on query parameters
+        params_dict = {
+            "name": name,
+            "role": role,
+            "skill": skill,
+            "tag_ids": sorted([str(uid) for uid in tag_ids]) if tag_ids else None,
+            "skill_ids": sorted([str(uid) for uid in skill_ids]) if skill_ids else None,
+            "page": page,
+            "page_size": page_size,
+            # Include user_id in cache key if personalized results depend on it (e.g. exclude self)
+            "user_id": str(current_user.id) if current_user else "anon"
+        }
+        params_str = json.dumps(params_dict, sort_keys=True)
+        params_hash = hashlib.md5(params_str.encode()).hexdigest()
+        cache_key = f"profiles:discover:{params_hash}"
+
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            # logger.info(f"🚀 Cache Hit for discover: {cache_key}")
+            data = json.loads(cached_data)
+            return [ProfileResponse(**item) for item in data]
+    except Exception as e:
+        logger.error(f"Redis cache read error: {e}")
+    # ----------------------------------
+
     q = db.query(Profile)
     if name:
         q = q.filter(Profile.full_name.ilike(f"%{name}%"))
@@ -201,6 +228,19 @@ def discover_profiles(
             "sponsor_tier": calculate_sponsor_tier(db, p.user_id),
         })
         result.append(pr)
+    
+    # --- Cache Write ---
+    try:
+        # cache_key is defined in the try block at the beginning of the function
+        if 'cache_key' in locals() and cache_key and result:
+            redis_client.setex(
+                cache_key,
+                300,
+                json.dumps([p.model_dump(mode='json') for p in result])
+            )
+    except Exception as e:
+        logger.error(f"Redis cache write error: {e}")
+    # -------------------
     return result
 
 @router.get("/discover/count")
@@ -251,7 +291,7 @@ def discover_profiles_count(
     total = db.query(subq.c.id).count()
     return {"total_count": total}
 
-@router.get("/semantic-search", response_model=List[ProfileResponse])
+@router.get("/semantic-search", response_model=List[ProfileResponse], dependencies=[Depends(RateLimiter(times=30, seconds=3600))])
 def semantic_search_profiles(
     request: Request,
     embedding: str | None = None,
@@ -261,33 +301,32 @@ def semantic_search_profiles(
     skip_rerank: bool = False,  # New parameter to skip LLM validation for speed
     db: Session = Depends(get_db),
 ):
-    # Rate Limit Check
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    
-    # Initialize if not exists
-    if client_ip not in RATE_LIMIT_STORE:
-        RATE_LIMIT_STORE[client_ip] = []
-    
-    # Clean up old requests (older than 1 hour)
-    RATE_LIMIT_STORE[client_ip] = [
-        t for t in RATE_LIMIT_STORE[client_ip] 
-        if now - t < RATE_LIMIT_WINDOW_SECONDS
-    ]
-    
-    # Check limit (only if searching with text/AI)
-    if q_text:
-        if len(RATE_LIMIT_STORE[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
-            raise HTTPException(
-                status_code=429, 
-                detail=f"AI Search Rate Limit Exceeded ({RATE_LIMIT_MAX_REQUESTS}/hour). Please try again later."
-            )
-        # Add current request
-        RATE_LIMIT_STORE[client_ip].append(now)
+    # --- Cache-Aside Implementation ---
+    cache_key = None
+    try:
+        if q_text:
+            params_dict = {
+                "q_text": q_text,
+                "role": role,
+                "top_k": top_k,
+                "skip_rerank": skip_rerank,
+                "type": "semantic_search"
+            }
+            params_str = json.dumps(params_dict, sort_keys=True)
+            params_hash = hashlib.md5(params_str.encode()).hexdigest()
+            cache_key = f"profiles:semantic:{params_hash}"
+
+            cached_data = redis_client.get(cache_key)
+            if cached_data:
+                # logger.info(f"🚀 Cache Hit for semantic search: {cache_key}")
+                data = json.loads(cached_data)
+                return [ProfileResponse(**item) for item in data]
+    except Exception as e:
+        logger.error(f"Redis cache read error: {e}")
+    # ----------------------------------
 
     print("DEBUG: semantic_search_profiles called")
     user_ids: list[uuid.UUID] = []
-    import json
     import math
 
     dists = {} # Initialize dists
@@ -296,47 +335,22 @@ def semantic_search_profiles(
         pass
     elif q_text:
         try:
-            vec = generate_text_embedding(q_text)
-            if vec:
-                emb_str = _vec_to_pg(vec)
-                logger.info(f"DEBUG: Semantic search for '{q_text}'")
-                
-                # MANUAL VECTOR SEARCH (Python-side)
-                # Fetch all embeddings
-                all_rows = db.execute(text("SELECT user_id, CAST(embedding AS text) FROM expert_embeddings")).fetchall()
-                
-                candidates = []
-                for uid, db_emb_str in all_rows:
-                    if not db_emb_str:
-                        continue
-                    try:
-                        # Parse DB vector (string "[0.1, ...]")
-                        db_vec = json.loads(db_emb_str)
-                        
-                        # Calculate Euclidean Distance (L2) to match <-> operator
-                        # dist = sqrt(sum((a-b)^2))
-                        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(vec, db_vec)))
-                        
-                        candidates.append((uid, dist))
-                    except Exception:
-                        pass
-                
-                # Sort by distance (ascending)
-                candidates.sort(key=lambda x: x[1])
-                
-                # Take top_k
-                top_candidates = candidates[:top_k]
-                
-                # Filter by threshold (e.g. 1.1)
-                # 1.05-1.06 is typical for relevant queries
-                # 1.2 is irrelevant
-                threshold = 1.1
-                final_candidates = [c for c in top_candidates if c[1] < threshold]
-                
-                user_ids = [c[0] for c in final_candidates]
-                dists = {c[0]: c[1] for c in final_candidates}
-                
-                logger.info(f"DEBUG: Found {len(user_ids)} users via semantic search")
+            logger.info(f"DEBUG: Semantic search for '{q_text}'")
+            
+            # Use DB-side vector search via service
+            # Returns list of (user_id, distance) tuples
+            candidates = search_similar_experts(db, q_text, top_k=top_k)
+            
+            # Filter by threshold (e.g. 1.1)
+            # 1.05-1.06 is typical for relevant queries
+            # 1.2 is irrelevant
+            threshold = 1.1
+            final_candidates = [c for c in candidates if c[1] < threshold]
+            
+            user_ids = [c[0] for c in final_candidates]
+            dists = {c[0]: c[1] for c in final_candidates}
+            
+            logger.info(f"DEBUG: Found {len(user_ids)} users via semantic search")
                 
         except Exception as e:
             logger.error(f"DEBUG: Semantic search error: {e}")
@@ -511,6 +525,18 @@ def semantic_search_profiles(
                 "sponsor_tier": calculate_sponsor_tier(db, p.user_id),
             })
             result.append(pr)
+        
+        # --- Cache Write ---
+        try:
+            if cache_key and result:
+                redis_client.setex(
+                    cache_key,
+                    3600,
+                    json.dumps([p.model_dump(mode='json') for p in result])
+                )
+        except Exception as e:
+            logger.error(f"Redis cache write error: {e}")
+        # -------------------
         return result
     
     elif q_text:
@@ -571,6 +597,18 @@ def semantic_search_profiles(
             "sponsor_tier": calculate_sponsor_tier(db, p.user_id),
         })
         result.append(pr)
+    
+    # --- Cache Write ---
+    try:
+        if cache_key and result:
+            redis_client.setex(
+                cache_key,
+                3600,
+                json.dumps([p.model_dump(mode='json') for p in result])
+            )
+    except Exception as e:
+        logger.error(f"Redis cache write error: {e}")
+    # -------------------
     return result
 
 @router.get("/semantic/profiles", response_model=List[ProfileResponse])
@@ -846,6 +884,13 @@ def update_current_user_profile(
     )
     if db_profile is None:
         raise HTTPException(status_code=404, detail="Profile not found")
+
+    # Trigger async embedding update
+    try:
+        process_expert_embedding.delay(str(current_user.id))
+    except Exception as e:
+        logger.error(f"Failed to trigger async embedding update: {e}")
+
     return db_profile
 
 @router.put("/me/avatar", response_model=ProfileResponse)
@@ -981,6 +1026,13 @@ def add_my_education(body: EducationCreate, db: Session = Depends(get_db), curre
     db.add(item)
     db.commit()
     db.refresh(item)
+
+    # Trigger async embedding update
+    try:
+        process_expert_embedding.delay(str(current_user.id))
+    except Exception as e:
+        logger.error(f"Failed to trigger async embedding update: {e}")
+
     return item
 
 @router.delete("/me/educations/{edu_id}", status_code=204)

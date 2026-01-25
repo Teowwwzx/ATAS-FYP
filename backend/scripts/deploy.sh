@@ -8,7 +8,7 @@ set -e
 
 # 1. Update Codebase (if using git pull)
 echo "📦 Pulling latest code..."
-git pull origin main
+git pull origin v2-pro-dev
 
 # 2. Pull Latest Images (from GHCR)
 echo "⬇️  Pulling latest Docker images..."

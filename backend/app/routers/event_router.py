@@ -6,6 +6,12 @@ import hmac
 import hashlib
 import csv
 import io
+import json
+import hashlib
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
+import redis as sync_redis
+from app.core.config import settings
 from fastapi.responses import Response, StreamingResponse
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
@@ -140,7 +146,10 @@ def _verify_user_attendance_token(token: str) -> tuple[uuid.UUID, uuid.UUID]:
         raise HTTPException(status_code=400, detail="Token expired")
     return uuid.UUID(event_id_str), uuid.UUID(user_id_str)
 
-@router.get("/events/count", response_model=dict)
+
+# ... imports ...
+
+@router.get("/events/count", response_model=dict, dependencies=[Depends(RateLimiter(times=20, seconds=60))])
 def count_events(
     q_text: str | None = Query(None),
     status: EventStatus | None = Query(None),
@@ -158,6 +167,30 @@ def count_events(
     include_all_visibility: bool = Query(False),
     db: Session = Depends(get_db),
 ):
+    # Cache key generation
+    params = locals().copy()
+    del params['db']
+    # Serialize complex types
+    for k, v in params.items():
+        if isinstance(v, uuid.UUID):
+            params[k] = str(v)
+        elif isinstance(v, datetime):
+            params[k] = v.isoformat()
+        elif hasattr(v, "value"): # Enums
+            params[k] = v.value
+    
+    param_str = json.dumps(params, sort_keys=True, default=str)
+    cache_key = f"events:count:{hashlib.md5(param_str.encode()).hexdigest()}"
+
+    # Try Redis
+    try:
+        r = sync_redis.from_url(settings.REDIS_URL, decode_responses=True)
+        cached_val = r.get(cache_key)
+        if cached_val:
+            return json.loads(cached_val)
+    except Exception as e:
+        pass # Fail open
+
     query = db.query(Event)
     query = query.filter(Event.deleted_at.is_(None))
 
@@ -215,9 +248,18 @@ def count_events(
             .distinct()
         )
 
-    return {"total_count": query.count()}
+    count = query.count()
+    result = {"total_count": count}
+    
+    # Set Cache
+    try:
+        r.setex(cache_key, 300, json.dumps(result)) # 5 mins
+    except Exception:
+        pass
+        
+    return result
 
-@router.get("/events", response_model=List[EventDetails])
+@router.get("/events", response_model=List[EventDetails], dependencies=[Depends(RateLimiter(times=20, seconds=60))])
 def get_all_events(
     db: Session = Depends(get_db),
     category_id: uuid.UUID | None = Query(None),
@@ -240,6 +282,41 @@ def get_all_events(
     current_user: User | None = Depends(get_current_user_optional),
     friends_only: bool = Query(False),
 ):
+    # Cache key generation
+    params = locals().copy()
+    del params['db']
+    del params['current_user'] # Don't cache based on user unless result differs
+    # Note: 'friends_only' depends on current_user, so if friends_only=True, we must NOT cache globally or key by user
+    
+    can_cache = not friends_only # Disable cache for personalized friends query
+    
+    if can_cache:
+        # Serialize params
+        cache_params = params.copy()
+        for k, v in cache_params.items():
+            if isinstance(v, uuid.UUID):
+                cache_params[k] = str(v)
+            elif isinstance(v, datetime):
+                cache_params[k] = v.isoformat()
+            elif hasattr(v, "value"):
+                cache_params[k] = v.value
+        
+        param_str = json.dumps(cache_params, sort_keys=True, default=str)
+        cache_key = f"events:list:{hashlib.md5(param_str.encode()).hexdigest()}"
+
+        try:
+            r = sync_redis.from_url(settings.REDIS_URL, decode_responses=True)
+            cached_val = r.get(cache_key)
+            if cached_val:
+                # We need to deserialize Pydantic models from JSON
+                # This is tricky because EventDetails has nested objects
+                # Simplest way: use FastAPI's jsonable_encoder before caching, but here we just return dicts and let Pydantic handle it?
+                # Pydantic models can be instantiated from dicts
+                data = json.loads(cached_val)
+                return [EventDetails(**item) for item in data]
+        except Exception as e:
+            pass
+
     query = db.query(Event)
     # Exclude soft-deleted events
     query = query.filter(Event.deleted_at.is_(None))
@@ -326,6 +403,16 @@ def get_all_events(
         .limit(page_size)
         .all()
     )
+
+    if can_cache:
+        from fastapi.encoders import jsonable_encoder
+        try:
+            # jsonable_encoder converts Pydantic models to dicts/lists suitable for JSON
+            encoded_events = jsonable_encoder(events)
+            r.setex(cache_key, 300, json.dumps(encoded_events))
+        except Exception:
+            pass
+
     return events
 
 @router.get("/events/semantic-search", response_model=List[EventDetails])

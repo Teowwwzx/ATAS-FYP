@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime, func, JSON
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, func, JSON, Index
 from sqlalchemy.dialects.postgresql import UUID
 from app.database.database import Base
 import uuid
@@ -33,6 +33,17 @@ class ExpertEmbedding(Base):
     embedding_version = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Explicitly define the index to match database state and prevent Alembic from dropping it
+    __table_args__ = (
+        Index(
+            'expert_embeddings_embedding_idx',
+            embedding,
+            postgresql_using='hnsw',
+            postgresql_with={'m': 16, 'ef_construction': 64},
+            postgresql_ops={'embedding': 'vector_cosine_ops'}
+        ),
+    )
+
 class EventEmbedding(Base):
     __tablename__ = "event_embeddings"
     
@@ -43,3 +54,14 @@ class EventEmbedding(Base):
     model_name = Column(Text, default='text-embedding-3-small')
     embedding_version = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Explicitly define the index to match database state and prevent Alembic from dropping it
+    __table_args__ = (
+        Index(
+            'event_embeddings_embedding_idx',
+            embedding,
+            postgresql_using='hnsw',
+            postgresql_with={'m': 16, 'ef_construction': 64},
+            postgresql_ops={'embedding': 'vector_cosine_ops'}
+        ),
+    )

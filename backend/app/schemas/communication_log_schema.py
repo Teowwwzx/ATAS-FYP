@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, Any, Dict
 from datetime import datetime
 from enum import Enum
@@ -21,8 +21,7 @@ class CommunicationLogBase(BaseModel):
     created_at: datetime
     error_message: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CommunicationLogResponse(CommunicationLogBase):
     id: str

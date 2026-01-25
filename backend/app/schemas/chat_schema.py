@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 import uuid
@@ -23,8 +23,7 @@ class MessageResponse(MessageBase):
     sender_name: Optional[str] = None
     sender_avatar: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Participant Schemas ---
 
@@ -34,8 +33,7 @@ class ParticipantResponse(BaseModel):
     avatar_url: Optional[str] = None
     last_read_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Conversation Schemas ---
 
@@ -50,5 +48,4 @@ class ConversationResponse(BaseModel):
     last_message: Optional[MessageResponse] = None
     unread_count: int = 0
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

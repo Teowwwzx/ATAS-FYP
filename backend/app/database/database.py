@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
 # --- SQLAlchemy Setup ---
-DATABASE_URL = settings.DATABASE_URL
+DATABASE_URL = str(settings.DATABASE_URL)
 
 if not DATABASE_URL:
     raise ValueError(

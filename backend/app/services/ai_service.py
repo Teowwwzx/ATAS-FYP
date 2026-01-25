@@ -311,18 +311,20 @@ def upsert_event_embedding(db: Session, event_id: uuid.UUID, source_text: str) -
         print(f"Error upserting event embedding: {e}")
         return False
 
-def search_similar_experts(db: Session, query_text: str, top_k: int = 20) -> list[uuid.UUID]:
+def search_similar_experts(db: Session, query_text: str, top_k: int = 20) -> list[tuple[uuid.UUID, float]]:
     try:
         vec = generate_text_embedding(query_text)
         if not vec:
             return []
             
         emb = _vec_to_pg(vec)
+        # Return both user_id and distance
+        # Note: <-> is Euclidean distance
         sql = text(
-            "SELECT user_id FROM expert_embeddings ORDER BY embedding <-> CAST(:emb AS vector) LIMIT :k"
+            "SELECT user_id, embedding <-> CAST(:emb AS vector) as dist FROM expert_embeddings ORDER BY dist ASC LIMIT :k"
         )
         rows = db.execute(sql, {"emb": emb, "k": top_k}).fetchall()
-        return [r[0] for r in rows]
+        return [(r[0], float(r[1])) for r in rows]
     except Exception as e:
         print(f"Error searching experts: {e}")
         return []
