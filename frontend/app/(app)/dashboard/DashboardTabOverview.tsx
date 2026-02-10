@@ -3,7 +3,7 @@ import { EventDetails, ProfileResponse } from '@/services/api.types'
 import { updateEvent } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { differenceInDays, differenceInHours, intervalToDuration, formatDuration } from 'date-fns'
+import { intervalToDuration, formatDuration, format } from 'date-fns'
 import useSWR from 'swr'
 import { getEventAttendanceStats, getEventChecklist, listCategories, getEventCategories, attachEventCategories } from '@/services/api'
 import { EventPhase, canEditCoreDetails } from '@/lib/eventPhases'
@@ -26,6 +26,7 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
     const router = useRouter()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [now, setNow] = useState(() => new Date())
 
 
     const { isLoaded } = useLoadScript({
@@ -41,11 +42,59 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
     // Date Logic
     const startDate = new Date(event.start_datetime)
     const endDate = new Date(event.end_datetime)
-    const now = new Date()
-
     const isEnded = now > endDate
     const isOngoing = now >= startDate && now <= endDate
-    const daysLeft = differenceInDays(startDate, now)
+
+    useEffect(() => {
+        const id = window.setInterval(() => setNow(new Date()), 60_000)
+        return () => window.clearInterval(id)
+    }, [])
+
+    const getTimeParts = (target: Date, from: Date) => {
+        const diffMs = target.getTime() - from.getTime()
+        const totalMinutes = Math.max(0, Math.floor(diffMs / 60000))
+        const days = Math.floor(totalMinutes / (24 * 60))
+        const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+        const minutes = totalMinutes % 60
+        return { days, hours, minutes, totalMinutes }
+    }
+
+    const formatDurationShort = (start: Date, end: Date) => {
+        const raw =
+            formatDuration(
+                intervalToDuration({
+                    start,
+                    end
+                }),
+                { format: ['days', 'hours', 'minutes'], delimiter: ' ' }
+            ) || ''
+
+        return raw
+            .replace(' days', 'd')
+            .replace(' day', 'd')
+            .replace(' hours', 'h')
+            .replace(' hour', 'h')
+            .replace(' minutes', 'm')
+            .replace(' minute', 'm')
+            .trim() || '0m'
+    }
+
+    const timeUntilStart = getTimeParts(startDate, now)
+    const timeUntilEnd = getTimeParts(endDate, now)
+    const timelineLabel = isEnded ? 'Event has concluded' : isOngoing ? 'Until event ends' : 'Until event starts'
+    const timelineValue = isEnded ? null : isOngoing ? timeUntilEnd : timeUntilStart
+    const timelineText = timelineValue ? `${timelineValue.days}d ${timelineValue.hours}h ${timelineValue.minutes}m` : ''
+
+    const isSameDay =
+        format(startDate, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')
+
+    const scheduleLine1 = isSameDay
+        ? format(startDate, 'dd MMM yyyy')
+        : `${format(startDate, 'dd MMM yyyy, h:mm a')}`
+
+    const scheduleLine2 = isSameDay
+        ? `${format(startDate, 'h:mm a')} - ${format(endDate, 'h:mm a')} (${formatDurationShort(startDate, endDate)})`
+        : `${format(endDate, 'dd MMM yyyy, h:mm a')} (${formatDurationShort(startDate, endDate)})`
 
 
 
@@ -415,13 +464,13 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                         {isEnded ? (
                                             <h3 className="text-3xl font-black text-zinc-400 tracking-tight">Ended</h3>
                                         ) : isOngoing ? (
-                                            <h3 className="text-3xl font-black text-green-600 tracking-tight animate-pulse">Happening Now</h3>
+                                            <h3 className="text-3xl font-black text-green-600 tracking-tight">{timelineText} <span className="text-lg text-zinc-400 font-bold">Left</span></h3>
                                         ) : (
-                                            <h3 className="text-3xl font-black text-zinc-900 tracking-tight">{Math.max(0, daysLeft)} <span className="text-lg text-zinc-400 font-bold">Days Left</span></h3>
+                                            <h3 className="text-3xl font-black text-zinc-900 tracking-tight">{timelineText} <span className="text-lg text-zinc-400 font-bold">Left</span></h3>
                                         )}
                                     </div>
                                     <p className="text-sm font-medium text-zinc-400">
-                                        {isEnded ? 'Event has concluded' : isOngoing ? 'Event is currently ongoing' : 'Until event starts'}
+                                        {timelineLabel}
                                     </p>
                                 </div>
                             </div>
@@ -531,13 +580,11 @@ export function DashboardTabOverview({ event, user, role, phase, onUpdate }: Das
                                             </svg>
                                         </div>
                                         <div>
-                                            <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Duration</h4>
-                                            <p className="text-sm font-bold text-zinc-900 capitalize">
-                                                {formatDuration(intervalToDuration({
-                                                    start: new Date(event.start_datetime),
-                                                    end: new Date(event.end_datetime)
-                                                }), { format: ['hours', 'minutes'] }) || '0m'}
-                                            </p>
+                                            <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Schedule</h4>
+                                            <div className="text-sm font-bold text-zinc-900 leading-tight">
+                                                <div>{scheduleLine1}</div>
+                                                <div className="text-zinc-600 font-semibold">{scheduleLine2}</div>
+                                            </div>
                                         </div>
                                     </div>
 

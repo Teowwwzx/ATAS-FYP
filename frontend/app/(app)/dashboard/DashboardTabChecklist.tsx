@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { EventDetails, EventChecklistItemResponse, ProfileResponse, EventProposalResponse, EventParticipantRole, EventParticipantDetails } from '@/services/api.types'
-import { getEventChecklist, createEventChecklistItem, updateEventChecklistItem, deleteEventChecklistItem, findProfiles, getEventProposals, getEventParticipants, getProfileByUserId, createEventProposalWithFile } from '@/services/api'
+import { getEventChecklist, createEventChecklistItem, updateEventChecklistItem, deleteEventChecklistItem, findProfiles, getEventProposals, getEventParticipants, getProfileByUserId, createEventProposalWithFile, createEventProposal } from '@/services/api'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 import { Dialog, Transition, Menu } from '@headlessui/react'
@@ -18,24 +18,32 @@ interface TemplateTask {
 }
 
 const TEMPLATES: Record<string, { id: string, name: string, description: string, tasks: (string | TemplateTask)[] }> = {
-    default: {
-        id: 'default',
-        name: "Default",
+    pre_event: {
+        id: 'pre_event',
+        name: "Pre Event",
         description: "Essential tasks for any event.",
         tasks: [
-            { title: "Pre-event" },
-            { title: "Execution" },
-            { title: "Post-event" }
+            { title: "Venue booking (critical)", description: "Confirm booking", visibility: "internal" },
+            { title: "Speaker parking registration", description: "Reserve parking + share entry instructions", visibility: "external" },
+            { title: "How to get to APU campus", description: "Share map + arrival guide", visibility: "external", link_url: "https://www.google.com/maps?q=Asia+Pacific+University" }
         ]
     },
-    event_prep: {
-        id: 'event_prep',
-        name: "Event Day Prep",
+    execution: {
+        id: 'execution',
+        name: "Execution",
         description: "Standard preparation items for participants & guests.",
         tasks: [
             { title: "Logistics & Parking", description: "Arrangements for experts & guests", visibility: "external" },
             { title: "Guest Communication", description: "Send guides, maps, and reminders", visibility: "external" },
             { title: "Emergency Prep", description: "Contact info and safety protocols", visibility: "internal" }
+        ]
+    },
+    post_event: {
+        id: 'post_event',
+        name: "Post Event",
+        description: "Wrap-up tasks after the event ends.",
+        tasks: [
+            { title: "Appreciation Email", description: "Send thank you emails to all participants", visibility: "internal" },
         ]
     },
     project_management: {
@@ -50,12 +58,6 @@ const TEMPLATES: Record<string, { id: string, name: string, description: string,
             { title: "Closing & Reporting" }
         ]
     },
-    coming_soon: {
-        id: 'coming_soon',
-        name: "Coming Soon",
-        description: "More templates are on the way!",
-        tasks: []
-    }
 }
 
 interface DashboardTabChecklistProps {
@@ -70,7 +72,8 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
 
     // Templates State
     const [showTemplateModal, setShowTemplateModal] = useState(false)
-    const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof TEMPLATES>('default')
+    const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof TEMPLATES>('pre_event')
+    const activeTemplate = TEMPLATES[selectedTemplate] || TEMPLATES.pre_event || Object.values(TEMPLATES)[0]
 
     // Assignment State
     const [committee, setCommittee] = useState<ProfileResponse[]>([])
@@ -100,6 +103,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
     const [uploadTitle, setUploadTitle] = useState('')
     const [uploadDescription, setUploadDescription] = useState('')
     const [uploading, setUploading] = useState(false)
+    const [previewFile, setPreviewFile] = useState<EventProposalResponse | null>(null)
 
     // Preview Public Modal
     const [showPreviewModal, setShowPreviewModal] = useState(false)
@@ -142,6 +146,16 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
     useEffect(() => {
         fetchChecklist()
     }, [event.id])
+
+    const resolveFileUrl = (url: string | null | undefined) => {
+        const raw = (url || '').trim()
+        if (!raw) return null
+        if (/^https?:\/\//i.test(raw)) return raw
+        const base = (process.env.NEXT_PUBLIC_API_URL || '').trim()
+        if (!base) return raw
+        if (raw.startsWith('/')) return `${base}${raw}`
+        return `${base}/${raw}`
+    }
 
     const getLinkType = (url: string) => {
         try {
@@ -262,21 +276,12 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
 
         const currentFiles = item.files || []
         const isLinked = currentFiles.some(f => f.id === fileId)
-        let newFileIds: string[]
-        if (isLinked) {
-            newFileIds = currentFiles.filter(f => f.id !== fileId).map(f => f.id)
-        } else {
-            newFileIds = [...currentFiles.map(f => f.id), fileId]
-        }
+        const newFileIds: string[] = isLinked ? [] : [fileId]
 
         // Optimistic Update
         const fileObj = files.find(f => f.id === fileId)
-        if (fileObj) {
-            const newFiles = isLinked
-                ? currentFiles.filter(f => f.id !== fileId)
-                : [...currentFiles, fileObj]
-            setItems(items.map(i => i.id === itemId ? { ...i, files: newFiles } : i))
-        }
+        const newFiles = isLinked ? [] : (fileObj ? [fileObj] : [])
+        setItems(items.map(i => i.id === itemId ? { ...i, files: newFiles } : i))
 
         try {
             await updateEventChecklistItem(event.id, itemId, { file_ids: newFileIds })
@@ -290,20 +295,27 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!newItemTitle.trim()) return
+        const title = newItemTitle.trim()
+        if (!title) return
+
+        const assignedUserIds = newItemUser ? [newItemUser.user_id] : []
+        const attachedFile = newItemFile
+        const pastedLink = newItemLinkUrl.trim()
+        const visibility = newVisibility
+        const audienceRole = visibility === 'external' ? newAudienceRole ?? undefined : undefined
 
         const tempId = 'temp-' + Date.now()
         const tempItem: EventChecklistItemResponse = {
             id: tempId,
             event_id: event.id,
-            title: newItemTitle,
+            title,
             is_completed: false,
             sort_order: items.length + 1,
             created_by_user_id: 'me',
             created_at: new Date().toISOString(),
-            assigned_user_ids: newItemUser ? [newItemUser.user_id] : [],
-            visibility: newVisibility,
-            files: newItemFile ? [newItemFile] : []
+            assigned_user_ids: assignedUserIds,
+            visibility,
+            files: attachedFile ? [attachedFile] : []
         }
 
         // Optimistic UI
@@ -315,13 +327,23 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
         setShowAssignMenu(false)
 
         try {
+            let fileIds: string[] = attachedFile ? [attachedFile.id] : []
+
+            if (!attachedFile && pastedLink) {
+                const proposal = await createEventProposal(event.id, {
+                    title,
+                    description: '[link] Attached to checklist',
+                    file_url: pastedLink
+                })
+                fileIds = [proposal.id]
+            }
+
             const newItem = await createEventChecklistItem(event.id, {
-                title: tempItem.title,
-                assigned_user_ids: tempItem.assigned_user_ids,
-                link_url: newItemLinkUrl.trim() ? newItemLinkUrl.trim() : undefined,
-                visibility: newVisibility,
-                audience_role: newVisibility === 'external' ? newAudienceRole ?? undefined : undefined,
-                file_ids: newItemFile ? [newItemFile.id] : []
+                title,
+                assigned_user_ids: assignedUserIds,
+                visibility,
+                audience_role: audienceRole,
+                file_ids: fileIds
             })
             // Replace temp item with real one
             setItems(prev => prev.map(i => i.id === tempId ? newItem : i))
@@ -375,11 +397,11 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
             const item = items.find(i => i.id === uploadItemId)
             if (item) {
                 const currentFiles = item.files || []
-                const newFileIds = [...currentFiles.map(f => f.id), newProposal.id]
+                const newFileIds = [newProposal.id]
                 await updateEventChecklistItem(event.id, uploadItemId, { file_ids: newFileIds })
 
                 // Optimistic Update
-                setItems(items.map(i => i.id === uploadItemId ? { ...i, files: [...currentFiles, newProposal] } : i))
+                setItems(items.map(i => i.id === uploadItemId ? { ...i, files: [newProposal] } : i))
             }
 
             // Refresh files
@@ -501,8 +523,8 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                             <div className="flex-1 overflow-y-auto">
                                                 <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Tasks Preview</h4>
                                                 <ul className="space-y-3">
-                                                    {TEMPLATES[selectedTemplate].tasks.length > 0 ? (
-                                                        TEMPLATES[selectedTemplate].tasks.map((task: any, i: number) => {
+                                                    {activeTemplate?.tasks?.length > 0 ? (
+                                                        activeTemplate.tasks.map((task: any, i: number) => {
                                                             const title = typeof task === 'string' ? task : task.title
                                                             const link = typeof task === 'string' ? null : task.link_url || null
                                                             const role = typeof task === 'string' ? null : task.assigned_role || null
@@ -550,7 +572,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                 </button>
                                                 <button
                                                     onClick={loadTemplate}
-                                                    disabled={TEMPLATES[selectedTemplate].tasks.length === 0}
+                                                    disabled={!activeTemplate || activeTemplate.tasks.length === 0}
                                                     className="px-6 py-2 rounded-xl bg-zinc-900 text-white font-bold text-sm hover:bg-zinc-800 disabled:opacity-50"
                                                 >
                                                     Use Template
@@ -650,14 +672,22 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                         if (linkedFiles.length > 0) {
                                                             return (
                                                                 <div className="flex flex-wrap gap-2 mt-2">
-                                                                    {linkedFiles.map(f => (
+                                                                    {linkedFiles.slice(0, 1).map(f => (
                                                                         <a
                                                                             key={f.id}
-                                                                            href={f.file_url ?? '#'}
+                                                                            href={resolveFileUrl(f.file_url) ?? '#'}
                                                                             target="_blank"
                                                                             rel="noreferrer"
                                                                             className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors border border-blue-100"
                                                                             title={f.title ?? ''}
+                                                                            onClick={(e) => {
+                                                                                const url = resolveFileUrl(f.file_url)
+                                                                                if (!url) e.preventDefault()
+                                                                                else {
+                                                                                    e.preventDefault()
+                                                                                    setPreviewFile(f)
+                                                                                }
+                                                                            }}
                                                                         >
                                                                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
                                                                             {f.title}
@@ -888,7 +918,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                             leaveFrom="transform opacity-100 scale-100"
                                                             leaveTo="transform opacity-0 scale-95"
                                                         >
-                                                            <Menu.Items className="absolute right-0 top-full mt-1 w-56 origin-top-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+                                                            <Menu.Items className="absolute right-0 bottom-full mb-2 w-56 origin-bottom-right divide-y divide-zinc-100 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                                                                 <div className="p-1 max-h-60 overflow-y-auto">
                                                                     <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                                                                         Quick Create
@@ -912,7 +942,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                                             className="w-full text-left px-3 py-2 rounded-lg border border-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-50 flex items-center gap-2"
                                                                         >
                                                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                                                            Upload File…
+                                                                            {(item.files || []).length > 0 ? 'Replace File…' : 'Upload File…'}
                                                                         </button>
                                                                     </div>
                                                                     <div className="px-3 py-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
@@ -1188,13 +1218,16 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                 <div className="px-4 py-3 text-xs text-zinc-400 italic">No files available</div>
                                             )}
                                             <div className="px-3 py-2 bg-zinc-50 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-t border-zinc-100">
-                                                Attach External Link
+                                                Attach Link
                                             </div>
                                             <div className="px-4 py-3 flex items-center gap-2">
                                                 <input
                                                     type="url"
                                                     value={newItemLinkUrl}
-                                                    onChange={(e) => setNewItemLinkUrl(e.target.value)}
+                                                    onChange={(e) => {
+                                                        setNewItemLinkUrl(e.target.value)
+                                                        setNewItemFile(null)
+                                                    }}
                                                     placeholder="Paste link"
                                                     className="flex-1 bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold placeholder-zinc-400 focus:ring-2 focus:ring-yellow-400"
                                                 />
@@ -1256,7 +1289,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                         Upload File
                                     </Dialog.Title>
                                     <p className="text-sm text-zinc-500 mb-4">
-                                        Upload a file and link it to this checklist task.
+                                        Upload a file and link it to this checklist task (replaces existing file).
                                     </p>
 
                                     <div className="space-y-4">
@@ -1423,12 +1456,11 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                                                 </a>
                                                                             )}
                                                                             {/* File Badges */}
-                                                                            {linkedFiles.map(f => (
-                                                                                <a
+                                                                            {linkedFiles.slice(0, 1).map(f => (
+                                                                                <button
                                                                                     key={f.id}
-                                                                                    href={f.file_url ?? '#'}
-                                                                                    target="_blank"
-                                                                                    rel="noreferrer"
+                                                                                    type="button"
+                                                                                    onClick={() => setPreviewFile(f)}
                                                                                     className="text-[10px] uppercase font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full hover:bg-amber-200 transition-colors flex items-center gap-1"
                                                                                     title={f.title ?? ''}
                                                                                 >
@@ -1436,7 +1468,7 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                                     </svg>
                                                                                     File
-                                                                                </a>
+                                                                                </button>
                                                                             ))}
                                                                         </div>
                                                                         {item.description && (
@@ -1447,6 +1479,77 @@ export function DashboardTabChecklist({ event }: DashboardTabChecklistProps) {
                                                             )
                                                         })}
                                                     </ul>
+                                                </div>
+                                            )
+                                        })()}
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+
+            <Transition appear show={previewFile !== null} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setPreviewFile(null)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+                                        <Dialog.Title className="text-sm font-bold text-zinc-900">
+                                            {previewFile?.title || 'File Preview'}
+                                        </Dialog.Title>
+                                        <button
+                                            onClick={() => setPreviewFile(null)}
+                                            className="text-zinc-400 hover:text-zinc-600 transition-colors p-1.5 rounded-lg hover:bg-zinc-50"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                    <div className="p-4">
+                                        {(() => {
+                                            const url = resolveFileUrl(previewFile?.file_url)
+                                            if (!url) {
+                                                return <div className="text-sm text-zinc-500">No file URL</div>
+                                            }
+
+                                            const u = url.toLowerCase()
+                                            const isImage = /\.(jpeg|jpg|gif|png|webp)$/i.test(u) || u.includes('/image/upload')
+                                            const isPdf = u.includes('.pdf') || u.includes('/raw/upload') || u.includes('application/pdf')
+
+                                            if (isImage) {
+                                                return <img src={url} alt={previewFile?.title || 'File'} className="max-h-[70vh] w-auto rounded-lg border border-zinc-200 mx-auto" />
+                                            }
+
+                                            if (isPdf) {
+                                                return <iframe src={url} className="w-full h-[70vh] rounded-lg border border-zinc-200" />
+                                            }
+
+                                            return (
+                                                <div className="text-sm text-zinc-600">
+                                                    Preview not supported for this file type.{' '}
+                                                    <a href={url} target="_blank" rel="noreferrer" className="font-bold text-blue-700 underline">Open in new tab</a>.
                                                 </div>
                                             )
                                         })()}

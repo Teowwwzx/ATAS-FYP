@@ -59,7 +59,7 @@ function RegisterContent() {
     }
 
     return (
-        <div className="min-h-screen flex bg-amber-50 font-sans">
+        <div className="min-h-[calc(100vh-2rem)] flex bg-amber-50 font-sans">
             <LoadingBackdrop isLoading={isLoading} />
 
             {/* Left Side - Playful Yellow */}

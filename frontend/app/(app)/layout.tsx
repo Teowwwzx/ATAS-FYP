@@ -18,7 +18,7 @@ export default function AppLayout({
 
     return (
         <OnboardingGuard>
-            <div className="min-h-screen bg-amber-50">
+            <div className="min-h-[calc(100vh-2rem)] bg-amber-50">
                 <AppNavbar />
                 <main className={`py-10 pb-24 md:pb-10 ${isMessagesPage ? 'px-0' : ''}`}>
                     <div className={isMessagesPage ? "w-full" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"}>

@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast' // Import the Toaster
 import WireframeToggle from '@/components/WireframeToggle'
+import { GlobalBanner } from '@/components/ui/GlobalBanner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -32,7 +33,12 @@ export default function RootLayout({
         {/* Icons */}
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
       </head>
-      <body className={`${inter.className} bg-gray-50 text-gray-900`} suppressHydrationWarning>
+      <body 
+        className={`${inter.className} bg-yellow-900 text-gray-900 pt-8`} 
+        suppressHydrationWarning
+        style={{ paddingTop: '32px' }}
+      >
+        <GlobalBanner />
         {/* This provider component will render all our toasts */}
         <Toaster
           position="top-right"

@@ -674,7 +674,9 @@ export const createEventProposalWithFile = async (eventId: string, data: EventPr
   if (data.description) fd.append('description', data.description)
   if (data.file_url) fd.append('file_url', data.file_url)
   if (file) fd.append('file', file)
-  const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, fd)
+  const response = await api.post<EventProposalResponse>(`/events/${eventId}/proposals`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return response.data
 }
 

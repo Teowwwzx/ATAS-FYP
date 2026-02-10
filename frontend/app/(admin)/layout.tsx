@@ -53,10 +53,10 @@ export default function AdminLayout({
     }
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex min-h-[calc(100vh-2rem)] bg-gray-50">
             <AdminSidebar />
             <main className="flex-1 overflow-y-auto">
-                <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+                <div className="sticky top-8 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
                     <div className="px-8 py-4 flex items-center justify-end">
                         <AdminNotificationBell />
                     </div>

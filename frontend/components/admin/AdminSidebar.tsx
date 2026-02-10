@@ -51,7 +51,7 @@ export function AdminSidebar() {
     const userRoles = user.roles || []
 
     return (
-        <div className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-gray-100 min-h-screen flex flex-col sticky top-0 h-screen font-sans transition-all duration-300 relative`}>
+        <div className={`${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-gray-100 min-h-[calc(100vh-2rem)] flex flex-col sticky top-8 h-[calc(100vh-2rem)] font-sans transition-all duration-300 relative`}>
 
             {/* Toggle Button */}
             <button
