@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import * as path from 'path';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',

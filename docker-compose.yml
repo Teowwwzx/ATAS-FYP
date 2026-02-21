@@ -1,0 +1,51 @@
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # This URL is baked into the static files. 
+        # For production, change this to your public domain (e.g. https://api.example.com/api/v1)
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    restart: always
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    restart: always
+    environment:
+      # Database connection string
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/atas_db
+      # Frontend URL for CORS
+      FRONTEND_BASE_URL: http://localhost:3000
+      # Add other environment variables from your .env here
+      # SECRET_KEY: ...
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: atas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
